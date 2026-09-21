@@ -1,7 +1,7 @@
 # Portir
 
 Buy US stocks on BNB Chain as simply as a mutual fund, with a Guard that checks the market session and
-the on-chain vs exchange price before every order. Spec: [prd.md](prd.md).
+the on-chain vs exchange price before every order.
 
 ## Layout
 
