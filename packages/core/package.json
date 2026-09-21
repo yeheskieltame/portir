@@ -9,6 +9,10 @@
   },
   "scripts": {
     "test": "node --test src/*.test.ts",
-    "smoke": "node src/smoke.ts"
+    "smoke": "node src/smoke.ts",
+    "smoke:trade": "node --env-file=../../apps/web/.env.local src/smoke-trade.ts"
+  },
+  "dependencies": {
+    "@binance-web3/wallet": "^12.3.0"
   }
 }
