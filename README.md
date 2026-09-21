@@ -7,7 +7,7 @@ the on-chain vs exchange price before every order.
 
 | Path | What | Status |
 | --- | --- | --- |
-| `packages/core` | `@portir/core`: the Guard (pure verdict logic) and the Binance RWA Data client. | compares Ondo, xStocks and bStocks per stock; verified live |
+| `packages/core` | `@portir/core`: the Guard (pure verdict logic) and the Binance RWA Data client. | RWA Data client (3 issuers, verified live) and Trading client via the official SDK (quote/build/simulate; live check pending a key) |
 | `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | tested, on BSC testnet |
 | `apps/web` | Next.js app: stock catalog, recurring plans. | catalog reads live prices server-side, labelled sample fallback; plans live against the contract |
 
@@ -16,7 +16,11 @@ the Agent Studio executor reads due plans from it and logs each run (with its on
 The contract holds no funds; swaps are signed by the user's Agentic Wallet session.
 
 Not here yet, on purpose: `@portir/mcp` (PRD day 17), the basket router contract (PRD §12 Q3, decide in
-week 2), Trading/Transaction API clients (buy flow).
+week 2), signing and submitting orders from the app.
+
+Trading runs on **BSC mainnet only** (stock tokens have no testnet); quoting is read-only. `PlanRegistry` stays on testnet
+until the app is done. Put `BINANCE_W3_API_KEY` / `BINANCE_W3_API_SECRET` in `apps/web/.env.local`, then
+`pnpm --filter @portir/core smoke:trade`.
 
 `www.binance.com` is DNS-blocked on Indonesian ISPs. Locally the catalog falls back to sample prices unless you are
 on a VPN; `pnpm --filter @portir/core smoke` checks the live API. Deployed (Vercel) it reads live data.

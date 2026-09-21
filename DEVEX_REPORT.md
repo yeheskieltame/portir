@@ -66,6 +66,28 @@ Spec v1.1 vs the live API. Every item below cost us a wrong assumption first.
 - Working well: all 8 curated tickers exist on BSC for all 3 issuers; responses are fast; no key, no rate-limit
   hit at 24 calls per 30 s.
 
+### 2026-09-21 (day 2, evening): Trading + Transaction API, from the SDK source
+
+Spec source: `binance/binance-web3-connector-js` (`@binance-web3/wallet` 12.3.0, OpenAPI-generated). Not yet run
+live; entries below are from reading the types and will be confirmed or corrected after the first keyed call.
+
+- Discoverability: searching for "Binance Web3 Trading API docs" finds the CEX docs. The connector repos were only
+  found through another hackathon repo's README. The RWA skill doc and this SDK describe overlapping RWA endpoints
+  on different hosts (`www.binance.com/bapi/...` public vs `web3.binance.com/build` keyed) and do not link to each other.
+- `web3.binance.com` is reachable from Indonesian ISPs; `www.binance.com` is not. Moving the public RWA reads to the
+  keyed host would remove our VPN dependency (to test).
+- **Stock tokens never use the swap path.** "Equity / RWA tokens always return `RFQ`": quote → `/swap` returns EIP-712
+  `typedDataToSign` → `POST /order/submit` → poll status. So PRD step 4 ("simulate via Transaction API") does not
+  apply to stocks: there is no transaction to simulate, and the RFQ price is firm. Simulation stays for SWAP routes.
+- `quoteAndBuildSwapTransaction` looks like the one-call path but its `vendor` is required and the enum has a single
+  value, `LiquidMesh`. Best-route + RFQ needs the two-step `getAggregatedQuote` → `buildSwapTransaction(quoteId)`.
+- Docs for `submitRfqOrder.quoteId` say "`rfq.orderId` from the `/swap` response", but the generated `rfq` type has
+  no `orderId` field (`vendor`, `txType`, `typedDataToSign`, `signingScheme`, `signatureData`). To check live.
+- `priceImpactPercent` is `(received − sent) / sent`, so a cost is negative. Easy to read backwards; we flip it.
+- `simulateTransactions` marks `evmTx`, `solTx` and `tronTx` all required "for rendering purposes only"; the TS types
+  force a cast to pass just one.
+- Good: the SDK owns HMAC signing (`X-OC-APIKEY`/`X-OC-SIGN`), so no hand-rolled auth.
+
 ## Issuer comparison (fill in during day 1-3)
 
 | | bStocks | Ondo | xStocks |
