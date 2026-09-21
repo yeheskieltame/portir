@@ -25,6 +25,15 @@ until the app is done. Put `BINANCE_W3_API_KEY` / `BINANCE_W3_API_SECRET` in `ap
 `www.binance.com` is DNS-blocked on Indonesian ISPs. Locally the catalog falls back to sample prices unless you are
 on a VPN; `pnpm --filter @portir/core smoke` checks the live API. Deployed (Vercel) it reads live data.
 
+## Backlog (decided, not started)
+
+- Move catalog reads from the public `www.binance.com` RWA API to the keyed one on `web3.binance.com`: not ISP-blocked
+  in Indonesia (no VPN for local dev), ~10 calls instead of 24, and its issuer list (`ondo`, `bstock`) is the source of
+  truth for what can be traded, so xStocks drops out. Trade-off: the catalog then needs the API key. Take the exchange
+  price from `getRwaUnderlyingMarketData`, never from `getRwaTokenPrice.referencePrice` (see DEVEX_REPORT).
+- `simulate`: call the REST endpoint directly with our own request signing, or rely on `minTokensOut`.
+- Buy flow: server-side quote, wallet signs approve + swap. First execution needs real USDT on mainnet.
+
 ## Deployments
 
 | Network | PlanRegistry (proxy) | Implementation | Verified |
