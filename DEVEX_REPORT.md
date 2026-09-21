@@ -88,6 +88,38 @@ live; entries below are from reading the types and will be confirmed or correcte
   force a cast to pass just one.
 - Good: the SDK owns HMAC signing (`X-OC-APIKEY`/`X-OC-SIGN`), so no hand-rolled auth.
 
+### 2026-09-21 (day 2, night): first keyed calls. What the SDK and docs got wrong
+
+Live, read-only, $10 NVDA quote on BSC mainnet. Works end to end: Ondo executable at **+0.8 bps** vs the exchange,
+bStocks **+4.55 bps**, both through LiquidMesh. Corrections to the entry above, all found the hard way:
+
+- **SDK types lie about the envelope.** Every response type is `{ code, msg, data, success }`, but `.data()` returns
+  the inner `data` (the SDK strips the envelope in `httpRequestFunction`). Code written against the types reads
+  `body.success` → `undefined` → "request failed" on a perfectly good quote. Cost us one debugging round.
+- **...and the stripped envelope hides every business error.** On HTTP 200 with an error `code`/`msg`, `.data()` is
+  just `null`. "No route", "bad parameter" and "simulation failed" are indistinguishable. **Ask: throw on non-zero
+  `code`, or expose the envelope.**
+- **"Equity / RWA tokens always return RFQ" is false today.** NVDAon and NVDAB both return `executionMode: "SWAP"`
+  via LiquidMesh with a normal `tx` + one approve. We handle both modes; RFQ remains untested because we never got one.
+  Fun detail: the best NVDAon route goes USDT → **NVDAB** → NVDAon, through the other issuer's pool.
+- **`simulateTransactions` is unusable for EVM in SDK 12.3.0**: it rejects the request unless `solTx` and `tronTx`
+  are also supplied, while the API wants exactly one. With `{}` placeholders the call returns `null` and (see above)
+  no reason. PRD step 4 is blocked on this; our wrapper throws rather than pretend. **Ask: make the three tx fields optional.**
+- **xStocks: no route** (`null`) for $10 NVDAx, and xStocks is absent from the keyed API's issuer list (`ondo`,
+  `bstock` only). That settles the earlier finding: the −1.7% xStocks "discount" is an unexecutable stale price.
+  The public list still shows 128 xStocks tokens on BSC with no hint that they cannot be traded here.
+- **Two RWA APIs, different answers.** Keyed `getRwaTokenList(56)`: 488 tokens (442 ondo, 46 bstock). Public list:
+  458 + 77. The keyed one is better shaped (one call has status + `tokenToShareRatio`; prices are batched) and its
+  host is not ISP-blocked in Indonesia.
+- **Naming trap: `referencePrice` in `getRwaTokenPrice` is not the exchange price.** It equals `tokenPrice ÷
+  tokenToShareRatio` exactly, i.e. the on-chain price per share. The exchange price is
+  `getRwaUnderlyingMarketData.marketData.referencePrice` (same field name, different meaning), and that one is `null`
+  for bStocks. Comparing the first against itself yields a permanent 0.00% spread: a Guard that always says GO.
+- Three "exchange price" feeds sampled together differed by ~10 bps (223.36 / 223.63 / 223.74) in a moving market.
+  Fine against a 50 bps threshold, but it bounds how tight any fair-price check can honestly be.
+- Good: auth worked first try, quotes return in well under a second, `approveTransaction=true` hands back ready
+  approve calldata, permissions are granular (we run with Trade/Transaction/Market/Wallet only).
+
 ## Issuer comparison (fill in during day 1-3)
 
 | | bStocks | Ondo | xStocks |
@@ -97,7 +129,9 @@ live; entries below are from reading the types and will be confirmed or correcte
 | Symbol suffix | `B` | `on` | `x` |
 | Reports session (`marketStatus`) | no | yes | no |
 | Reports exchange price | no | yes | yes |
-| Price vs exchange, regular session | ±0.1% | ±0.1% | up to −1.8% (stale?) |
+| Price vs exchange, regular session | ±0.1% | ±0.1% | up to −1.8% (stale) |
+| Executable via Trading API ($10 NVDA) | yes, +4.55 bps | yes, +0.8 bps | **no route** |
+| In keyed RWA API | yes (`bstock`, 46) | yes (`ondo`, 442) | no |
 | On BSC / liquidity | | | |
 | Share accounting | multiplier | multiplier | multiplier (list value wrong, use dynamic) |
 | Halt codes | | | |

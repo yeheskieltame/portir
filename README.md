@@ -7,7 +7,7 @@ the on-chain vs exchange price before every order.
 
 | Path | What | Status |
 | --- | --- | --- |
-| `packages/core` | `@portir/core`: the Guard (pure verdict logic) and the Binance RWA Data client. | RWA Data client (3 issuers, verified live) and Trading client via the official SDK (quote/build/simulate; live check pending a key) |
+| `packages/core` | `@portir/core`: the Guard (pure verdict logic) and the Binance RWA Data client. | RWA Data client and Trading client (official SDK): quote + build verified live on mainnet; simulate blocked by an SDK bug |
 | `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | tested, on BSC testnet |
 | `apps/web` | Next.js app: stock catalog, recurring plans. | catalog reads live prices server-side, labelled sample fallback; plans live against the contract |
 
