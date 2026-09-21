@@ -1,0 +1,55 @@
+# Portir
+
+Buy US stocks on BNB Chain as simply as a mutual fund, with a Guard that checks the market session and
+the on-chain vs exchange price before every order. Spec: [prd.md](prd.md).
+
+## Layout
+
+| Path | What | Status |
+| --- | --- | --- |
+| `packages/core` | `@portir/core`: the Guard (verdicts, issuer scoring). Pure functions, no I/O. | verdict logic + tests |
+| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | tested, on BSC testnet |
+| `apps/web` | Next.js app: stock catalog, recurring plans. | catalog on sample data; plans live against the contract |
+
+**No backend.** The PRD's Postgres plan store is replaced by `PlanRegistry`: the app writes plans to it,
+the Agent Studio executor reads due plans from it and logs each run (with its one-sentence reason) back.
+The contract holds no funds; swaps are signed by the user's Agentic Wallet session.
+
+Not here yet, on purpose: `@portir/mcp` (PRD day 17), the basket router contract (PRD §12 Q3, decide in
+week 2), Binance Web3 API clients (after tickers are verified on BSC, PRD day 1-3).
+
+## Deployments
+
+| Network | PlanRegistry (proxy) | Implementation | Verified |
+| --- | --- | --- | --- |
+| BSC testnet (97) | `0x28daDC35523CE792C7C09faf516763830C38f36b` | `0xD408f733B94Bee65714C0fE99212F47cD55A315C` | [BscScan](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code) (proxy linked) + Sourcify |
+
+## Run
+
+```sh
+git submodule update --init --recursive   # forge-std, OpenZeppelin
+pnpm install
+pnpm test                     # core + contracts
+pnpm dev                      # http://localhost:3000
+```
+
+Plans page against a local chain:
+
+```sh
+anvil
+forge script script/Deploy.s.sol --root contracts --rpc-url http://127.0.0.1:8545 --broadcast \
+  --private-key <anvil key #0, printed when anvil starts>
+# apps/web/.env.local
+NEXT_PUBLIC_CHAIN=anvil
+NEXT_PUBLIC_PLAN_REGISTRY=<printed proxy address>
+```
+
+Testnet/mainnet deploy uses the encrypted keystore `portir-deployer` (`~/.foundry/keystores/`), unlocked by the
+gitignored `contracts/.keystore-password`. Fund the address (`cast wallet address --account portir-deployer
+--password-file contracts/.keystore-password`), then `pnpm deploy:testnet` (or `deploy:mainnet`). Put the printed
+proxy address in `apps/web/.env.local` with `NEXT_PUBLIC_CHAIN=testnet`.
+`OWNER=<addr>` sets the upgrade admin (default: the deployer); use a multisig for anything real.
+
+Upgrades: write `PlanRegistryV2` annotated `/// @custom:oz-upgrades-from PlanRegistry`, only append fields to
+`PlanRegistryStorage`, then `Upgrades.upgradeProxy(proxy, "PlanRegistryV2.sol", "")`. The OZ plugin checks the
+storage layout (needs Node, `ffi = true`).
