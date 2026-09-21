@@ -7,16 +7,19 @@ the on-chain vs exchange price before every order.
 
 | Path | What | Status |
 | --- | --- | --- |
-| `packages/core` | `@portir/core`: the Guard (verdicts, issuer scoring). Pure functions, no I/O. | verdict logic + tests |
+| `packages/core` | `@portir/core`: the Guard (pure verdict logic) and the Binance RWA Data client. | tested on documented samples; live smoke test pending |
 | `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | tested, on BSC testnet |
-| `apps/web` | Next.js app: stock catalog, recurring plans. | catalog on sample data; plans live against the contract |
+| `apps/web` | Next.js app: stock catalog, recurring plans. | catalog reads live prices server-side, labelled sample fallback; plans live against the contract |
 
 **No backend.** The PRD's Postgres plan store is replaced by `PlanRegistry`: the app writes plans to it,
 the Agent Studio executor reads due plans from it and logs each run (with its one-sentence reason) back.
 The contract holds no funds; swaps are signed by the user's Agentic Wallet session.
 
 Not here yet, on purpose: `@portir/mcp` (PRD day 17), the basket router contract (PRD §12 Q3, decide in
-week 2), Binance Web3 API clients (after tickers are verified on BSC, PRD day 1-3).
+week 2), Trading/Transaction API clients (buy flow).
+
+`www.binance.com` is DNS-blocked on Indonesian ISPs. Locally the catalog falls back to sample prices unless you are
+on a VPN; `pnpm --filter @portir/core smoke` checks the live API. Deployed (Vercel) it reads live data.
 
 ## Deployments
 
