@@ -17,7 +17,10 @@ test("guard follows the PRD verdict table", () => {
   assert.equal(at(100.51).verdict, "WARN");
   assert.equal(at(101).verdict, "WARN"); // <= 1.0% is amber, boundary included
   assert.equal(at(101.3).verdict, "BLOCK"); // PRD flow B: closed, 1.3%
-  assert.equal(at(98).verdict, "GO"); // discount favours the buyer
+  assert.equal(at(99.5).verdict, "GO"); // a small discount favours the buyer
+  assert.equal(at(99).verdict, "GO");
+  assert.equal(at(98.28).verdict, "WARN"); // live TSLAx, 2026-09-21: -1.72% in regular hours = stale, not cheap
+  assert.match(at(98.28).reason, /1\.72% below.*out of date/);
   assert.equal(at(100, { halted: "EARNINGS" }).verdict, "BLOCK");
   assert.equal(guard({ session: "open", onchain: 100.2, reference: 100 }).verdict, "GO");
 

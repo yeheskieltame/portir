@@ -33,10 +33,10 @@ export function spreadBps(price: number, reference: number): number {
 
 const pct = (bps: number) => `${(Math.abs(bps) / 100).toFixed(2)}%`;
 
-/**
- * Buy-side verdict. Only a premium counts against the order: a discount to the exchange price is
- * in the buyer's favour. Sells will need the mirror image when they exist.
- */
+/** A discount this deep is not a bargain: live data shows it means a stale or illiquid on-chain price. */
+export const isSuspectDiscount = (bps: number) => bps < -THRESHOLDS.blockBps;
+
+/** Buy-side verdict. A small discount is in the buyer's favour; sells will need the mirror image. */
 export function guard(m: MarketSnapshot): Decision {
   const bps = spreadBps(m.onchain, m.reference);
   const when = m.session === "open" ? "The market is open" : "The market is closed";
@@ -49,6 +49,13 @@ export function guard(m: MarketSnapshot): Decision {
       verdict: "BLOCK",
       spreadBps: bps,
       reason: `${when} and the on-chain price is ${pct(bps)} above the exchange price, so it is better to wait.`,
+    };
+  }
+  if (isSuspectDiscount(bps)) {
+    return {
+      verdict: "WARN",
+      spreadBps: bps,
+      reason: `The on-chain price is ${pct(bps)} below the exchange price, which usually means it is out of date, so the price you get may be higher.`,
     };
   }
   if (bps > THRESHOLDS.warnBps) {
