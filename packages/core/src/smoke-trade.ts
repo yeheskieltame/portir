@@ -11,6 +11,7 @@ const trader = createTrader({ apiKey: process.env.BINANCE_W3_API_KEY ?? "", apiS
 const tokens = (await listStocks()).filter((s) => s.ticker === ticker);
 const quotes = await Promise.all(tokens.map(quote));
 const reference = quotes.find((q) => q.reference !== null)?.reference ?? null;
+const session = quotes.find((q) => q.session !== null)?.session ?? "closed"; // per stock, only Ondo reports it
 console.log(`${ticker}: exchange ${reference}, buying ${amount} USDT from ${wallet}\n`);
 
 for (const [i, token] of tokens.entries()) {
@@ -27,7 +28,7 @@ for (const [i, token] of tokens.entries()) {
       impactBps: q.impactBps,
       approveTarget: q.approveTarget,
     });
-    if (reference !== null) console.log("  guard:", guard({ session: oracle.session ?? "closed", halted: oracle.halted, onchain: q.pricePerShare, reference }).reason);
+    if (reference !== null) console.log("  guard:", guard({ session, halted: oracle.halted, onchain: q.pricePerShare, reference }).reason);
 
     const built = await trader.buildBuy(order, q);
     console.log("  build:", { hasTx: !!built.tx, rfqVendor: built.rfq?.vendor, scheme: built.rfq?.signingScheme, typedDataChars: built.rfq?.typedDataToSign.length, approvals: built.approvals.length, minTokensOut: built.minTokensOut });

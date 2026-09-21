@@ -1,5 +1,5 @@
 // Binance Web3 Trading + Transaction API, through the official SDK (it owns request signing).
-// BSC mainnet only: stock tokens have no testnet. Quoting and simulating are read-only and free.
+// BSC mainnet only: stock tokens have no testnet. Quoting is read-only and free.
 // Server-side only: needs the API secret.
 import { Web3Wallet } from "@binance-web3/wallet";
 import { BSC } from "./binance.ts";
@@ -21,7 +21,7 @@ export interface BuyQuote {
   /** Locks this route for `buildBuy`. */
   quoteId: string;
   vendor: string;
-  /** RFQ = signed EIP-712 order at a firm price (every stock token). SWAP = ordinary DEX transaction. */
+  /** SWAP = ordinary DEX transaction (what Ondo and bStocks return live). RFQ = signed EIP-712 order at a firm price. */
   mode: "RFQ" | "SWAP";
   /** Raw stock-token amount the quote delivers. */
   tokensOut: bigint;
@@ -55,15 +55,24 @@ export function fillDeviationBps(quotedOut: bigint, simulatedOut: bigint): numbe
   return spreadBps(Number(quotedOut), Number(simulatedOut));
 }
 
+export class NoRouteError extends TradingApiError {}
+
+// The SDK's types promise a { code, success, data } envelope, but `.data()` really returns the inner payload
+// (and `null` when no vendor can route the pair). Accept both, in case a release starts matching its types.
 async function unwrap<T>(call: Promise<{ data(): Promise<{ success?: boolean; code?: number; msg?: string; data?: T }> }>, what: string): Promise<T> {
-  let body;
+  let body: unknown;
   try {
     body = await (await call).data();
   } catch (e) {
     throw new TradingApiError(`${what}: ${e instanceof Error ? e.message : e}`, { cause: e });
   }
-  if (!body.success || body.data == null) throw new TradingApiError(`${what}: ${body.code ?? ""} ${body.msg ?? "no data"}`.trim());
-  return body.data;
+  if (body !== null && typeof body === "object" && "success" in body) {
+    const envelope = body as { success?: boolean; code?: number; msg?: string; data?: T };
+    if (!envelope.success) throw new TradingApiError(`${what}: ${envelope.code ?? ""} ${envelope.msg ?? ""}`.trim());
+    body = envelope.data;
+  }
+  if (body == null || (Array.isArray(body) && body.length === 0)) throw new NoRouteError(`${what}: no route`);
+  return body as T;
 }
 
 export function createTrader(credentials: { apiKey: string; apiSecret: string }) {
@@ -76,7 +85,7 @@ export function createTrader(credentials: { apiKey: string; apiSecret: string })
     amount: o.usdt.toString(),
     fromTokenAddress: USDT,
     toTokenAddress: o.token,
-    userWalletAddress: o.wallet, // required for RFQ routes, which is every stock token
+    userWalletAddress: o.wallet, // required for RFQ routes
   });
 
   return {
@@ -115,9 +124,20 @@ export function createTrader(credentials: { apiKey: string; apiSecret: string })
       };
     },
 
-    /** Dry-run a SWAP-route tx (RFQ orders are firm and have no tx to simulate). Returns the tokens the wallet would receive. */
+    /**
+     * Dry-run a SWAP-route tx and return the tokens the wallet would receive.
+     * BLOCKED on SDK 12.3.0: it refuses the call unless solTx and tronTx are also passed, and with placeholders the
+     * API answers `null`; the SDK drops the error envelope, so the reason is invisible. Until that is fixed this
+     * throws, and callers must treat "cannot simulate" as "cannot verify", never as a pass.
+     */
     async simulate(tx: EvmTx, token: string): Promise<{ ok: boolean; failReason?: string; tokensOut: bigint }> {
-      const data = await unwrap(api.simulateTransactions({ binanceChainId: BSC, evmTx: tx } as never), "simulate");
+      let data;
+      try {
+        data = await unwrap(api.simulateTransactions({ binanceChainId: BSC, evmTx: tx, solTx: {}, tronTx: {} } as never), "simulate");
+      } catch (e) {
+        if (e instanceof NoRouteError) throw new TradingApiError("simulate: the API returned no result (known SDK limitation for EVM-only requests)");
+        throw e;
+      }
       const received = (data.balanceChanges ?? [])
         .filter((c) => c.contractAddress?.toLowerCase() === token.toLowerCase() && c.owner?.toLowerCase() === tx.from.toLowerCase())
         .reduce((sum, c) => sum + BigInt(c.change ?? "0"), 0n);
