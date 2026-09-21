@@ -53,6 +53,26 @@ export default async function Catalog() {
               <p className="mt-1 text-sm text-muted">
                 {d ? d.reason : "We cannot compare this price to the exchange right now, so we would not buy yet."}
               </p>
+              {s.offers && s.offers.length > 1 && (
+                <details className="mt-3 border-t border-line pt-2 text-xs text-muted">
+                  <summary className="cursor-pointer">Compared {s.offers.length} providers</summary>
+                  <ul className="mt-2 space-y-1 font-mono tabular-nums">
+                    {s.offers.map((o, i) => (
+                      <li key={o.issuer} className="flex justify-between gap-3">
+                        <span>
+                          {o.issuer}
+                          {i === 0 && " · used"}
+                          {o.halted && ` · paused (${o.halted})`}
+                        </span>
+                        <span>
+                          {usd.format(o.onchain)}
+                          {o.spreadBps !== null && ` (${o.spreadBps > 0 ? "+" : ""}${(o.spreadBps / 100).toFixed(2)}%)`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </li>
           );
         })}

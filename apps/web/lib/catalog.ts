@@ -8,6 +8,8 @@ export interface Stock {
   onchain: number;
   /** null when the exchange price is unavailable (the API returns none outside trading hours). */
   reference: number | null;
+  /** Every issuer's price for this stock, best first. `onchain` above is the first one. */
+  offers?: { issuer: string; onchain: number; spreadBps: number | null; halted?: string }[];
 }
 
 // Curated list (PRD: 6-8 liquid tickers). Names are ours: principle 1, "stocks, not tokens".

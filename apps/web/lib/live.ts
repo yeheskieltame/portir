@@ -1,5 +1,5 @@
 import "server-only";
-import { listStocks, quote } from "@portir/core/binance";
+import { listStocks, quoteStock } from "@portir/core/binance";
 import { SAMPLE_STOCKS, STOCK_NAMES, type Stock } from "./catalog";
 
 export interface Catalog {
@@ -10,16 +10,29 @@ export interface Catalog {
 
 export async function loadCatalog(): Promise<Catalog> {
   try {
-    const tokens = (await listStocks()).filter((t) => t.ticker in STOCK_NAMES);
-    if (tokens.length === 0) throw new Error("none of the curated tickers are listed on BSC");
+    const tokens = await listStocks();
+    const tickers = Object.keys(STOCK_NAMES).filter((ticker) => tokens.some((t) => t.ticker === ticker));
+    if (tickers.length === 0) throw new Error("none of the curated tickers are listed on BSC");
 
-    const results = await Promise.allSettled(tokens.map(quote));
-    const stocks = results.flatMap((r, i) => {
+    const results = await Promise.allSettled(tickers.map((ticker) => quoteStock(tokens.filter((t) => t.ticker === ticker))));
+    const stocks = results.flatMap((r, i): Stock[] => {
       if (r.status === "rejected") {
-        console.error(`quote ${tokens[i].ticker}:`, r.reason);
+        console.error(`quote ${tickers[i]}:`, r.reason);
         return [];
       }
-      return [{ ...r.value, name: STOCK_NAMES[r.value.ticker] ?? r.value.ticker }];
+      const [best] = r.value.offers;
+      return [
+        {
+          ticker: r.value.ticker,
+          name: STOCK_NAMES[r.value.ticker],
+          // No issuer reported a session: assume closed, the cautious reading for the Guard's wording.
+          session: r.value.session ?? "closed",
+          halted: best.halted,
+          onchain: best.onchain,
+          reference: r.value.reference,
+          offers: r.value.offers,
+        },
+      ];
     });
     if (stocks.length === 0) throw new Error("every price request failed");
     return { stocks };
