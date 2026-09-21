@@ -34,9 +34,7 @@ Each entry: what we tried, what happened, what we would change.
 - **`www.binance.com` is DNS-blocked by Indonesian ISPs** (resolves to a block page IP, plain DNS to 1.1.1.1 is
   intercepted too). Our target user is in Indonesia, so the browser can never call this API; all reads go through
   server components. A docs mirror and an API host outside `binance.com` would help every builder in blocked regions.
-  Consequence today: the client is tested against the documented samples only, not yet against live responses.
-- The RWA API covers **Ondo only** (`type=1`). bStocks/xStocks are not in it, so issuer routing (PRD F2 step 3) has
-  no data source here; to confirm against the Trading API.
+- ~~The RWA API covers Ondo only~~ **Wrong, corrected below**: that is what the spec says, not what the API does.
 - PRD assumed Ondo rebases. It does not: Ondo uses a `multiplier` (shares per token), growing with reinvested
   dividends, 5.0/10.0 after splits. Per-share price = `tokenInfo.price / sharesMultiplier`.
 - `stockInfo.price` is `null` outside trading hours, exactly when the fair-price check matters most. We show
@@ -46,13 +44,40 @@ Each entry: what we tried, what happened, what we would change.
 - `market/status.openState` means "Ondo is tradable" (includes overnight), not "NYSE is open". Session comes only
   from `asset/market/status.marketStatus`.
 
+### 2026-09-21 (day 2, later): first live run (over VPN)
+
+Spec v1.1 vs the live API. Every item below cost us a wrong assumption first.
+
+- **Three issuers, not one.** The spec says `type=1` (Ondo) is "currently the only supported provider". Without the
+  filter the list returns 1,922 rows: type 1 Ondo (`NVDAon`, 458 on BSC), type 2 xStocks (`NVDAx`, 128), type 3
+  bStocks (`NVDAB`, 77), plus undocumented types 4, 5, 9, 11 and chains `CT_501`, `4663`, `8453`. We mapped 2 and 3
+  from token symbols. **Ask: document the `type` enum.** This one line decides whether issuer routing is possible.
+- `dynamic.statusInfo` is populated live (the spec sample shows all nulls), so one call per token is enough.
+- `market/status` returns undocumented `marketStatus` and an `offhours` object.
+- Per-issuer gaps in `dynamic`: only Ondo reports `marketStatus` (xStocks/bStocks: `null`); bStocks has
+  `stockInfo.price: null` even in the regular session; `totalHolders`/`marketCap` are `null` for both.
+  We take session and exchange price per stock from whichever issuer has them.
+- **List vs dynamic multiplier disagree for xStocks**: list says `"1"`, dynamic says `1.0009180758490996` (NVDAx).
+  We ignore the list value.
+- **xStocks prices look stale**: in the regular session, per-share TSLAx −1.72%, AAPLx −1.83%, MSFTx −1.28% vs the
+  exchange price, while Ondo and bStocks sit within ±0.1%. A naive "cheapest issuer" router picks exactly these.
+  The Guard now treats a discount beyond −1% as "out of date" (WARN) and ranks such offers last. The real test is
+  the Trading API quote.
+- Working well: all 8 curated tickers exist on BSC for all 3 issuers; responses are fast; no key, no rate-limit
+  hit at 24 calls per 30 s.
+
 ## Issuer comparison (fill in during day 1-3)
 
 | | bStocks | Ondo | xStocks |
 | --- | --- | --- | --- |
-| In Binance RWA Data API | no | yes (`type=1`) | no |
+| In Binance RWA Data API (`type`) | yes (3) | yes (1) | yes (2) |
+| Tokens on BSC | 77 | 458 | 128 |
+| Symbol suffix | `B` | `on` | `x` |
+| Reports session (`marketStatus`) | no | yes | no |
+| Reports exchange price | no | yes | yes |
+| Price vs exchange, regular session | ±0.1% | ±0.1% | up to −1.8% (stale?) |
 | On BSC / liquidity | | | |
-| Share accounting (multiplier vs rebase) | | multiplier | |
+| Share accounting | multiplier | multiplier | multiplier (list value wrong, use dynamic) |
 | Halt codes | | | |
 | Session hours | | | |
 

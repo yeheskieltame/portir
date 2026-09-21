@@ -7,7 +7,7 @@ the on-chain vs exchange price before every order.
 
 | Path | What | Status |
 | --- | --- | --- |
-| `packages/core` | `@portir/core`: the Guard (pure verdict logic) and the Binance RWA Data client. | tested on documented samples; live smoke test pending |
+| `packages/core` | `@portir/core`: the Guard (pure verdict logic) and the Binance RWA Data client. | compares Ondo, xStocks and bStocks per stock; verified live |
 | `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | tested, on BSC testnet |
 | `apps/web` | Next.js app: stock catalog, recurring plans. | catalog reads live prices server-side, labelled sample fallback; plans live against the contract |
 
