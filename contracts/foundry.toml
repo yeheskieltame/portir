@@ -1,0 +1,28 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.28"
+evm_version = "cancun" # BSC supports Cancun opcodes since the Haber fork
+optimizer = true
+optimizer_runs = 200
+fuzz = { runs = 512 }
+# openzeppelin-foundry-upgrades: validates upgrade safety through the OZ Upgrades CLI (needs Node)
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
+
+[profile.ci]
+fuzz = { runs = 5000 }
+
+[fmt]
+line_length = 110
+
+[rpc_endpoints]
+bsc = "https://bsc-dataseed.bnbchain.org"
+bsc_testnet = "https://bsc-testnet-rpc.publicnode.com"
+
+[lint]
+# Schedules are day-granular; a validator nudging the timestamp by seconds changes nothing.
+exclude_lints = ["block-timestamp"]
