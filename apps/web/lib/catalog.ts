@@ -1,19 +1,35 @@
-import type { MarketSnapshot } from "@portir/core";
+import type { Session } from "@portir/core";
 
-export interface Stock extends MarketSnapshot {
+export interface Stock {
   ticker: string;
   name: string;
+  session: Session;
+  halted?: string;
+  onchain: number;
+  /** null when the exchange price is unavailable (the API returns none outside trading hours). */
+  reference: number | null;
 }
 
-// SAMPLE DATA. Replaced by RWA Data + Market API reads once tickers are verified on BSC (PRD day 1-3).
-// Prices are made up to exercise every Guard verdict; the UI labels them as sample.
+// Curated list (PRD: 6-8 liquid tickers). Names are ours: principle 1, "stocks, not tokens".
+export const STOCK_NAMES: Record<string, string> = {
+  NVDA: "NVIDIA",
+  TSLA: "Tesla",
+  AAPL: "Apple",
+  MSFT: "Microsoft",
+  GOOGL: "Alphabet (Google)",
+  AMZN: "Amazon",
+  QQQ: "Nasdaq 100 ETF",
+  SPY: "S&P 500 ETF",
+};
+
+export const BASKETS = ["AI & Semis", "Big Tech", "Dividend Blue-chips", "US Broad Market"];
+
+// Made-up prices that exercise every Guard verdict. Shown only when live data is unreachable, and labelled.
 export const SAMPLE_STOCKS: Stock[] = [
   { ticker: "NVDA", name: "NVIDIA", session: "closed", onchain: 191.2, reference: 191.05 },
   { ticker: "TSLA", name: "Tesla", session: "closed", onchain: 352.1, reference: 348.9 },
   { ticker: "AAPL", name: "Apple", session: "closed", onchain: 243.6, reference: 240.3 },
-  { ticker: "MSFT", name: "Microsoft", session: "closed", onchain: 512.0, reference: 512.4 },
+  { ticker: "MSFT", name: "Microsoft", session: "closed", onchain: 512.0, reference: null },
   { ticker: "QQQ", name: "Nasdaq 100 ETF", session: "closed", onchain: 601.3, reference: 600.2 },
-  { ticker: "KO", name: "Coca-Cola", session: "closed", halted: "dividend", onchain: 68.1, reference: 68.0 },
+  { ticker: "SPY", name: "S&P 500 ETF", session: "closed", halted: "cash_dividend", onchain: 668.1, reference: 668.0 },
 ];
-
-export const BASKETS = ["AI & Semis", "Big Tech", "Dividend Blue-chips", "US Broad Market"];

@@ -10,7 +10,7 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
-import { BASKETS, SAMPLE_STOCKS } from "@/lib/catalog";
+import { BASKETS, STOCK_NAMES } from "@/lib/catalog";
 import {
   CADENCES,
   OUTCOMES,
@@ -93,9 +93,9 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
           What to buy
           <select name="target" className={field}>
             <optgroup label="Stocks">
-              {SAMPLE_STOCKS.map((s) => (
-                <option key={s.ticker} value={s.ticker}>
-                  {s.name}
+              {Object.entries(STOCK_NAMES).map(([ticker, name]) => (
+                <option key={ticker} value={ticker}>
+                  {name}
                 </option>
               ))}
             </optgroup>
