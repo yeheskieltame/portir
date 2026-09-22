@@ -314,7 +314,9 @@ fill:
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
 
 // Set the app URL once the subdomain exists. Until then the buttons point at the dev server.
-const APP_URL = location.hostname === "localhost" || location.hostname === "127.0.0.1" ? "http://localhost:3000" : "https://app." + location.hostname.replace(/^www\./, "");
+const APP_URL = location.hostname === "localhost" || location.hostname === "127.0.0.1" ? "http://localhost:3000"
+  : location.hostname.endsWith("vercel.app") ? "https://portir-app.vercel.app"
+  : "https://app." + location.hostname.replace(/^www\./, "");
 document.querySelectorAll("[data-app-link]").forEach((a) => (a.href = APP_URL));
 
 const states = {

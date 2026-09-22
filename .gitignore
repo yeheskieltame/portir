@@ -8,3 +8,4 @@ node_modules/
 
 # Product spec stays local
 prd.md
+.vercel/
