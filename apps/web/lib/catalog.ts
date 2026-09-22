@@ -39,7 +39,21 @@ export const STOCK_NAMES: Record<string, string> = {
   SPY: "S&P 500 ETF",
 };
 
-export const BASKETS = ["AI & Semis", "Big Tech", "Dividend Blue-chips", "US Broad Market"];
+export interface Basket {
+  slug: string;
+  name: string;
+  blurb: string;
+  /** Weights sum to 100. Buying a basket is one guarded swap per leg. */
+  legs: { ticker: string; weight: number }[];
+}
+
+// PRD F4: curated, transparent, static. Rebalancing on drift is P1.
+export const BASKETS: Basket[] = [
+  { slug: "ai-semis", name: "AI & Semis", blurb: "The chips, fabs and clouds behind AI.", legs: [{ ticker: "NVDA", weight: 30 }, { ticker: "AMD", weight: 15 }, { ticker: "AVGO", weight: 15 }, { ticker: "TSM", weight: 15 }, { ticker: "MSFT", weight: 15 }, { ticker: "GOOGL", weight: 10 }] },
+  { slug: "big-tech", name: "Big Tech", blurb: "The five platforms most of the internet runs on.", legs: [{ ticker: "AAPL", weight: 20 }, { ticker: "MSFT", weight: 20 }, { ticker: "GOOGL", weight: 20 }, { ticker: "AMZN", weight: 20 }, { ticker: "META", weight: 20 }] },
+  { slug: "dividend-blue-chips", name: "Dividend Blue-chips", blurb: "Household names that have paid dividends for decades.", legs: [{ ticker: "JNJ", weight: 20 }, { ticker: "PG", weight: 20 }, { ticker: "KO", weight: 20 }, { ticker: "PEP", weight: 20 }, { ticker: "MCD", weight: 20 }] },
+  { slug: "us-broad-market", name: "US Broad Market", blurb: "The whole US market in three ETFs.", legs: [{ ticker: "SPY", weight: 50 }, { ticker: "QQQ", weight: 30 }, { ticker: "IWM", weight: 20 }] },
+];
 
 const NO_STATS: StockStats = { high52w: null, low52w: null, pe: null, dividendYield: null, marketCap: null };
 const sample = (s: Omit<Stock, "icon" | "change24hPct" | "kind"> & { change24hPct?: number; kind?: AssetKind }): Stock => ({ icon: null, change24hPct: null, kind: "stock", stats: NO_STATS, ...s });

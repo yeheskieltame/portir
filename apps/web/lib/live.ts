@@ -38,6 +38,19 @@ async function loadMany(tickers: string[], tokens: StockToken[]): Promise<Stock[
   });
 }
 
+/** Live quotes for a fixed set of tickers (basket pages). Missing tickers are dropped. */
+export async function loadStocks(tickers: string[]): Promise<{ stocks: Stock[]; error?: string }> {
+  try {
+    const tokens = await listStocks();
+    const stocks = await loadMany(tickers.filter((t) => tokens.some((k) => k.ticker === t)), tokens);
+    if (stocks.length === 0) throw new Error("every price request failed");
+    return { stocks };
+  } catch (e) {
+    console.error("live quotes unavailable:", e);
+    return { stocks: SAMPLE_STOCKS.filter((s) => tickers.includes(s.ticker)), error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export interface MarketQuery {
   q?: string;
   kind?: AssetKind;

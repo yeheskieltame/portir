@@ -1,8 +1,16 @@
 import type { AssetKind } from "@portir/core/binance";
 import Link from "next/link";
+import { BASKETS } from "@/lib/catalog";
 import { PER_PAGE, loadMarket } from "@/lib/live";
 import { Logo } from "./logo";
 import { decide, pct, toneOf, usd } from "./verdict";
+
+const SESSION: Record<string, { label: string; cls: string }> = {
+  open: { label: "Open", cls: "text-go border-go/40" },
+  pre: { label: "Pre-market", cls: "text-warn border-warn/40" },
+  after: { label: "After hours", cls: "text-warn border-warn/40" },
+  closed: { label: "Closed", cls: "text-muted border-line" },
+};
 
 // Prices are fetched on the server: binance.com is blocked for browsers on Indonesian ISPs.
 export const revalidate = 30;
@@ -44,6 +52,18 @@ export default async function Markets({ searchParams }: PageProps<"/">) {
         </p>
       )}
 
+      {!q && !kind && current === 1 && (
+        <div className="-mx-4 mt-5 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+          {BASKETS.map((b) => (
+            <Link key={b.slug} href={`/basket/${b.slug}`} className="glass w-44 shrink-0 snap-start rounded-3xl p-4 active:scale-95">
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">Basket · {b.legs.length}</span>
+              <span className="mt-2 block text-lg leading-tight">{b.name}</span>
+              <span className="mt-2 block truncate font-mono text-[11px] text-muted">{b.legs.map((l) => l.ticker).join(" · ")}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
       <form action="/" className="glass mt-5 flex items-center gap-2 rounded-full px-4">
         {kind && <input type="hidden" name="kind" value={kind} />}
         <span aria-hidden className="text-muted">⌕</span>
@@ -74,7 +94,7 @@ export default async function Markets({ searchParams }: PageProps<"/">) {
                   <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
                     <span className="font-mono">{s.ticker}</span>
                     {s.kind === "etf" && <span className="rounded border border-line px-1 text-[10px] uppercase">ETF</span>}
-                    <span aria-hidden>·</span>
+                    <span className={`rounded border px-1 text-[10px] ${SESSION[s.session].cls}`}>{SESSION[s.session].label}</span>
                     <span aria-hidden className={`size-1.5 rounded-full ${tone.dot}`} />
                     {tone.label}
                   </span>

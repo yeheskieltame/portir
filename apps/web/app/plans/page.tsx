@@ -109,8 +109,8 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
             </optgroup>
             <optgroup label="Baskets">
               {BASKETS.map((b) => (
-                <option key={b} value={`BASKET:${b}`}>
-                  {b}
+                <option key={b.slug} value={`BASKET:${b.name}`}>
+                  {b.name}
                 </option>
               ))}
             </optgroup>

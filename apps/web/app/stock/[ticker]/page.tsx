@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Logo } from "@/app/logo";
 import { NA_REASON, compact, decide, pct, toneOf, usd } from "@/app/verdict";
 import { RANGES, type Range, loadStock } from "@/lib/live";
-import { BuySheet } from "./buy-sheet";
+import { BuySheet } from "@/app/buy-sheet";
 
 export const revalidate = 30;
 
@@ -82,7 +82,7 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
         <Link href={`/plans?target=${s.ticker}`} className="glass rounded-full py-3 text-center text-sm font-medium active:scale-95">
           Set up a plan
         </Link>
-        <BuySheet ticker={s.ticker} name={s.name} onchain={s.onchain} />
+        <BuySheet name={s.name} legs={[{ ticker: s.ticker, name: s.name, onchain: s.onchain, weight: 1 }]} />
       </div>
 
       {s.offers && s.offers.length > 0 && (
