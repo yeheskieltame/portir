@@ -1,7 +1,8 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
 import { formatUnits, parseUnits } from "viem";
 import {
   useConnection,
@@ -43,7 +44,9 @@ export default function Plans() {
       ) : !address ? (
         <Notice>Connect your wallet to set up a recurring investment.</Notice>
       ) : (
-        <PlansFor owner={address} registry={planRegistryAddress} />
+        <Suspense>
+          <PlansFor owner={address} registry={planRegistryAddress} />
+        </Suspense>
       )}
     </>
   );
@@ -56,6 +59,7 @@ function Notice({ children }: { children: React.ReactNode }) {
 function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${string}` }) {
   // chainId makes the wallet switch network before a write instead of sending it to the wrong chain.
   const contract = { address: registry, abi: planRegistryAbi, chainId: chain.id } as const;
+  const preset = useSearchParams().get("target") ?? undefined; // from a stock page's "Set up a plan"
   const queryClient = useQueryClient();
   const write = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash: write.data });
@@ -95,7 +99,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
       <form action={create} className="glass mt-6 space-y-4 rounded-3xl p-4 text-sm">
         <label className="block">
           What to buy
-          <select name="target" className={field}>
+          <select name="target" className={field} defaultValue={preset}>
             <optgroup label="Stocks">
               {Object.entries(STOCK_NAMES).map(([ticker, name]) => (
                 <option key={ticker} value={ticker}>

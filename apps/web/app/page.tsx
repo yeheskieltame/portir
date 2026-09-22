@@ -1,15 +1,7 @@
-import { guard, type Verdict } from "@portir/core";
+import Link from "next/link";
 import { loadCatalog } from "@/lib/live";
-
-const TONE: Record<Verdict, { chip: string; label: string }> = {
-  GO: { chip: "text-go border-go/40 bg-go/10", label: "Fair price" },
-  WARN: { chip: "text-warn border-warn/40 bg-warn/10", label: "Slightly pricey" },
-  BLOCK: { chip: "text-block border-block/40 bg-block/10", label: "Better to wait" },
-};
-const NA = { chip: "text-muted border-line bg-white/5", label: "No exchange price" };
-
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-const pct = (bps: number) => `${bps > 0 ? "+" : ""}${(bps / 100).toFixed(2)}%`;
+import { Logo } from "./logo";
+import { decide, pct, toneOf, usd } from "./verdict";
 
 // Prices are fetched on the server: binance.com is blocked for browsers on Indonesian ISPs.
 export const revalidate = 30;
@@ -33,55 +25,36 @@ export default async function Catalog() {
         </p>
       )}
 
-      <ul className="mt-6 space-y-3">
+      <ul className="glass mt-6 divide-y divide-line rounded-3xl">
         {stocks.map((s) => {
-          const d = s.reference === null ? null : guard({ ...s, reference: s.reference });
-          const tone = d ? TONE[d.verdict] : NA;
+          const d = decide(s);
+          const tone = toneOf(d);
+          const change = s.change24hPct;
           return (
-            <li key={s.ticker} className="glass rounded-3xl p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-medium leading-tight">{s.name}</h2>
-                  <p className="mt-1 font-mono text-xs text-muted">{s.ticker}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono text-lg tabular-nums">{usd.format(s.onchain)}</p>
-                  <p className="font-mono text-xs text-muted tabular-nums">
-                    {s.reference === null ? "exchange n/a" : `exchange ${usd.format(s.reference)}`}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 flex items-center gap-2">
-                <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${tone.chip}`}>{tone.label}</span>
-                {d && <span className="font-mono text-xs text-muted tabular-nums">{pct(d.spreadBps)} vs exchange</span>}
-              </div>
-              <p className="mt-2 text-sm text-muted">
-                {d ? d.reason : "We cannot compare this price to the exchange right now, so we would not buy yet."}
-              </p>
-              {s.offers && s.offers.length > 1 && (
-                <details className="mt-3 border-t border-line pt-2 text-xs text-muted">
-                  <summary className="cursor-pointer">Compared {s.offers.length} providers</summary>
-                  <ul className="mt-2 space-y-1 font-mono tabular-nums">
-                    {s.offers.map((o, i) => (
-                      <li key={o.issuer} className="flex justify-between gap-3">
-                        <span className={i === 0 ? "text-ink" : ""}>
-                          {o.issuer}
-                          {i === 0 && " · used"}
-                          {o.halted && ` · paused (${o.halted})`}
-                        </span>
-                        <span>
-                          {usd.format(o.onchain)}
-                          {o.spreadBps !== null && ` (${pct(o.spreadBps)})`}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
+            <li key={s.ticker}>
+              <Link href={`/stock/${s.ticker}`} className="flex items-center gap-3 px-4 py-3.5 active:bg-white/5">
+                <Logo src={s.icon} name={s.name} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{s.name}</span>
+                  <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+                    <span className="font-mono">{s.ticker}</span>
+                    <span aria-hidden>·</span>
+                    <span aria-hidden className={`size-1.5 rounded-full ${tone.dot}`} />
+                    {tone.label}
+                  </span>
+                </span>
+                <span className="text-right">
+                  <span className="block font-mono tabular-nums">{usd.format(s.onchain)}</span>
+                  <span className={`block font-mono text-xs tabular-nums ${change === null ? "text-muted" : change < 0 ? "text-block" : "text-go"}`}>
+                    {change === null ? "—" : pct(change)}
+                  </span>
+                </span>
+              </Link>
             </li>
           );
         })}
       </ul>
+      <p className="mt-3 text-center text-xs text-muted">Tap a stock for the chart, the Guard&apos;s reasoning and every provider&apos;s price.</p>
     </>
   );
 }

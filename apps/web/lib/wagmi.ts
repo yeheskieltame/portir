@@ -8,8 +8,9 @@ import { injected } from "wagmi/connectors";
 const CHAINS = { mainnet: bsc, testnet: bscTestnet, anvil: foundry } as const;
 export const chain = CHAINS[process.env.NEXT_PUBLIC_CHAIN as keyof typeof CHAINS] ?? bsc;
 
+// Stock tokens live on BSC mainnet, so portfolio reads always target it, whatever chain the registry is on.
 export const config = createConfig({
-  chains: [chain],
+  chains: chain.id === bsc.id ? [bsc] : [chain, bsc],
   connectors: [injected()],
   transports: { [bsc.id]: http(process.env.NEXT_PUBLIC_RPC_URL), [bscTestnet.id]: http(process.env.NEXT_PUBLIC_RPC_URL), [foundry.id]: http() },
   ssr: true,

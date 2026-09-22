@@ -109,3 +109,16 @@ test("bad payloads fail loudly", async () => {
   stub({ "rwa/dynamic": { ...dynamic("1"), tokenInfo: { price: "10", sharesMultiplier: "0" } } });
   await assert.rejects(quote(TOKEN), /sharesMultiplier/);
 });
+
+test("klines: candles parse per the API 6 array layout", async () => {
+  const { klines, meta } = await import("./binance.ts");
+  stub({
+    "dex/market/token/kline": { klineInfos: [[1773619200000, "302.9", "306.9", "302.2", "305.2", "0", 1773705599999]], decimals: 5 },
+    "rwa/meta": { name: "NVIDIA (Ondo)", icon: "/images/x.png", companyInfo: { companyName: "Nvidia Corp", industry: "Technology", ceo: "Jensen Huang", description: "GPUs.", homepageUrl: "" } },
+  });
+  assert.deepEqual(await klines(TOKEN, "1d", 1), [{ t: 1773619200000, o: 302.9, h: 306.9, l: 302.2, c: 305.2 }]);
+  assert.match(calls[0], /interval=1d&limit=1/);
+  const m = await meta(TOKEN);
+  assert.equal(m.icon, "https://bin.bnbstatic.com/images/x.png");
+  assert.deepEqual(m.company, { name: "Nvidia Corp", industry: "Technology", ceo: "Jensen Huang", description: "GPUs.", homepage: null });
+});
