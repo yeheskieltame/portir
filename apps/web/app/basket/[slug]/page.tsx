@@ -8,6 +8,12 @@ import { loadStocks } from "@/lib/live";
 
 export const revalidate = 30;
 
+export async function generateMetadata({ params }: PageProps<"/basket/[slug]">) {
+  const { slug } = await params;
+  const b = BASKETS.find((x) => x.slug === slug);
+  return b ? { title: `${b.name} basket · Portir`, description: `${b.blurb} ${b.legs.map((l) => l.ticker).join(", ")} on BNB Chain, one guarded swap per holding.` } : {};
+}
+
 const ORDER = { GO: 0, WARN: 1, BLOCK: 2 } as const;
 
 export default async function BasketPage({ params }: PageProps<"/basket/[slug]">) {

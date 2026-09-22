@@ -3,10 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Logo } from "@/app/logo";
 import { NA_REASON, compact, decide, pct, toneOf, usd } from "@/app/verdict";
+import { STOCK_NAMES } from "@/lib/catalog";
 import { RANGES, type Range, loadStock } from "@/lib/live";
 import { BuySheet } from "@/app/buy-sheet";
 
 export const revalidate = 30;
+
+export async function generateMetadata({ params }: PageProps<"/stock/[ticker]">) {
+  const { ticker } = await params;
+  const t = ticker.toUpperCase();
+  return { title: `${STOCK_NAMES[t] ?? t} · Portir`, description: `Buy ${STOCK_NAMES[t] ?? t} on BNB Chain at a fair price, checked against the exchange before every order.` };
+}
 
 const SESSION: Record<string, string> = { open: "Market open", pre: "Pre-market", after: "After hours", closed: "Market closed" };
 

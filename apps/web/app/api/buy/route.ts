@@ -1,8 +1,9 @@
 import { guard, isSuspectDiscount, spreadBps } from "@portir/core";
-import { listStocks, quoteStock } from "@portir/core/binance";
+import { quoteStock } from "@portir/core/binance";
 import { USDT, createTrader, usdt } from "@portir/core/trading";
 import { isAddress } from "viem";
 import { NA_REASON } from "@/app/verdict";
+import { tokenList } from "@/lib/live";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,8 @@ export interface BuyResponse {
   shares?: number;
   minShares?: number;
   token?: string;
-  /** Send in order: approvals first (USDT.approve), then the swap. */
-  approvals?: { to: string; data: string }[];
+  /** Send in order: approvals first (USDT.approve(spender)), skippable when the allowance already covers `usdt`, then the swap. */
+  approvals?: { to: string; data: string; spender: string }[];
   tx?: { to: string; data: string; value: string };
 }
 
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
   if (!apiKey || !apiSecret) return Response.json({ error: "Trading API is not configured on this server" }, { status: 503 });
 
   try {
-    const tokens = (await listStocks()).filter((t) => t.ticker === ticker);
+    const tokens = (await tokenList()).filter((t) => t.ticker === ticker);
     if (tokens.length === 0) return Response.json({ error: "unknown stock" }, { status: 404 });
     const view = await quoteStock(tokens);
     const session = view.session ?? "closed";
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
     return Response.json({
       ...base,
       minShares: built.minTokensOut ? (Number(built.minTokensOut) / 1e18) * order.multiplier : undefined,
-      approvals: built.approvals.map((a) => JSON.parse(a) as { approveContract: string; approveTxCalldata: string }).map((a) => ({ to: USDT, data: a.approveTxCalldata })),
+      approvals: built.approvals.map((a) => JSON.parse(a) as { approveContract: string; approveTxCalldata: string }).map((a) => ({ to: USDT, data: a.approveTxCalldata, spender: a.approveContract })),
       tx: { to: built.tx.to, data: built.tx.data, value: built.tx.value },
     } satisfies BuyResponse);
   } catch (e) {

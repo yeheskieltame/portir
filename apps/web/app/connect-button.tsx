@@ -24,12 +24,36 @@ export function ConnectButton() {
     );
   }
   return (
-    <button
-      className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black disabled:opacity-60"
-      disabled={connect.isPending}
-      onClick={() => connect.mutate({ connector })}
-    >
-      {connect.isPending ? "Connecting…" : "Connect wallet"}
-    </button>
+    <span className="relative">
+      <button
+        className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black disabled:opacity-60"
+        disabled={connect.isPending}
+        onClick={() => connect.mutate({ connector })}
+      >
+        {connect.isPending ? "Connecting…" : "Connect wallet"}
+      </button>
+      {connect.error && (
+        <span className="absolute right-0 top-full z-30 mt-2 w-64 rounded-2xl border border-line bg-[#0b111c] p-3 text-left text-xs shadow-[0_12px_40px_rgba(0,0,0,.6)]">
+          <NoWallet error={connect.error} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** Explains a failed connect. On a phone without an injected wallet the fix is to open the page inside a wallet's browser. */
+export function NoWallet({ error }: { error: Error | null }) {
+  if (!error) return null;
+  const missing = error.name === "ProviderNotFoundError" || /provider not found/i.test(error.message);
+  return (
+    <span className="mt-2 block text-xs text-muted">
+      {missing ? (
+        <>
+          No wallet found in this browser. Open this page inside <b className="text-white">Binance Wallet</b> or <b className="text-white">MetaMask</b> (their in-app browser), or install a wallet extension on desktop.
+        </>
+      ) : (
+        "shortMessage" in error ? String((error as { shortMessage: string }).shortMessage) : error.message
+      )}
+    </span>
   );
 }

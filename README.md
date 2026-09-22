@@ -7,33 +7,37 @@ the on-chain vs exchange price before every order.
 
 | Path | What | Status |
 | --- | --- | --- |
-| `packages/core` | `@portir/core`: the Guard (pure verdict logic) and the Binance RWA Data client. | RWA Data client and Trading client (official SDK): quote + build verified live on mainnet; simulate blocked by an SDK bug |
-| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | tested, on BSC testnet |
-| `apps/landing` | Static landing page (one HTML file, no build). Deploys as its own Vercel project on the root domain; the app lives on `app.<domain>`. | `pnpm dev:landing` → :3001 |
-| `apps/web` | Next.js app: stock catalog, recurring plans. | catalog reads live prices server-side, labelled sample fallback; plans live against the contract |
+| `packages/core` | `@portir/core`: the Guard (pure verdict logic), the Binance RWA Data client (catalog, quotes, fundamentals, K-lines, logos) and the Trading client (official SDK). | quote + build verified live on mainnet; `simulate` blocked by an SDK bug (see DevEx report) |
+| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | 13 tests, verified on BSC testnet |
+| `apps/landing` | Static landing page (one HTML file, no build). Its own Vercel project on the root domain; the app lives on `app.<domain>`. | `pnpm dev:landing` → :3001 |
+| `apps/web` | Next.js app, mobile-first. Markets (510 US stocks/ETFs on BSC, search, filter, pages), stock detail (chart, Guard, providers, fundamentals), baskets, one-tap buy with the Guard, portfolio (live balances, history, dividends), plans, profile. | live; buying signs real BSC mainnet transactions |
 
 **No backend.** The PRD's Postgres plan store is replaced by `PlanRegistry`: the app writes plans to it,
 the Agent Studio executor reads due plans from it and logs each run (with its one-sentence reason) back.
-The contract holds no funds; swaps are signed by the user's Agentic Wallet session.
+The contract holds no funds. Two Next.js route handlers exist because `binance.com` is unreachable from
+browsers here and the Trading API needs a server-side key: `/api/quote` (prices + history for the portfolio)
+and `/api/buy` (Guard verdict + approval and swap calldata; the wallet signs, nothing is sent from the server).
 
-Not here yet, on purpose: `@portir/mcp` (PRD day 17), the basket router contract (PRD §12 Q3, decide in
-week 2), signing and submitting orders from the app.
+Not here yet, on purpose: the Agent Studio executor and Agentic Wallet session (plans are owner-run until then),
+`@portir/mcp` (PRD day 17), the basket router contract (a basket buy is one guarded swap per holding, signed in sequence).
 
-Trading runs on **BSC mainnet only** (stock tokens have no testnet); quoting is read-only. `PlanRegistry` stays on testnet
-until the app is done. Put `BINANCE_W3_API_KEY` / `BINANCE_W3_API_SECRET` in `apps/web/.env.local`, then
-`pnpm --filter @portir/core smoke:trade`.
+Trading runs on **BSC mainnet only** (stock tokens have no testnet). `PlanRegistry` stays on testnet until the app is done,
+so the wallet is asked to switch network between Plans and Buy. Put `BINANCE_W3_API_KEY` / `BINANCE_W3_API_SECRET` in
+`apps/web/.env.local`; `pnpm --filter @portir/core smoke:trade` checks the Trading API read-only.
 
-`www.binance.com` is DNS-blocked on Indonesian ISPs. Locally the catalog falls back to sample prices unless you are
-on a VPN; `pnpm --filter @portir/core smoke` checks the live API. Deployed (Vercel) it reads live data.
+`www.binance.com` is DNS-blocked on Indonesian ISPs. Locally the catalog falls back to labelled sample prices unless you
+are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
 
 ## Backlog (decided, not started)
 
-- Move catalog reads from the public `www.binance.com` RWA API to the keyed one on `web3.binance.com`: not ISP-blocked
-  in Indonesia (no VPN for local dev), ~10 calls instead of 24, and its issuer list (`ondo`, `bstock`) is the source of
-  truth for what can be traded, so xStocks drops out. Trade-off: the catalog then needs the API key. Take the exchange
-  price from `getRwaUnderlyingMarketData`, never from `getRwaTokenPrice.referencePrice` (see DEVEX_REPORT).
-- `simulate`: call the REST endpoint directly with our own request signing, or rely on `minTokensOut`.
-- Buy flow: server-side quote, wallet signs approve + swap. First execution needs real USDT on mainnet.
+- Executor agent on BNB Agent Studio signing through an Agentic Wallet session; then `NEXT_PUBLIC_EXECUTOR`.
+- `@portir/mcp`: the same engine as MCP tools (`search_stock`, `get_fair_price`, `market_window`, `quote_best_issuer`, `create_dca_plan`, `execute_buy`, `get_portfolio`).
+- Move catalog reads from the public `www.binance.com` RWA API to the keyed one on `web3.binance.com`: not ISP-blocked,
+  fewer calls, and its issuer list is the source of truth for what can be traded. Take the exchange price from
+  `getRwaUnderlyingMarketData`, never from `getRwaTokenPrice.referencePrice` (see DEVEX_REPORT).
+- `simulate` (PRD Guard step 4): call the REST endpoint with our own request signing; until then the swap's `minTokensOut` (0.5%) is the guard.
+- `PlanRegistry` on mainnet with a multisig `OWNER`; `updatePlan` so a plan can change amount or cadence without cancel + recreate.
+- Cost basis lives in `localStorage` (purchases made in the app on that device) until there is an indexer.
 
 ## Deployments
 
@@ -49,6 +53,9 @@ pnpm install
 pnpm test                     # core + contracts
 pnpm dev                      # http://localhost:3000
 ```
+
+`apps/web/.env.example` lists every variable. CI (`.github/workflows/ci.yml`) runs `forge fmt --check`, `forge test`,
+core tests, web lint and a production build.
 
 Plans page against a local chain:
 

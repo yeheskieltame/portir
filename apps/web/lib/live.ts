@@ -4,6 +4,17 @@ import { SAMPLE_STOCKS, STOCK_NAMES, type Stock } from "./catalog";
 
 export const PER_PAGE = 10;
 
+// The token list is ~200 KB and changes rarely; every route needs it, so share one fetch per minute per server.
+let cached: { at: number; tokens: Promise<StockToken[]> } | undefined;
+export function tokenList(): Promise<StockToken[]> {
+  if (!cached || Date.now() - cached.at > 60_000) {
+    const tokens = listStocks();
+    cached = { at: Date.now(), tokens };
+    tokens.catch(() => (cached = undefined));
+  }
+  return cached.tokens;
+}
+
 /** "C3.ai (Ondo Tokenized)" → "C3.ai". Issuer token names carry the issuer in a trailing bracket. */
 const cleanName = (name: string) => name.replace(/\s*\([^)]*\)\s*$/, "").trim();
 
@@ -41,7 +52,7 @@ async function loadMany(tickers: string[], tokens: StockToken[]): Promise<Stock[
 /** Live quotes for a fixed set of tickers (basket pages). Missing tickers are dropped. */
 export async function loadStocks(tickers: string[]): Promise<{ stocks: Stock[]; error?: string }> {
   try {
-    const tokens = await listStocks();
+    const tokens = await tokenList();
     const stocks = await loadMany(tickers.filter((t) => tokens.some((k) => k.ticker === t)), tokens);
     if (stocks.length === 0) throw new Error("every price request failed");
     return { stocks };
@@ -71,7 +82,7 @@ const rank = (t: string) => (featured.includes(t) ? featured.indexOf(t) : featur
 /** One page of the market: every US stock/ETF on BSC, featured first, priced only for the page shown. */
 export async function loadMarket({ q = "", kind, page = 1 }: MarketQuery): Promise<Market> {
   try {
-    const tokens = await listStocks();
+    const tokens = await tokenList();
     const needle = q.trim().toUpperCase();
     const tickers = [...new Set(tokens.map((t) => t.ticker))]
       .filter((t) => !kind || tokens.some((k) => k.ticker === t && k.kind === kind))
@@ -109,7 +120,7 @@ export interface StockDetail {
 
 export async function loadStock(ticker: string, range: Range): Promise<StockDetail | null> {
   try {
-    const tokens = await listStocks();
+    const tokens = await tokenList();
     if (!tokens.some((t) => t.ticker === ticker)) return null;
     const stock = await loadOne(ticker, tokens);
     const best = stock.offers![0];
@@ -126,7 +137,7 @@ export async function loadStock(ticker: string, range: Range): Promise<StockDeta
 /** Every stock token on BSC, for balance reads. */
 export async function loadTokens(): Promise<{ ticker: string; address: `0x${string}`; multiplier: number }[]> {
   try {
-    const tokens = await listStocks();
+    const tokens = await tokenList();
     // `multiplier` from the list is unreliable for xStocks (see core); balances are re-priced through /api/quote anyway.
     return tokens.map((t) => ({ ticker: t.ticker, address: t.contractAddress as `0x${string}`, multiplier: 1 }));
   } catch (e) {
@@ -152,7 +163,7 @@ export interface Quoted {
 
 /** Prices and history for held tickers; the portfolio polls this. */
 export async function quoteMany(tickers: string[], range: Range): Promise<Record<string, Quoted>> {
-  const tokens = await listStocks();
+  const tokens = await tokenList();
   const stocks = await loadMany(tickers.filter((t) => tokens.some((k) => k.ticker === t)), tokens);
   const out: Record<string, Quoted> = {};
   await Promise.all(

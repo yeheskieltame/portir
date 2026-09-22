@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { erc20Abi, formatUnits } from "viem";
+import { erc20Abi, formatUnits, parseUnits } from "viem";
 import { bsc } from "wagmi/chains";
 import { useConnect, useConnection, useConnectors, useReadContract } from "wagmi";
-import { sendTransaction, switchChain, waitForTransactionReceipt } from "wagmi/actions";
+import { getBalance, readContract, sendTransaction, switchChain, waitForTransactionReceipt } from "wagmi/actions";
+import { NoWallet } from "@/app/connect-button";
 import type { BuyResponse } from "@/app/api/buy/route";
 import { TONE, pct, usd } from "@/app/verdict";
 import { recordBuy } from "@/lib/buys";
@@ -13,6 +14,7 @@ import { config } from "@/lib/wagmi";
 
 const USDT = "0x55d398326f99059fF775485246999027B3197955";
 const QUICK = [10, 25, 50, 100];
+const MIN_GAS_BNB = parseUnits("0.0005", 18); // a swap on BSC costs well under this
 const ORDER = { GO: 0, WARN: 1, BLOCK: 2 } as const;
 
 /** One stock is a single leg with weight 1; a basket is one leg per holding. */
@@ -68,9 +70,15 @@ export function BuySheet({ name, legs }: { name: string; legs: Leg[] }) {
     try {
       setStep({ at: "signing", legs: quoted, note: "Switching to BNB Chain…" });
       await switchChain(config, { chainId: bsc.id });
+      const gas = await getBalance(config, { address: address!, chainId: bsc.id });
+      if (gas.value < MIN_GAS_BNB) throw new Error("You need a little BNB on BNB Chain for gas (about $0.05 covers a purchase). Top up BNB, then try again.");
       for (const leg of quoted) {
         const who = basket ? `${leg.ticker}: ` : "";
+        const wei = parseUnits(leg.usdt.toFixed(6), 18);
         for (const a of leg.q.approvals ?? []) {
+          // The API always includes an approval; skip it when the allowance already covers this order.
+          const allowance = await readContract(config, { address: USDT, abi: erc20Abi, functionName: "allowance", args: [address!, a.spender as `0x${string}`], chainId: bsc.id });
+          if (allowance >= wei) continue;
           setStep({ at: "signing", legs: quoted, note: `${who}approve USDT in your wallet…` });
           const hash = await sendTransaction(config, { chainId: bsc.id, to: a.to as `0x${string}`, data: a.data as `0x${string}` });
           await waitForTransactionReceipt(config, { chainId: bsc.id, hash });
@@ -108,6 +116,7 @@ export function BuySheet({ name, legs }: { name: string; legs: Leg[] }) {
                 <button className="mt-5 w-full rounded-full bg-white py-3 font-medium text-black" disabled={connect.isPending} onClick={() => connect.mutate({ connector })}>
                   {connect.isPending ? "Connecting…" : "Connect wallet"}
                 </button>
+                <NoWallet error={connect.error} />
               </>
             ) : step.at === "amount" || step.at === "quoting" ? (
               <>
