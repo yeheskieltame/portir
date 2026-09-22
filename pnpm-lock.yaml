@@ -8,6 +8,8 @@ importers:
 
   .: {}
 
+  apps/landing: {}
+
   apps/web:
     dependencies:
       '@portir/core':
