@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#04070d">
+<title>Portir — US stocks on BNB Chain, bought at a fair price</title>
+<meta name="description" content="Portir checks the US market session and the on-chain price against the exchange before every order. Stocks, not tokens. Weekly plans with smart timing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#04070d;--ink:#fff;--muted:rgba(255,255,255,.72);--line:rgba(255,255,255,.25);--accent:#61a6f6;--warn:#ffb040;font-family:Geist,system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg)}
+body{overflow-x:hidden}
+.scroll-scene{height:var(--scene-height);position:relative}
+.stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;background:#061120}
+.chart,.shade,.content-layer{position:absolute;inset:0;width:100%;height:100%}
+.chart{display:block}
+.shade{pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.2),transparent 25%,transparent 55%,rgba(0,0,0,.7));z-index:1}
+.header{position:absolute;z-index:5;top:0;left:0;width:100%;padding:20px 28px;display:flex;align-items:center;justify-content:space-between}
+.logo{color:#fff;text-decoration:none;font-size:22px;letter-spacing:-.02em}
+.logo em{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:26px}
+.header-actions,.nav-pill{display:flex;align-items:center}
+.header-actions{gap:12px}
+.nav-pill{gap:4px;padding:4px;border:1px solid var(--line);background:rgba(255,255,255,.12);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:99px}
+.nav-pill a{color:#fff;text-decoration:none;font-size:16px;padding:6px 16px;border-radius:99px}
+.nav-pill a.active{background:#fff;color:#000}
+.open-app{border:0;background:#fff;color:#000;height:41px;padding:0 20px;border-radius:99px;font:500 16px Geist,sans-serif;text-decoration:none;display:inline-flex;align-items:center}
+.content-layer{z-index:3;pointer-events:none}
+.content-state{position:absolute;left:28px;right:28px;bottom:28px;display:grid;grid-template-columns:minmax(0,820px) 330px;justify-content:space-between;align-items:end;will-change:opacity,transform}
+.content-state h1{font-size:80px;line-height:.9;letter-spacing:-.035em;font-weight:400;margin:0;display:flex;flex-direction:column;gap:6px}
+.title-line{display:block;white-space:nowrap}
+.title-line.italic{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;letter-spacing:-.02em;font-size:1.08em}
+.word{display:inline-block;white-space:pre;opacity:var(--reveal,0);transform:translate3d(0,calc((1 - var(--reveal,0))*28px),0);filter:blur(calc((1 - var(--reveal,0))*7px))}
+.copy{font-size:18px;line-height:1.25;color:var(--muted);opacity:var(--detail-reveal,0);transform:translate3d(0,calc((1 - var(--detail-reveal,0))*18px),0)}
+.copy p{margin:0}
+.cta{pointer-events:auto;display:inline-flex;margin-top:24px;padding:14px 24px;border-radius:99px;background:var(--accent);color:#fff;text-decoration:none;font-weight:500}
+.mid,.cards,.final{opacity:0;visibility:hidden}
+.cards{position:absolute;inset:0;will-change:opacity,transform}
+.glass-card{position:absolute;width:330px;padding:24px 24px 32px;border:1px solid var(--line);border-radius:28px;background:rgba(255,255,255,.1);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 16px 50px rgba(0,20,45,.12)}
+.glass-card.left{left:28px;top:20%}
+.glass-card.right{right:28px;top:46%}
+.glass-card h2{font-size:28px;font-weight:400;margin:0 0 10px;letter-spacing:-.02em}
+.glass-card h2 em{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:1.1em}
+.glass-card p{font-size:17px;line-height:1.25;margin:0;color:var(--muted)}
+.legend{position:absolute;z-index:4;left:28px;top:92px;display:flex;gap:16px;font-size:13px;color:var(--muted);pointer-events:none;opacity:0;transition:opacity .8s 1.8s}
+.intro-ready .legend{opacity:1}
+.legend i{display:inline-block;width:18px;height:2px;vertical-align:middle;margin-right:6px;background:#fff}
+.legend i.on{background:var(--accent)}
+.legend i.gap{height:8px;background:var(--warn);opacity:.5}
+.header{opacity:0;transform:translate3d(0,18px,0)}
+.intro-ready .header{animation:header-in .8s cubic-bezier(.22,1,.36,1) .15s forwards}
+.intro-ready .hero .word{animation:word-in 1.3s cubic-bezier(.22,1,.36,1) forwards;animation-delay:calc(.5s + var(--word-index)*.1s)}
+.intro-ready .hero .copy{animation:detail-in .8s cubic-bezier(.22,1,.36,1) 1.5s forwards}
+@keyframes header-in{to{opacity:1;transform:none}}
+@keyframes word-in{to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes detail-in{to{opacity:1;transform:none}}
+.custom-cursor{display:none}
+@media(pointer:fine){
+html,body,a,button{cursor:none!important}
+.custom-cursor{display:block;position:fixed;left:0;top:0;z-index:100;width:1px;height:1px;pointer-events:none;opacity:0;transition:opacity .2s}
+.custom-cursor.is-visible{opacity:1}
+.cursor-dot,.cursor-orbit{position:absolute;left:0;top:0;border-radius:50%;transform:translate(-50%,-50%)}
+.cursor-dot{width:10px;height:10px;background:#fff}
+.cursor-orbit{width:36px;height:36px;border:1px solid #fff;background:rgba(255,255,255,.3);backdrop-filter:blur(3px);transition:transform .3s cubic-bezier(.22,1,.36,1)}
+.custom-cursor.is-enter .cursor-orbit{transform:translate(-50%,-50%) scale(1.2)}
+}
+@media(max-width:900px){
+.header{padding:16px 18px}.nav-pill{display:none}
+.content-state{left:18px;right:18px;bottom:22px;grid-template-columns:1fr;gap:20px}
+.content-state h1{font-size:clamp(46px,11vw,70px)}.title-line{white-space:normal}
+.copy{max-width:440px}.legend{left:18px;top:80px}
+.glass-card{width:min(330px,calc(100vw - 36px));padding:20px 20px 24px}
+.glass-card.left{left:18px;top:14%}.glass-card.right{right:18px;top:38%}
+}
+@media(max-width:560px){.content-state h1{font-size:clamp(40px,12vw,56px)}.copy,.glass-card p{font-size:16px}.glass-card h2{font-size:24px}}
+@media(prefers-reduced-motion:reduce){.header,.word,.copy{animation-duration:.01ms!important;animation-delay:0s!important}}
+</style>
+</head>
+<body>
+<main class="scroll-scene" style="--scene-height:380vh">
+  <div class="stage">
+    <canvas class="chart" aria-label="On-chain price drifting from the exchange price while the market is closed"></canvas>
+    <div class="shade"></div>
+    <header class="header">
+      <a class="logo" href="/">Port<em>ir</em></a>
+      <div class="header-actions">
+        <nav class="nav-pill">
+          <a class="active" href="#how">How it works</a>
+          <a href="https://github.com/yeheskieltame/portir" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+        <a class="open-app" data-app-link href="#">Open app</a>
+      </div>
+    </header>
+    <div class="legend"><span><i></i>Exchange price</span><span><i class="on"></i>On-chain price</span><span><i class="gap"></i>Premium while closed</span></div>
+    <div class="content-layer">
+      <section class="content-state hero" data-state="hero">
+        <h1><span class="title-line"><span class="word" style="--word-index:0">Own</span> <span class="word" style="--word-index:1">US</span> <span class="word" style="--word-index:2">stocks</span> <span class="word" style="--word-index:3">on</span> <span class="word" style="--word-index:4">BNB</span> <span class="word" style="--word-index:5">Chain.</span></span><span class="title-line italic"><span class="word" style="--word-index:6">Bought</span> <span class="word" style="--word-index:7">at</span> <span class="word" style="--word-index:8">a</span> <span class="word" style="--word-index:9">fair</span> <span class="word" style="--word-index:10">price.</span></span></h1>
+        <div class="copy"><p>Portir checks the US market session and compares the on-chain price to the exchange before every order. Stocks, not tokens. No slippage settings, no seed phrases.</p><a class="cta" data-app-link href="#">Start with $10</a></div>
+      </section>
+      <section class="content-state mid" data-state="mid" id="how">
+        <h1><span class="title-line"><span class="word">It's</span> <span class="word">3 AM</span> <span class="word">in</span> <span class="word">Jakarta.</span></span><span class="title-line italic"><span class="word">Wall</span> <span class="word">Street</span> <span class="word">is</span> <span class="word">asleep.</span></span></h1>
+        <div class="copy"><p>When the exchange is closed, on-chain prices drift. Last night NVIDIA traded 1.4% above its close. Portir sees the premium, tells you in one sentence, and waits.</p></div>
+      </section>
+      <div class="cards" data-state="cards">
+        <article class="glass-card left"><h2>The <em>Guard</em></h2><p>Session check, fair-price check, and the cheapest issuer across Ondo and bStocks. Above a 1% premium, the order is blocked and you are offered a better window.</p></article>
+        <article class="glass-card right"><h2>Smart <em>timing</em></h2><p>Set $50 a week. An agent on BNB Agent Studio waits up to 48 hours for the market to open and the price to be fair, then tells you why it bought.</p></article>
+      </div>
+      <section class="content-state final" data-state="final">
+        <h1><span class="title-line"><span class="word">Same</span> <span class="word">brain,</span></span><span class="title-line italic"><span class="word">every</span> <span class="word">surface.</span></span></h1>
+        <div class="copy"><p>The app, an MCP server for Claude, and the executor agent all run one engine. Plans and their reasons live on-chain, readable by anyone.</p><a class="cta" data-app-link href="#">Open the app</a></div>
+      </section>
+    </div>
+  </div>
+</main>
+<div class="custom-cursor" aria-hidden="true"><span class="cursor-orbit"></span><span class="cursor-dot"></span></div>
+<script>
+// Set the app URL once the subdomain exists. Until then the buttons point at the dev server.
+const APP_URL = location.hostname === "localhost" || location.hostname === "127.0.0.1" ? "http://localhost:3000" : "https://app." + location.hostname.replace(/^www\./, "");
+document.querySelectorAll("[data-app-link]").forEach((a) => (a.href = APP_URL));
+
+const states = {
+  hero: { enter: [0, 0], exit: [0.16, 0.28] },
+  mid: { enter: [0.38, 0.46], exit: [0.58, 0.68] },
+  cards: { enter: [0.76, 0.84] },
+  final: { enter: [0.82, 0.9] },
+};
+const clamp = (n, a = 0, b = 1) => Math.min(b, Math.max(a, n));
+const lerp = (a, b, t) => a + (b - a) * t;
+const range = (a, b, v) => clamp((v - a) / (b - a || 1));
+const ease = (t) => t * t * (3 - 2 * t);
+
+// ---- the chart: exchange price (flat when closed) vs on-chain price (drifts at night) ----
+const N = 1200, SPAN = 420;
+const night = (i) => i % 400 < 160; // 160 closed, 240 open; the series ends in an open session
+const ex = [], on = [];
+{
+  let s = 7, p = 100, drift = 0;
+  const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0), s / 4294967296 - 0.5);
+  for (let i = 0; i < N; i++) {
+    if (night(i)) drift += 0.01 + rnd() * 0.05;
+    else { p += rnd() * 0.5; drift *= 0.8; }
+    ex.push(p);
+    on.push(p + drift + rnd() * 0.12);
+  }
+}
+const canvas = document.querySelector(".chart");
+const ctx = canvas.getContext("2d");
+const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+function draw(progress) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  if (canvas.width !== W * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#04070d"; ctx.fillRect(0, 0, W, H);
+  pointer.x = lerp(pointer.x, pointer.tx, 0.06); pointer.y = lerp(pointer.y, pointer.ty, 0.06);
+  const off = Math.round(progress * (N - SPAN - 1));
+  let lo = Infinity, hi = -Infinity;
+  for (let i = off; i < off + SPAN; i++) { lo = Math.min(lo, ex[i], on[i]); hi = Math.max(hi, ex[i], on[i]); }
+  const pad = (hi - lo) * 0.6 || 1;
+  const x = (i) => ((i - off) / SPAN) * W * 1.08 - W * 0.04 + pointer.x * 14;
+  const y = (v) => lerp(H * 0.86, H * 0.14, (v - lo + pad) / (hi - lo + 2 * pad)) + pointer.y * 10;
+  ctx.strokeStyle = "rgba(255,255,255,.05)"; ctx.lineWidth = 1;
+  for (let k = 1; k < 6; k++) { ctx.beginPath(); ctx.moveTo(0, (H * k) / 6); ctx.lineTo(W, (H * k) / 6); ctx.stroke(); }
+  // closed-session bands and the premium between the two lines
+  for (let i = off; i < off + SPAN; i++) {
+    if (!night(i) || night(i - 1)) continue;
+    let j = i; while (j < off + SPAN && night(j)) j++;
+    ctx.fillStyle = "rgba(0,0,0,.32)"; ctx.fillRect(x(i), 0, x(j) - x(i), H);
+    ctx.beginPath(); ctx.moveTo(x(i), y(on[i]));
+    for (let k = i; k < j; k++) ctx.lineTo(x(k), y(on[k]));
+    for (let k = j - 1; k >= i; k--) ctx.lineTo(x(k), y(ex[k]));
+    ctx.closePath(); ctx.fillStyle = "rgba(255,176,64,.22)"; ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = "12px Geist, sans-serif";
+    ctx.fillText("MARKET CLOSED", x(i) + 12, H * 0.1);
+  }
+  const line = (arr, color, width) => {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = "round";
+    for (let i = off; i < off + SPAN; i++) (i === off ? ctx.moveTo : ctx.lineTo).call(ctx, x(i), y(arr[i]));
+    ctx.stroke();
+  };
+  line(ex, "rgba(255,255,255,.85)", 1.5);
+  line(on, "#61a6f6", 1.8);
+  const last = off + SPAN - 1;
+  ctx.fillStyle = "#61a6f6"; ctx.beginPath(); ctx.arc(x(last), y(on[last]), 4, 0, Math.PI * 2); ctx.fill();
+}
+
+// ---- scroll-driven states, same choreography as the reference ----
+const scene = document.querySelector(".scroll-scene");
+const els = Object.fromEntries(Object.keys(states).map((k) => [k, document.querySelector(`[data-state="${k}"]`)]));
+let target = 0, current = 0;
+const readScroll = () => { target = clamp(-scene.getBoundingClientRect().top / Math.max(1, scene.offsetHeight - innerHeight)); };
+function apply(name, cfg) {
+  const inside = cfg.enter && current < cfg.enter[1], leaving = cfg.exit && current > cfg.exit[0];
+  let opacity = 1, dy = 0;
+  if (inside) { const t = ease(range(cfg.enter[0], cfg.enter[1], current)); opacity = t; dy = lerp(24, 0, t); }
+  else if (leaving) { const t = ease(range(cfg.exit[0], cfg.exit[1], current)); opacity = 1 - t; dy = lerp(0, -16, t); }
+  const el = els[name];
+  el.style.opacity = opacity; el.style.transform = `translate3d(0,${dy}px,0)`; el.style.visibility = opacity > 0.002 ? "visible" : "hidden";
+  if (name === "hero" || name === "cards" || cfg.enter[0] === cfg.enter[1]) return;
+  const t = range(cfg.enter[0], cfg.enter[1], current);
+  const words = [...el.querySelectorAll(".word")];
+  words.forEach((w, i) => w.style.setProperty("--reveal", clamp((t - (i / words.length) * 0.58) / 0.34)));
+  el.querySelector(".copy")?.style.setProperty("--detail-reveal", clamp((t - 0.62) / 0.38));
+}
+function frame() {
+  current = lerp(current, target, 0.09);
+  draw(current);
+  for (const k in states) apply(k, states[k]);
+  requestAnimationFrame(frame);
+}
+addEventListener("scroll", readScroll, { passive: true });
+addEventListener("resize", readScroll);
+addEventListener("pointermove", (e) => { pointer.tx = (e.clientX / innerWidth - 0.5) * 2; pointer.ty = (e.clientY / innerHeight - 0.5) * 2; }, { passive: true });
+addEventListener("pointerleave", () => { pointer.tx = 0; pointer.ty = 0; });
+
+// ---- cursor ----
+const cursor = document.querySelector(".custom-cursor");
+if (cursor && !matchMedia("(pointer: coarse)").matches) {
+  let cx = innerWidth / 2, cy = innerHeight / 2, px = cx, py = cy;
+  addEventListener("pointermove", (e) => { cx = e.clientX; cy = e.clientY; cursor.classList.add("is-visible"); }, { passive: true });
+  document.addEventListener("mouseleave", () => cursor.classList.remove("is-visible"));
+  document.querySelectorAll("a, button").forEach((el) => {
+    el.addEventListener("pointerenter", () => cursor.classList.add("is-enter"));
+    el.addEventListener("pointerleave", () => cursor.classList.remove("is-enter"));
+  });
+  (function tick() { px += (cx - px) * 0.2; py += (cy - py) * 0.2; cursor.style.transform = `translate3d(${px}px,${py}px,0)`; requestAnimationFrame(tick); })();
+}
+
+document.fonts.ready.then(() => document.documentElement.classList.add("intro-ready"));
+readScroll();
+frame();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "landing",
+  "private": true,
+  "scripts": {
+    "dev": "npx -y serve -l 3001 ."
+  }
+}

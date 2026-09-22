@@ -9,6 +9,7 @@ the on-chain vs exchange price before every order.
 | --- | --- | --- |
 | `packages/core` | `@portir/core`: the Guard (pure verdict logic) and the Binance RWA Data client. | RWA Data client and Trading client (official SDK): quote + build verified live on mainnet; simulate blocked by an SDK bug |
 | `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | tested, on BSC testnet |
+| `apps/landing` | Static landing page (one HTML file, no build). Deploys as its own Vercel project on the root domain; the app lives on `app.<domain>`. | `pnpm dev:landing` → :3001 |
 | `apps/web` | Next.js app: stock catalog, recurring plans. | catalog reads live prices server-side, labelled sample fallback; plans live against the contract |
 
 **No backend.** The PRD's Postgres plan store is replaced by `PlanRegistry`: the app writes plans to it,

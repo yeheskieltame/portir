@@ -12,6 +12,7 @@
     "lint": "pnpm -r lint && forge fmt --check --root contracts",
     "deploy:testnet": "cd contracts && forge clean && forge script script/Deploy.s.sol --account portir-deployer --password-file .keystore-password --broadcast --rpc-url bsc_testnet",
     "deploy:mainnet": "cd contracts && forge clean && forge script script/Deploy.s.sol --account portir-deployer --password-file .keystore-password --broadcast --rpc-url bsc",
-    "verify:testnet": "contracts/script/verify.sh bsc_testnet 0x28daDC35523CE792C7C09faf516763830C38f36b"
+    "verify:testnet": "contracts/script/verify.sh bsc_testnet 0x28daDC35523CE792C7C09faf516763830C38f36b",
+    "dev:landing": "pnpm --filter landing dev"
   }
 }
