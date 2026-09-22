@@ -27,11 +27,17 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
 
   return (
     <>
-      <Link href="/" className="mt-2 inline-flex items-center gap-1 text-sm text-muted">
-        <span aria-hidden>←</span> Markets
-      </Link>
+      {/* Stays at the top while the page scrolls, so "back" is always one tap away. */}
+      <div className="sticky top-0 z-10 -mx-4 flex items-center gap-3 bg-paper/85 px-4 py-2 backdrop-blur-md">
+        <Link href="/" className="glass inline-flex size-9 items-center justify-center rounded-full text-base" aria-label="Back to markets">
+          ←
+        </Link>
+        <span className="font-mono text-xs text-muted">
+          {s.ticker} · {usd.format(s.onchain)}
+        </span>
+      </div>
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-3 flex items-center gap-3">
         <Logo src={s.icon} name={s.name} size={48} />
         <div className="min-w-0">
           <h1 className="truncate text-2xl leading-tight tracking-tight">{s.name}</h1>
@@ -70,6 +76,15 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
         <p className="mt-3 text-sm">{d ? d.reason : NA_REASON}</p>
         <p className="mt-2 text-xs text-muted">The Guard checks the session, the premium over the exchange price and every provider before you pay.</p>
       </section>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Link href={`/plans?target=${s.ticker}`} className="glass rounded-full py-3 text-center text-sm font-medium active:scale-95">
+          Set up a plan
+        </Link>
+        <button disabled className="rounded-full bg-white py-3 text-sm font-medium text-black disabled:opacity-50" title="Buying opens with the mainnet release">
+          Buy
+        </button>
+      </div>
 
       {s.offers && s.offers.length > 0 && (
         <section className="mt-6">
@@ -130,15 +145,6 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
         </section>
       )}
 
-      <div className="fixed bottom-4 left-1/2 z-10 flex w-[calc(100%-2rem)] max-w-[calc(28rem-2rem)] -translate-x-1/2 gap-2 rounded-full border border-line bg-[#0b111c] p-1.5 shadow-[0_12px_40px_rgba(0,0,0,.6)]">
-        <Link href={`/plans?target=${s.ticker}`} className="flex-1 rounded-full py-3 text-center text-sm font-medium">
-          Set up a plan
-        </Link>
-        <button disabled className="flex-1 rounded-full bg-white py-3 text-sm font-medium text-black disabled:opacity-50" title="Buying opens with the mainnet release">
-          Buy
-        </button>
-      </div>
-      <div className="h-8" />
     </>
   );
 }

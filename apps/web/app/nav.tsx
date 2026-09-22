@@ -12,8 +12,7 @@ const TABS = [
 
 export function Nav() {
   const path = usePathname();
-  if (path.startsWith("/stock/")) return null; // the stock page has its own action bar; "← Markets" leads back
-  const index = TABS.findIndex((t) => (t.href === "/" ? path === "/" : path.startsWith(t.href)));
+  const index = TABS.findIndex((t) => (t.href === "/" ? path === "/" || path.startsWith("/stock/") : path.startsWith(t.href)));
   return (
     <nav className="glass fixed bottom-4 left-1/2 z-20 grid w-[calc(100%-2rem)] max-w-[calc(28rem-2rem)] -translate-x-1/2 grid-cols-4 rounded-full p-1.5">
       {/* One pill slides between tabs instead of each tab lighting up. */}
