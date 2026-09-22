@@ -10,15 +10,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#04070d;--ink:#fff;--muted:rgba(255,255,255,.72);--line:rgba(255,255,255,.25);--accent:#61a6f6;--warn:#ffb040;font-family:Geist,system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+:root{--bg:#04070d;--ink:#fff;--muted:rgba(255,255,255,.72);--line:rgba(255,255,255,.25);--accent:#61a6f6;--warn:#ffb040;--night:0;font-family:Geist,system-ui,sans-serif;color:var(--ink);background:var(--bg)}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:var(--bg)}
 body{overflow-x:hidden}
 .scroll-scene{height:var(--scene-height);position:relative}
-.stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;background:#061120}
-.chart,.shade,.content-layer{position:absolute;inset:0;width:100%;height:100%}
-.chart{display:block}
-.shade{pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.2),transparent 25%,transparent 55%,rgba(0,0,0,.7));z-index:1}
+.stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;background:var(--bg)}
+.scene,.glow,.shade,.content-layer{position:absolute;inset:0;width:100%;height:100%}
+.scene{display:block}
+.glow{pointer-events:none;background:radial-gradient(60% 45% at 62% 58%,rgba(255,150,60,calc(.32*(1 - var(--night)))),transparent 70%),radial-gradient(70% 50% at 50% 70%,rgba(70,120,255,calc(.14 + .16*var(--night))),transparent 70%)}
+.shade{pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.25),transparent 25%,transparent 50%,rgba(2,5,12,.85));z-index:1}
 .header{position:absolute;z-index:5;top:0;left:0;width:100%;padding:20px 28px;display:flex;align-items:center;justify-content:space-between}
 .logo{color:#fff;text-decoration:none;font-size:22px;letter-spacing:-.02em}
 .logo em{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:26px}
@@ -45,11 +46,13 @@ body{overflow-x:hidden}
 .glass-card h2{font-size:28px;font-weight:400;margin:0 0 10px;letter-spacing:-.02em}
 .glass-card h2 em{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:1.1em}
 .glass-card p{font-size:17px;line-height:1.25;margin:0;color:var(--muted)}
-.legend{position:absolute;z-index:4;left:28px;top:92px;display:flex;gap:16px;font-size:13px;color:var(--muted);pointer-events:none;opacity:0;transition:opacity .8s 1.8s}
-.intro-ready .legend{opacity:1}
-.legend i{display:inline-block;width:18px;height:2px;vertical-align:middle;margin-right:6px;background:#fff}
-.legend i.on{background:var(--accent)}
-.legend i.gap{height:8px;background:var(--warn);opacity:.5}
+.status{position:absolute;z-index:4;left:28px;top:92px;display:flex;align-items:center;gap:10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);pointer-events:none;opacity:0;transition:opacity .8s 1.8s}
+.intro-ready .status{opacity:1}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 12px var(--warn);opacity:calc(1 - var(--night))}
+.status i+i{position:absolute;left:0;background:var(--accent);box-shadow:0 0 12px var(--accent);opacity:var(--night)}
+.status b{font-weight:400;position:relative}
+.status b span{position:absolute;left:0;top:0;white-space:nowrap;opacity:var(--night)}
+.status b>span:first-child{position:static;opacity:calc(1 - var(--night))}
 .header{opacity:0;transform:translate3d(0,18px,0)}
 .intro-ready .header{animation:header-in .8s cubic-bezier(.22,1,.36,1) .15s forwards}
 .intro-ready .hero .word{animation:word-in 1.3s cubic-bezier(.22,1,.36,1) forwards;animation-delay:calc(.5s + var(--word-index)*.1s)}
@@ -71,7 +74,7 @@ html,body,a,button{cursor:none!important}
 .header{padding:16px 18px}.nav-pill{display:none}
 .content-state{left:18px;right:18px;bottom:22px;grid-template-columns:1fr;gap:20px}
 .content-state h1{font-size:clamp(46px,11vw,70px)}.title-line{white-space:normal}
-.copy{max-width:440px}.legend{left:18px;top:80px}
+.copy{max-width:440px}.status{left:18px;top:80px}
 .glass-card{width:min(330px,calc(100vw - 36px));padding:20px 20px 24px}
 .glass-card.left{left:18px;top:14%}.glass-card.right{right:18px;top:38%}
 }
@@ -82,7 +85,8 @@ html,body,a,button{cursor:none!important}
 <body>
 <main class="scroll-scene" style="--scene-height:380vh">
   <div class="stage">
-    <canvas class="chart" aria-label="On-chain price drifting from the exchange price while the market is closed"></canvas>
+    <canvas class="scene" aria-label="A field of market data particles with a glowing core, the Guard, watching it"></canvas>
+    <div class="glow"></div>
     <div class="shade"></div>
     <header class="header">
       <a class="logo" href="/">Port<em>ir</em></a>
@@ -94,7 +98,7 @@ html,body,a,button{cursor:none!important}
         <a class="open-app" data-app-link href="#">Open app</a>
       </div>
     </header>
-    <div class="legend"><span><i></i>Exchange price</span><span><i class="on"></i>On-chain price</span><span><i class="gap"></i>Premium while closed</span></div>
+    <div class="status"><i></i><i></i><b><span>NYSE open · Guard watching</span><span>NYSE closed · Guard waiting</span></b></div>
     <div class="content-layer">
       <section class="content-state hero" data-state="hero">
         <h1><span class="title-line"><span class="word" style="--word-index:0">Own</span> <span class="word" style="--word-index:1">US</span> <span class="word" style="--word-index:2">stocks</span> <span class="word" style="--word-index:3">on</span> <span class="word" style="--word-index:4">BNB</span> <span class="word" style="--word-index:5">Chain.</span></span><span class="title-line italic"><span class="word" style="--word-index:6">Bought</span> <span class="word" style="--word-index:7">at</span> <span class="word" style="--word-index:8">a</span> <span class="word" style="--word-index:9">fair</span> <span class="word" style="--word-index:10">price.</span></span></h1>
@@ -116,7 +120,9 @@ html,body,a,button{cursor:none!important}
   </div>
 </main>
 <div class="custom-cursor" aria-hidden="true"><span class="cursor-orbit"></span><span class="cursor-dot"></span></div>
-<script>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
+
 // Set the app URL once the subdomain exists. Until then the buttons point at the dev server.
 const APP_URL = location.hostname === "localhost" || location.hostname === "127.0.0.1" ? "http://localhost:3000" : "https://app." + location.hostname.replace(/^www\./, "");
 document.querySelectorAll("[data-app-link]").forEach((a) => (a.href = APP_URL));
@@ -131,67 +137,160 @@ const clamp = (n, a = 0, b = 1) => Math.min(b, Math.max(a, n));
 const lerp = (a, b, t) => a + (b - a) * t;
 const range = (a, b, v) => clamp((v - a) / (b - a || 1));
 const ease = (t) => t * t * (3 - 2 * t);
+const smooth = (a, b, v) => ease(range(a, b, v));
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// ---- the chart: exchange price (flat when closed) vs on-chain price (drifts at night) ----
-const N = 1200, SPAN = 420;
-const night = (i) => i % 400 < 160; // 160 closed, 240 open; the series ends in an open session
-const ex = [], on = [];
+// ---- the scene: a sea of market data that calms when Wall Street sleeps, and the Guard, a core of light that watches it ----
+const NOISE = `
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+float snoise(vec3 v){
+  const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.5,1.0,2.0);
+  vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);
+  vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.0-g;vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);
+  vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;
+  i=mod289(i);
+  vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+  float n_=0.142857142857;vec3 ns=n_*D.wyz-D.xzx;
+  vec4 j=p-49.0*floor(p*ns.z*ns.z);vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.0*x_);
+  vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.0-abs(x)-abs(y);
+  vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);
+  vec4 s0=floor(b0)*2.0+1.0;vec4 s1=floor(b1)*2.0+1.0;vec4 sh=-step(h,vec4(0.0));
+  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+  vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);
+  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+  p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);m=m*m;
+  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+}`;
+const DISC = `
+varying vec3 vColor;varying float vAlpha;
+void main(){float r=length(gl_PointCoord-0.5);float a=smoothstep(0.5,0.08,r);gl_FragColor=vec4(vColor,a*vAlpha);}`;
+
+const canvas = document.querySelector(".scene");
+const uniforms = { uTime: { value: 0 }, uNight: { value: 0 }, uCore: { value: 1 }, uPixelRatio: { value: 1 } };
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: "high-performance" });
+} catch { canvas.remove(); }
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x04070d, 24, 70);
+const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 120);
+
+const points = (geometry, vertex, extra = {}) =>
+  new THREE.Points(geometry, new THREE.ShaderMaterial({
+    uniforms: { ...uniforms, ...extra }, vertexShader: NOISE + vertex, fragmentShader: DISC,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+
+// The market: a wide surface of points whose height is price-like noise, stretched along the time axis.
 {
-  let s = 7, p = 100, drift = 0;
-  const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0), s / 4294967296 - 0.5);
-  for (let i = 0; i < N; i++) {
-    if (night(i)) drift += 0.01 + rnd() * 0.05;
-    else { p += rnd() * 0.5; drift *= 0.8; }
-    ex.push(p);
-    on.push(p + drift + rnd() * 0.12);
+  const W = 240, D = 110, pos = new Float32Array(W * D * 3), seed = new Float32Array(W * D);
+  for (let i = 0, k = 0; i < W; i++) for (let j = 0; j < D; j++, k++) {
+    pos[k * 3] = (i / (W - 1) - 0.5) * 90; pos[k * 3 + 2] = (j / (D - 1) - 0.5) * 60; seed[k] = Math.random();
   }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("aSeed", new THREE.BufferAttribute(seed, 1));
+  scene.add(points(g, `
+    uniform float uTime,uNight,uPixelRatio;attribute float aSeed;varying vec3 vColor;varying float vAlpha;
+    void main(){
+      vec3 p=position;float t=uTime*mix(0.16,0.05,uNight);
+      float h=snoise(vec3(p.x*0.045+t*0.6,p.z*0.11,t*0.35))+0.4*snoise(vec3(p.x*0.16,p.z*0.3+t*0.2,t));
+      p.y=h*mix(2.6,0.55,uNight)-1.5;
+      vec4 mv=modelViewMatrix*vec4(p,1.0);gl_Position=projectionMatrix*mv;float d=-mv.z;
+      gl_PointSize=min((1.4+aSeed*2.0)*(150.0/d),5.5)*uPixelRatio;
+      float hn=clamp(h*0.5+0.5,0.0,1.0);
+      vec3 day=mix(vec3(0.16,0.34,0.85),vec3(1.0,0.66,0.28),smoothstep(0.35,0.95,hn));
+      vec3 night=mix(vec3(0.05,0.12,0.36),vec3(0.38,0.62,1.0),hn);
+      vColor=mix(day,night,uNight);
+      vAlpha=smoothstep(75.0,18.0,d)*smoothstep(6.0,16.0,d)*(0.25+0.75*hn)*(0.5+0.5*aSeed);
+    }`));
 }
-const canvas = document.querySelector(".chart");
-const ctx = canvas.getContext("2d");
-const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
-function draw(progress) {
-  const dpr = Math.min(devicePixelRatio || 1, 2);
-  const W = canvas.clientWidth, H = canvas.clientHeight;
-  if (canvas.width !== W * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#04070d"; ctx.fillRect(0, 0, W, H);
-  pointer.x = lerp(pointer.x, pointer.tx, 0.06); pointer.y = lerp(pointer.y, pointer.ty, 0.06);
-  const off = Math.round(progress * (N - SPAN - 1));
-  let lo = Infinity, hi = -Infinity;
-  for (let i = off; i < off + SPAN; i++) { lo = Math.min(lo, ex[i], on[i]); hi = Math.max(hi, ex[i], on[i]); }
-  const pad = (hi - lo) * 0.6 || 1;
-  const x = (i) => ((i - off) / SPAN) * W * 1.08 - W * 0.04 + pointer.x * 14;
-  const y = (v) => lerp(H * 0.86, H * 0.14, (v - lo + pad) / (hi - lo + 2 * pad)) + pointer.y * 10;
-  ctx.strokeStyle = "rgba(255,255,255,.05)"; ctx.lineWidth = 1;
-  for (let k = 1; k < 6; k++) { ctx.beginPath(); ctx.moveTo(0, (H * k) / 6); ctx.lineTo(W, (H * k) / 6); ctx.stroke(); }
-  // closed-session bands and the premium between the two lines
-  for (let i = off; i < off + SPAN; i++) {
-    if (!night(i) || night(i - 1)) continue;
-    let j = i; while (j < off + SPAN && night(j)) j++;
-    ctx.fillStyle = "rgba(0,0,0,.32)"; ctx.fillRect(x(i), 0, x(j) - x(i), H);
-    ctx.beginPath(); ctx.moveTo(x(i), y(on[i]));
-    for (let k = i; k < j; k++) ctx.lineTo(x(k), y(on[k]));
-    for (let k = j - 1; k >= i; k--) ctx.lineTo(x(k), y(ex[k]));
-    ctx.closePath(); ctx.fillStyle = "rgba(255,176,64,.22)"; ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.font = "12px Geist, sans-serif";
-    ctx.fillText("MARKET CLOSED", x(i) + 12, H * 0.1);
+
+// The Guard: a breathing core of light. Brightest when the cards explain it.
+{
+  const N = 3200, pos = new Float32Array(N * 3), seed = new Float32Array(N), phi = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N; i++) {
+    const y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y * y), a = phi * i;
+    pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 1] = y; pos[i * 3 + 2] = Math.sin(a) * r; seed[i] = Math.random();
   }
-  const line = (arr, color, width) => {
-    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = "round";
-    for (let i = off; i < off + SPAN; i++) (i === off ? ctx.moveTo : ctx.lineTo).call(ctx, x(i), y(arr[i]));
-    ctx.stroke();
-  };
-  line(ex, "rgba(255,255,255,.85)", 1.5);
-  line(on, "#61a6f6", 1.8);
-  const last = off + SPAN - 1;
-  ctx.fillStyle = "#61a6f6"; ctx.beginPath(); ctx.arc(x(last), y(on[last]), 4, 0, Math.PI * 2); ctx.fill();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("aSeed", new THREE.BufferAttribute(seed, 1));
+  const core = points(g, `
+    uniform float uTime,uNight,uCore,uPixelRatio;attribute float aSeed;varying vec3 vColor;varying float vAlpha;
+    void main(){
+      float t=uTime*0.35;
+      float n=snoise(position*1.7+vec3(t,t*0.7,0.0))*0.6+snoise(position*4.0-t)*0.2;
+      float breathe=1.0+0.05*sin(uTime*1.4);
+      vec3 p=position*(3.2*breathe+n*1.1*mix(1.0,0.35,uNight));
+      vec4 mv=modelViewMatrix*vec4(p,1.0);gl_Position=projectionMatrix*mv;float d=-mv.z;
+      gl_PointSize=(1.0+aSeed*1.6)*(150.0/d)*uPixelRatio*(0.85+0.3*uCore);
+      float hot=smoothstep(-0.2,0.7,n);
+      vec3 c=mix(vec3(0.35,0.6,1.0),vec3(1.0,0.72,0.35),hot*(1.0-uNight*0.7));
+      vColor=c*(0.6+0.5*uCore);
+      vAlpha=(0.12+0.5*hot)*(0.4+0.6*aSeed)*mix(1.0,0.55,uNight);
+    }`);
+  core.position.set(9, 5.5, -6);
+  scene.add(core);
+  scene.userData.core = core;
+}
+
+// Dust: slow drifting motes for depth.
+{
+  const N = 500, pos = new Float32Array(N * 3), seed = new Float32Array(N);
+  for (let i = 0; i < N; i++) { pos[i * 3] = (Math.random() - 0.5) * 80; pos[i * 3 + 1] = Math.random() * 24 - 4; pos[i * 3 + 2] = (Math.random() - 0.5) * 50; seed[i] = Math.random(); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("aSeed", new THREE.BufferAttribute(seed, 1));
+  scene.add(points(g, `
+    uniform float uTime,uNight,uPixelRatio;attribute float aSeed;varying vec3 vColor;varying float vAlpha;
+    void main(){
+      vec3 p=position+vec3(sin(uTime*0.2+aSeed*6.28)*1.5,uTime*0.15*aSeed+sin(uTime*0.3+aSeed*9.0)*0.8,0.0);
+      p.y=mod(p.y+4.0,24.0)-4.0;
+      vec4 mv=modelViewMatrix*vec4(p,1.0);gl_Position=projectionMatrix*mv;float d=-mv.z;
+      gl_PointSize=(1.0+aSeed*1.5)*(120.0/d)*uPixelRatio;
+      vColor=mix(vec3(1.0,0.85,0.6),vec3(0.6,0.75,1.0),uNight);
+      vAlpha=0.35*smoothstep(70.0,15.0,d)*(0.5+0.5*sin(uTime*0.8+aSeed*20.0));
+    }`));
+}
+
+const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+function resize() {
+  if (!renderer) return;
+  const dpr = Math.min(devicePixelRatio || 1, 1.75);
+  renderer.setPixelRatio(dpr); uniforms.uPixelRatio.value = dpr;
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+  camera.aspect = canvas.clientWidth / canvas.clientHeight; camera.updateProjectionMatrix();
+}
+function draw(progress, time) {
+  if (!renderer) return;
+  pointer.x = lerp(pointer.x, pointer.tx, 0.05); pointer.y = lerp(pointer.y, pointer.ty, 0.05);
+  const night = smooth(0.3, 0.44, progress) * (1 - smooth(0.62, 0.78, progress));
+  uniforms.uTime.value = reduced ? 10 : time;
+  uniforms.uNight.value = night;
+  const cards = smooth(0.7, 0.86, progress);
+  uniforms.uCore.value = 0.6 + 0.6 * cards;
+  document.documentElement.style.setProperty("--night", night.toFixed(3));
+  // hero: low over the surface; night: rise and look down on the calm; end: come back in a little
+  const rise = smooth(0.2, 0.5, progress) * (1 - smooth(0.6, 0.9, progress));
+  camera.position.set(pointer.x * 2.5, lerp(3.2, 9, rise) + pointer.y * -1.2, lerp(24, 22, cards));
+  camera.lookAt(pointer.x * 1.2, lerp(2.2, 0, rise), -8);
+  const core = scene.userData.core;
+  core.rotation.y = time * 0.08; core.rotation.z = Math.sin(time * 0.1) * 0.2;
+  core.position.x = (camera.aspect < 1 ? 0 : 9) - 3.5 * cards;
+  core.position.y = 5.5 + Math.sin(time * 0.6) * 0.35 - rise * 1.5 + 2 * cards;
+  renderer.render(scene, camera);
 }
 
 // ---- scroll-driven states, same choreography as the reference ----
-const scene = document.querySelector(".scroll-scene");
+const sceneEl = document.querySelector(".scroll-scene");
 const els = Object.fromEntries(Object.keys(states).map((k) => [k, document.querySelector(`[data-state="${k}"]`)]));
 let target = 0, current = 0;
-const readScroll = () => { target = clamp(-scene.getBoundingClientRect().top / Math.max(1, scene.offsetHeight - innerHeight)); };
+const readScroll = () => { target = clamp(-sceneEl.getBoundingClientRect().top / Math.max(1, sceneEl.offsetHeight - innerHeight)); };
 function apply(name, cfg) {
   const inside = cfg.enter && current < cfg.enter[1], leaving = cfg.exit && current > cfg.exit[0];
   let opacity = 1, dy = 0;
@@ -205,14 +304,15 @@ function apply(name, cfg) {
   words.forEach((w, i) => w.style.setProperty("--reveal", clamp((t - (i / words.length) * 0.58) / 0.34)));
   el.querySelector(".copy")?.style.setProperty("--detail-reveal", clamp((t - 0.62) / 0.38));
 }
-function frame() {
+const t0 = performance.now();
+function frame(now) {
   current = lerp(current, target, 0.09);
-  draw(current);
+  draw(current, (now - t0) / 1000);
   for (const k in states) apply(k, states[k]);
   requestAnimationFrame(frame);
 }
 addEventListener("scroll", readScroll, { passive: true });
-addEventListener("resize", readScroll);
+addEventListener("resize", () => { readScroll(); resize(); });
 addEventListener("pointermove", (e) => { pointer.tx = (e.clientX / innerWidth - 0.5) * 2; pointer.ty = (e.clientY / innerHeight - 0.5) * 2; }, { passive: true });
 addEventListener("pointerleave", () => { pointer.tx = 0; pointer.ty = 0; });
 
@@ -231,7 +331,8 @@ if (cursor && !matchMedia("(pointer: coarse)").matches) {
 
 document.fonts.ready.then(() => document.documentElement.classList.add("intro-ready"));
 readScroll();
-frame();
+resize();
+requestAnimationFrame(frame);
 </script>
 </body>
 </html>
