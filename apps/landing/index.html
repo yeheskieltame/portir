@@ -8,7 +8,7 @@
 <meta name="description" content="Portir checks the US market session and the on-chain price against the exchange before every order. Stocks, not tokens. Weekly plans with smart timing.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#04070d;--ink:#fff;--muted:rgba(255,255,255,.72);--line:rgba(255,255,255,.25);--accent:#61a6f6;--warn:#ffb040;--night:0;font-family:Geist,system-ui,sans-serif;color:var(--ink);background:var(--bg)}
 *{box-sizing:border-box}
@@ -66,7 +66,41 @@ body{overflow-x:hidden}
 .section h2{font-size:56px;line-height:.95;letter-spacing:-.03em;font-weight:400;margin:0 0 20px;max-width:760px}
 .section h2 em,.wordmark em,.giant em{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:1.08em}
 .lead{font-size:18px;color:var(--muted);max-width:600px;line-height:1.35;margin:0 0 48px}
-.steps{display:grid;gap:16px;grid-template-columns:repeat(4,1fr)}
+.guard{background:radial-gradient(circle at 88% 20%,rgba(97,166,246,.14),transparent 22rem),radial-gradient(circle at 16% 82%,rgba(255,176,64,.07),transparent 26rem);max-width:none;padding-top:72px}
+.guard-heading,.gcards{width:min(100%,1240px);margin-inline:auto}
+.guard-heading{display:grid;grid-template-columns:minmax(0,.58fr) minmax(280px,.42fr);gap:clamp(28px,5vw,64px);align-items:end;margin-bottom:clamp(36px,5vw,64px)}
+.guard-heading h2{margin-bottom:0}
+.guard-heading>p{margin:0;color:var(--muted);font-size:clamp(16px,1.25vw,19px);line-height:1.6}
+.gcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,2vw,22px)}
+.gcard{position:relative;display:grid;grid-template-rows:auto 1fr;min-height:464px;overflow:hidden;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012)),#070b14}
+.gcopy{padding:22px 22px 0}
+.gcard h3{margin:0 0 6px;font-size:17px;font-weight:500;line-height:1.25}
+.gcard p{max-width:340px;margin:0;color:rgba(255,255,255,.55);font-size:15px;line-height:1.35}
+.gvisual,.rows{position:relative;min-height:300px}
+.mono,.term pre,.spec pre,.bin,.table span,.table strong,.row small{font-family:"Geist Mono",ui-monospace,Menlo,monospace}
+.term{position:absolute;left:24px;bottom:26px;width:min(64%,240px);min-height:190px;border:1px solid rgba(255,255,255,.13);background:rgba(3,6,12,.9)}
+.term>span{display:inline-block;width:9px;height:9px;margin:10px 0 0 7px;border-radius:50%;background:rgba(255,255,255,.25)}
+.term pre{padding:22px 16px 16px}
+.term pre,.spec pre{margin:0;color:rgba(255,255,255,.62);font-size:11px;line-height:1.45;white-space:pre-wrap}
+.spec{position:absolute;top:44px;right:24px;width:min(58%,220px);padding:16px 18px;border:1px solid rgba(97,166,246,.45);background:rgba(16,34,66,.9);box-shadow:0 22px 48px rgba(0,0,0,.4)}
+.spec pre{color:#9cc8ff}
+.rows{display:grid;align-content:center;gap:12px;padding:0 26px 28px}
+.row{display:grid;grid-template-columns:24px 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;min-height:52px;padding:10px 14px 10px 10px;border:1px solid rgba(97,166,246,.3);background:rgba(97,166,246,.08)}
+.row span{grid-row:1/3;width:18px;height:18px;border-radius:50%;background:var(--accent)}
+.row span::before{content:"";display:block;width:7px;height:4px;margin:6px 0 0 5px;border-bottom:2px solid #04070d;border-left:2px solid #04070d;transform:rotate(-45deg)}
+.row small{color:rgba(156,200,255,.65);font-size:10px;letter-spacing:.05rem;text-transform:uppercase}
+.row strong{color:#9cc8ff;font-size:14px;font-weight:400}
+.row.off{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.03)}
+.row.off span{background:rgba(255,255,255,.2)}
+.row.off span::before{border:0;width:8px;height:2px;margin:8px 0 0 5px;background:#04070d;transform:none}
+.row.off small,.row.off strong{color:rgba(255,255,255,.4)}
+.bin-visual{display:grid;align-content:end;justify-items:center;gap:18px;padding:0 24px 28px}
+.bin{margin:0;color:rgba(97,166,246,.75);font-size:clamp(10px,.9vw,12px);line-height:1.18}
+.table{width:min(100%,302px);border:1px solid rgba(255,255,255,.15)}
+.table div{display:grid;grid-template-columns:1fr 1.4fr;min-height:32px;border-bottom:1px solid rgba(255,255,255,.09)}
+.table div:last-child{border-bottom:0}
+.table span,.table strong{align-self:center;padding:0 12px;color:rgba(255,255,255,.5);font-size:11px;font-weight:400;letter-spacing:.035rem;text-transform:uppercase}
+.table strong{color:rgba(255,255,255,.8);text-transform:none}
 #stack{padding-bottom:0}
 .ring-scene{position:relative;height:420px;overflow:hidden;perspective:1400px;cursor:grab;user-select:none;touch-action:pan-y}
 .ring-scene:active{cursor:grabbing}
@@ -81,14 +115,6 @@ body{overflow-x:hidden}
 .tile img.onlight{background:#fff;padding:6px;box-sizing:border-box}
 .tile i{font:500 34px/1 Geist,sans-serif;font-style:normal;color:var(--c);width:56px;height:56px;display:grid;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--c) 14%,transparent);letter-spacing:-.04em}
 .tile span{font-size:15px;font-weight:500;letter-spacing:-.01em;text-align:center;padding:0 12px}
-.card{border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
-.card b{display:block;font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:40px;line-height:1;color:var(--accent);margin-bottom:18px}
-.card h3{font-size:20px;font-weight:500;margin:0 0 8px;letter-spacing:-.01em}
-.card p{margin:0;color:var(--muted);font-size:15px;line-height:1.4}
-.card code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;color:#fff}
-.tag{display:inline-flex;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:99px;border:1px solid var(--line);margin-bottom:16px}
-.tag.live{color:#7ef0b0;border-color:rgba(126,240,176,.45)}
-.tag.next{color:var(--warn);border-color:rgba(255,176,64,.45)}
 .demo{position:relative;aspect-ratio:16/9;border-radius:32px;border:1px solid var(--line);overflow:hidden;display:grid;place-content:center;justify-items:center;gap:18px;background:radial-gradient(60% 70% at 50% 40%,rgba(97,166,246,.22),transparent 70%),radial-gradient(50% 40% at 70% 90%,rgba(255,150,60,.16),transparent 70%),#070d18}
 .demo::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 1px,transparent 1px 64px),repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 64px);mask:radial-gradient(70% 70% at 50% 50%,#000,transparent)}
 .play{width:88px;height:88px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center;font-size:26px;padding-left:6px;box-shadow:0 0 0 12px rgba(255,255,255,.08),0 0 60px rgba(97,166,246,.4)}
@@ -122,31 +148,31 @@ html,body,a,button{cursor:none!important}
 .glass-card{width:min(330px,calc(100vw - 36px));padding:20px 20px 24px}
 .glass-card.left{left:18px;top:14%}.glass-card.right{right:18px;top:38%}
 .section{padding:80px 18px}.section h2{font-size:clamp(36px,9vw,48px)}
-.steps{grid-template-columns:1fr 1fr}.ring-scene{height:300px}.tile{--w:150px;border-radius:22px;gap:12px}.tile img,.tile i{width:40px;height:40px}.tile img.wide{width:auto;max-width:100px;height:auto;max-height:40px}.tile i{font-size:24px}.tile span{font-size:13px}
+.guard-heading,.gcards{grid-template-columns:1fr}.gcard{min-height:420px}.ring-scene{height:300px}.tile{--w:150px;border-radius:22px;gap:12px}.tile img,.tile i{width:40px;height:40px}.tile img.wide{width:auto;max-width:100px;height:auto;max-height:40px}.tile i{font-size:24px}.tile span{font-size:13px}
 .footer{padding:48px 18px 24px}.footer-top{flex-direction:column;align-items:flex-start}.footer-cols{grid-template-columns:1fr 1fr}.giant{margin:0 -18px -6px}
 }
-@media(max-width:560px){.steps,.footer-cols{grid-template-columns:1fr}.play{width:64px;height:64px;font-size:20px}}
+@media(max-width:560px){.footer-cols{grid-template-columns:1fr}.gcopy{padding:18px 18px 0}.gcard p{max-width:none}.term{left:18px;width:62%}.spec{right:18px;width:60%}.rows,.bin-visual{padding-inline:18px}.play{width:64px;height:64px;font-size:20px}}
 @media(max-width:560px){.content-state h1{font-size:clamp(40px,12vw,56px)}.copy,.glass-card p{font-size:16px}.glass-card h2{font-size:24px}}
 @media(prefers-reduced-motion:reduce){.header,.word,.copy{animation-duration:.01ms!important;animation-delay:0s!important}}
 </style>
 </head>
 <body>
+<header class="header">
+  <a class="logo" href="/">Port<em>ir</em></a>
+  <div class="header-actions">
+    <nav class="nav-pill">
+      <a class="active" href="#guard">How it works</a>
+      <a href="#stack">Stack</a>
+      <a href="#demo">Demo</a>
+    </nav>
+    <a class="open-app" data-app-link href="#">Open app</a>
+  </div>
+</header>
 <main class="scroll-scene" style="--scene-height:380vh">
   <div class="stage">
     <canvas class="scene" aria-label="A field of market data particles with a glowing core, the Guard, watching it"></canvas>
     <div class="glow"></div>
     <div class="shade"></div>
-    <header class="header">
-      <a class="logo" href="/">Port<em>ir</em></a>
-      <div class="header-actions">
-        <nav class="nav-pill">
-          <a class="active" href="#guard">How it works</a>
-          <a href="#stack">Stack</a>
-          <a href="#demo">Demo</a>
-        </nav>
-        <a class="open-app" data-app-link href="#">Open app</a>
-      </div>
-    </header>
     <div class="status"><i></i><i></i><b><span>NYSE open · Guard watching</span><span>NYSE closed · Guard waiting</span></b></div>
     <div class="content-layer">
       <section class="content-state hero" data-state="hero">
@@ -169,15 +195,65 @@ html,body,a,button{cursor:none!important}
   </div>
 </main>
 <div class="below">
-  <section class="section" id="guard">
-    <p class="eyebrow">The Guard</p>
-    <h2>Four checks before <em>every order.</em></h2>
-    <p class="lead">Rio taps Buy on NVIDIA at midnight. This is what happens between his tap and the transaction, in the app, in Claude, and inside the agent.</p>
-    <div class="steps">
-      <article class="card"><b>01</b><h3>Market window</h3><p>Reads the US session from the Binance RWA Data API: open, pre-market, after-hours or closed, plus any halt for earnings, dividends or splits.</p></article>
-      <article class="card"><b>02</b><h3>Fair price</h3><p>Compares the on-chain price with the exchange reference. Up to 0.5% above is fair, up to 1% is a warning, beyond that the order is blocked and you are offered a better window.</p></article>
-      <article class="card"><b>03</b><h3>Best issuer</h3><p>The same stock exists from Ondo, bStocks and xStocks with different multipliers, halts and sessions. Portir picks the cheapest tradable one and shows what it compared.</p></article>
-      <article class="card"><b>04</b><h3>Route and sign</h3><p>The Binance Trading API quotes and builds the swap over PancakeSwap liquidity. Your wallet signs one approval and one trade, with a minimum output on every fill.</p></article>
+  <section class="section guard" id="guard">
+    <div class="guard-heading">
+      <div>
+        <p class="eyebrow">The Guard</p>
+        <h2>Four checks before <em>every order.</em></h2>
+      </div>
+      <p>Rio taps Buy on NVIDIA at midnight. This is what happens between his tap and the transaction. The same rules run in the app, in Claude, and inside the agent.</p>
+    </div>
+    <div class="gcards">
+      <article class="gcard">
+        <div class="gcopy"><h3>Market window and fair price</h3><p>Reads the US session and any halt from the Binance RWA Data API, then compares the on-chain price with the exchange reference.</p></div>
+        <div class="gvisual" aria-hidden="true">
+          <div class="term"><span></span><span></span><span></span><pre>-&gt; portir guard NVDA
+session    closed
+exchange   $191.05
+on-chain   $193.72
+spread     +1.40%
+
+verdict    BLOCK
+next open  in 5h 12m</pre></div>
+          <div class="spec"><pre>thresholds:
+  fair:   &lt;= 0.50%
+  warn:   &lt;= 1.00%
+  block:   &gt; 1.00%
+  halted:  always
+fill:
+  reject: &gt; 0.30% vs quote</pre></div>
+        </div>
+      </article>
+      <article class="gcard">
+        <div class="gcopy"><h3>Best issuer</h3><p>The same stock exists from Ondo, bStocks and xStocks with different multipliers, halts and sessions. Portir picks the cheapest tradable one and shows what it compared.</p></div>
+        <div class="rows" aria-hidden="true">
+          <div class="row"><span></span><small>Ondo · $191.20</small><strong>Cheapest, routed</strong></div>
+          <div class="row"><span></span><small>bStocks · $191.64</small><strong>+0.23% vs Ondo</strong></div>
+          <div class="row off"><span></span><small>xStocks · $188.10</small><strong>Stale price, skipped</strong></div>
+        </div>
+      </article>
+      <article class="gcard">
+        <div class="gcopy"><h3>Route and sign</h3><p>The Binance Trading API quotes and builds the swap over PancakeSwap liquidity. Your wallet signs one approval and one trade.</p></div>
+        <div class="gvisual bin-visual" aria-hidden="true">
+          <pre class="bin">1111111111111111111111111111
+1111111111111111111110001111
+1111111111111111111100011111
+1111111111111111111000111111
+1111000111111111110001111111
+1110000011111111100011111111
+1111000001111111000111111111
+1111100000111110001111111111
+1111110000000000011111111111
+1111111000000000111111111111
+1111111100000001111111111111
+1111111111111111111111111111</pre>
+          <div class="table">
+            <div><span>Route</span><strong>PancakeSwap via LiquidMesh</strong></div>
+            <div><span>Min output</span><strong>0.5% below quote</strong></div>
+            <div><span>Record</span><strong>PlanRegistry on BSC</strong></div>
+          </div>
+        </div>
+      </article>
     </div>
   </section>
 
