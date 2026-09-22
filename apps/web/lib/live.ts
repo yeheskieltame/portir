@@ -144,6 +144,10 @@ export interface Quoted {
   series: [number, number][];
   /** Per contract address, so a balance can be turned into shares. */
   multipliers: Record<string, number>;
+  /** Best provider's share multiplier: 1.0017 means 0.17% of every holding's shares came from reinvested dividends. */
+  multiplier: number;
+  /** Percent per year, from the exchange. */
+  dividendYield: number | null;
 }
 
 /** Prices and history for held tickers; the portfolio polls this. */
@@ -162,6 +166,8 @@ export async function quoteMany(tickers: string[], range: Range): Promise<Record
         change24hPct: s.change24hPct,
         series: c.map((k) => [k.t, k.c / best.multiplier]),
         multipliers: Object.fromEntries(s.offers!.map((o) => [o.contractAddress.toLowerCase(), o.multiplier])),
+        multiplier: best.multiplier,
+        dividendYield: s.stats?.dividendYield ?? null,
       };
     }),
   );

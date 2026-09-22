@@ -28,9 +28,9 @@ const POLL = 30_000;
 // Demo holdings so the screen can be judged before the first mainnet buy.
 const SAMPLE: Record<string, { shares: number; cost: number }> = { NVDA: { shares: 0.42, cost: 78.5 }, AAPL: { shares: 1.2, cost: 276 }, SPY: { shares: 0.3, cost: 195 } };
 
-export function Holdings({ tokens }: { tokens: Token[] }) {
+export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; initialPreview?: boolean }) {
   const { address } = useConnection();
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(initialPreview);
   const [range, setRange] = useState<Range>("1W");
   const [q, setQ] = useState("");
   const buys = useBuys();
@@ -149,8 +149,56 @@ export function Holdings({ tokens }: { tokens: Token[] }) {
           </ul>
         )}
       </section>
-      {!preview && !empty && <p className="mt-3 text-xs text-muted">Live from your wallet, refreshed every 30s. Shares include dividends the issuer reinvested. P&amp;L uses purchases made in this app on this device.</p>}
+      {!preview && !empty && <p className="mt-3 text-xs text-muted">Live from your wallet, refreshed every 30s. P&amp;L uses purchases made in this app on this device.</p>}
+
+      {!empty && <Dividends holdings={holdings} />}
     </>
+  );
+}
+
+// PRD F5: dividends are not paid out, the issuer reinvests them by raising the share multiplier.
+// So shares × (1 − 1/multiplier) is the part of each holding that came from dividends.
+function Dividends({ holdings }: { holdings: Holding[] }) {
+  const rows = holdings.map((h) => {
+    const fromDividends = h.shares * (1 - 1 / h.multiplier);
+    return { ...h, fromDividends, worth: fromDividends * h.onchain, yearly: h.dividendYield === null ? null : h.shares * h.onchain * (h.dividendYield / 100) };
+  });
+  const reinvested = rows.reduce((n, r) => n + r.worth, 0);
+  const yearly = rows.some((r) => r.yearly !== null) ? rows.reduce((n, r) => n + (r.yearly ?? 0), 0) : null;
+  return (
+    <section className="glass mt-4 rounded-3xl">
+      <div className="flex items-center justify-between px-4 pt-4">
+        <h2 className="text-lg">Dividends</h2>
+        <span className="text-xs text-muted">reinvested automatically</span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 px-4">
+        <div>
+          <p className="text-xs text-muted">Reinvested so far</p>
+          <p className="mt-0.5 font-mono text-xl tabular-nums text-go">{usd.format(reinvested)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted">Expected next 12 months</p>
+          <p className="mt-0.5 font-mono text-xl tabular-nums">{yearly === null ? "—" : usd.format(yearly)}</p>
+        </div>
+      </div>
+      <ul className="mt-3 divide-y divide-line border-t border-line">
+        {rows.map((r) => (
+          <li key={r.ticker} className="flex items-center gap-3 px-4 py-3 text-sm">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{r.name}</span>
+              <span className="block font-mono text-xs text-muted tabular-nums">
+                {r.fromDividends.toFixed(4)} sh from dividends{r.dividendYield !== null && ` · ${r.dividendYield.toFixed(2)}% / yr`}
+              </span>
+            </span>
+            <span className="text-right font-mono tabular-nums">
+              <span className="block text-go">+{usd.format(r.worth)}</span>
+              <span className="block text-xs text-muted">{((r.multiplier - 1) * 100).toFixed(2)}% of shares</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="px-4 pb-4 pt-3 text-xs text-muted">Read from each token&apos;s share multiplier: every dividend the issuer received became extra shares in your wallet, no claiming needed.</p>
+    </section>
   );
 }
 
