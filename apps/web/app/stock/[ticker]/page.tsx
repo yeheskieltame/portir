@@ -28,7 +28,7 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
   return (
     <>
       <Link href="/" className="mt-2 inline-flex items-center gap-1 text-sm text-muted">
-        <span aria-hidden>←</span> Stocks
+        <span aria-hidden>←</span> Markets
       </Link>
 
       <div className="mt-4 flex items-center gap-3">

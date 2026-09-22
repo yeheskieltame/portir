@@ -1,14 +1,34 @@
+import type { AssetKind } from "@portir/core/binance";
 import Link from "next/link";
-import { loadCatalog } from "@/lib/live";
+import { PER_PAGE, loadMarket } from "@/lib/live";
 import { Logo } from "./logo";
 import { decide, pct, toneOf, usd } from "./verdict";
 
 // Prices are fetched on the server: binance.com is blocked for browsers on Indonesian ISPs.
 export const revalidate = 30;
 
-export default async function Catalog() {
-  const { stocks, error } = await loadCatalog();
+const KINDS: { value: AssetKind | ""; label: string }[] = [
+  { value: "", label: "All" },
+  { value: "stock", label: "Stocks" },
+  { value: "etf", label: "ETFs" },
+];
+
+export default async function Markets({ searchParams }: PageProps<"/">) {
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q : "";
+  const kind = sp.kind === "stock" || sp.kind === "etf" ? sp.kind : undefined;
+  const page = Number(sp.page) || 1;
+  const { stocks, total, page: current, pages, error } = await loadMarket({ q, kind, page });
   const open = stocks.some((s) => s.session === "open");
+  const href = (p: Partial<{ q: string; kind: string; page: number }>) => {
+    const u = new URLSearchParams();
+    const next = { q, kind: kind ?? "", page: 1, ...p };
+    if (next.q) u.set("q", next.q);
+    if (next.kind) u.set("kind", next.kind);
+    if (next.page > 1) u.set("page", String(next.page));
+    return `/?${u}`;
+  };
+
   return (
     <>
       <p className="mt-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
@@ -18,14 +38,29 @@ export default async function Catalog() {
       <h1 className="mt-3 text-[34px] leading-[1] tracking-[-0.03em]">
         Own a piece of the companies <span className="serif-italic text-[1.1em]">you know.</span>
       </h1>
-      <p className="mt-3 text-sm text-muted">We check the US market and the price before every order, so you never overpay at 3 AM.</p>
       {error && (
         <p role="status" className="mt-4 rounded-xl border border-dashed border-line px-3 py-2 text-xs text-muted">
           Sample prices. Live market data could not be loaded{process.env.NODE_ENV === "production" ? "" : ` (${error})`}.
         </p>
       )}
 
-      <ul className="glass mt-6 divide-y divide-line rounded-3xl">
+      <form action="/" className="glass mt-5 flex items-center gap-2 rounded-full px-4">
+        {kind && <input type="hidden" name="kind" value={kind} />}
+        <span aria-hidden className="text-muted">⌕</span>
+        <input name="q" defaultValue={q} placeholder="Search NVIDIA, TSLA, ETF…" enterKeyHint="search" className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted" />
+        {q && <Link href={href({ q: "" })} className="text-muted" aria-label="Clear search">×</Link>}
+      </form>
+      <div className="mt-3 flex items-center gap-1.5">
+        {KINDS.map((k) => (
+          <Link key={k.value} href={href({ kind: k.value })} className={`rounded-full px-3 py-1.5 text-xs font-medium ${(kind ?? "") === k.value ? "bg-white text-black" : "glass text-white"}`}>
+            {k.label}
+          </Link>
+        ))}
+        <span className="ml-auto font-mono text-[11px] text-muted">{total} listed</span>
+      </div>
+
+      <ul className="glass mt-4 divide-y divide-line rounded-3xl">
+        {stocks.length === 0 && <li className="px-4 py-6 text-center text-sm text-muted">Nothing matches “{q}”.</li>}
         {stocks.map((s) => {
           const d = decide(s);
           const tone = toneOf(d);
@@ -38,6 +73,7 @@ export default async function Catalog() {
                   <span className="block truncate font-medium">{s.name}</span>
                   <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
                     <span className="font-mono">{s.ticker}</span>
+                    {s.kind === "etf" && <span className="rounded border border-line px-1 text-[10px] uppercase">ETF</span>}
                     <span aria-hidden>·</span>
                     <span aria-hidden className={`size-1.5 rounded-full ${tone.dot}`} />
                     {tone.label}
@@ -49,12 +85,22 @@ export default async function Catalog() {
                     {change === null ? "—" : pct(change)}
                   </span>
                 </span>
+                <span aria-hidden className="text-muted">›</span>
               </Link>
             </li>
           );
         })}
       </ul>
-      <p className="mt-3 text-center text-xs text-muted">Tap a stock for the chart, the Guard&apos;s reasoning and every provider&apos;s price.</p>
+
+      {pages > 1 && (
+        <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Pages">
+          <Link href={href({ page: current - 1 })} aria-disabled={current === 1} className={`glass rounded-full px-4 py-2 ${current === 1 ? "pointer-events-none opacity-40" : ""}`}>← Prev</Link>
+          <span className="font-mono text-xs text-muted">
+            {(current - 1) * PER_PAGE + 1}–{Math.min(current * PER_PAGE, total)} of {total}
+          </span>
+          <Link href={href({ page: current + 1 })} aria-disabled={current === pages} className={`glass rounded-full px-4 py-2 ${current === pages ? "pointer-events-none opacity-40" : ""}`}>Next →</Link>
+        </nav>
+      )}
     </>
   );
 }

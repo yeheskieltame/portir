@@ -1,51 +1,78 @@
 import "server-only";
-import { type Candle, type KlineInterval, type StockMeta, klines, listStocks, meta, quoteStock } from "@portir/core/binance";
+import { type AssetKind, type Candle, type KlineInterval, type StockMeta, type StockToken, klines, listStocks, meta, quoteStock } from "@portir/core/binance";
 import { SAMPLE_STOCKS, STOCK_NAMES, type Stock } from "./catalog";
 
-export interface Catalog {
-  stocks: Stock[];
-  /** Set when live data could not be loaded and `stocks` is sample data. */
-  error?: string;
-}
+export const PER_PAGE = 10;
 
-async function loadOne(ticker: string, tokens: Awaited<ReturnType<typeof listStocks>>): Promise<Stock> {
-  const view = await quoteStock(tokens.filter((t) => t.ticker === ticker));
+/** "C3.ai (Ondo Tokenized)" → "C3.ai". Issuer token names carry the issuer in a trailing bracket. */
+const cleanName = (name: string) => name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+
+async function loadOne(ticker: string, tokens: StockToken[]): Promise<Stock> {
+  const own = tokens.filter((t) => t.ticker === ticker);
+  const view = await quoteStock(own);
   const [best] = view.offers;
-  const icon = await meta({ chainId: "56", contractAddress: best.contractAddress }).then((m) => m.icon, () => null);
+  const m = await meta({ chainId: "56", contractAddress: best.contractAddress }).catch(() => null);
   return {
     ticker: view.ticker,
-    name: STOCK_NAMES[view.ticker],
+    name: STOCK_NAMES[ticker] ?? (m?.name ? cleanName(m.name) : ticker),
+    kind: own.find((t) => t.kind)?.kind ?? null,
     // No issuer reported a session: assume closed, the cautious reading for the Guard's wording.
     session: view.session ?? "closed",
     halted: best.halted,
     onchain: best.onchain,
     reference: view.reference,
     change24hPct: view.change24hPct,
-    icon,
+    icon: m?.icon ?? null,
     holders: view.holders,
     stats: view.stats,
     offers: view.offers,
   };
 }
 
-export async function loadCatalog(): Promise<Catalog> {
+async function loadMany(tickers: string[], tokens: StockToken[]): Promise<Stock[]> {
+  const results = await Promise.allSettled(tickers.map((t) => loadOne(t, tokens)));
+  return results.flatMap((r, i) => {
+    if (r.status === "fulfilled") return [r.value];
+    console.error(`quote ${tickers[i]}:`, r.reason);
+    return [];
+  });
+}
+
+export interface MarketQuery {
+  q?: string;
+  kind?: AssetKind;
+  page?: number;
+}
+export interface Market {
+  stocks: Stock[];
+  total: number;
+  page: number;
+  pages: number;
+  /** Set when live data could not be loaded and `stocks` is sample data. */
+  error?: string;
+}
+
+const featured = Object.keys(STOCK_NAMES);
+const rank = (t: string) => (featured.includes(t) ? featured.indexOf(t) : featured.length);
+
+/** One page of the market: every US stock/ETF on BSC, featured first, priced only for the page shown. */
+export async function loadMarket({ q = "", kind, page = 1 }: MarketQuery): Promise<Market> {
   try {
     const tokens = await listStocks();
-    const tickers = Object.keys(STOCK_NAMES).filter((ticker) => tokens.some((t) => t.ticker === ticker));
-    if (tickers.length === 0) throw new Error("none of the curated tickers are listed on BSC");
-
-    const results = await Promise.allSettled(tickers.map((ticker) => loadOne(ticker, tokens)));
-    const stocks = results.flatMap((r, i) => {
-      if (r.status === "fulfilled") return [r.value];
-      console.error(`quote ${tickers[i]}:`, r.reason);
-      return [];
-    });
-    if (stocks.length === 0) throw new Error("every price request failed");
-    return { stocks };
+    const needle = q.trim().toUpperCase();
+    const tickers = [...new Set(tokens.map((t) => t.ticker))]
+      .filter((t) => !kind || tokens.some((k) => k.ticker === t && k.kind === kind))
+      .filter((t) => !needle || t.includes(needle) || STOCK_NAMES[t]?.toUpperCase().includes(needle))
+      .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+    const pages = Math.max(1, Math.ceil(tickers.length / PER_PAGE));
+    const current = Math.min(Math.max(1, page), pages);
+    const stocks = await loadMany(tickers.slice((current - 1) * PER_PAGE, current * PER_PAGE), tokens);
+    if (stocks.length === 0 && tickers.length > 0) throw new Error("every price request failed");
+    return { stocks, total: tickers.length, page: current, pages };
   } catch (e) {
-    console.error("live catalog unavailable:", e);
+    console.error("live market unavailable:", e);
     const cause = e instanceof Error && e.cause instanceof Error ? `: ${e.cause.message}` : "";
-    return { stocks: SAMPLE_STOCKS, error: `${e instanceof Error ? e.message : e}${cause}` };
+    return { stocks: SAMPLE_STOCKS, total: SAMPLE_STOCKS.length, page: 1, pages: 1, error: `${e instanceof Error ? e.message : e}${cause}` };
   }
 }
 
@@ -57,29 +84,75 @@ export const RANGES: Record<Range, { interval: KlineInterval; limit: number }> =
   "1Y": { interval: "1d", limit: 300 },
 };
 
+const perShare = (c: Candle, m: number): Candle => ({ ...c, o: c.o / m, h: c.h / m, l: c.l / m, c: c.c / m });
+
 export interface StockDetail {
   stock: Stock;
   meta: StockMeta | null;
-  /** Per-share closes for the chosen range; empty when unavailable. */
+  /** Per-share candles for the chosen range; empty when unavailable. */
   candles: Candle[];
   sample: boolean;
 }
 
 export async function loadStock(ticker: string, range: Range): Promise<StockDetail | null> {
-  if (!(ticker in STOCK_NAMES)) return null;
   try {
     const tokens = await listStocks();
+    if (!tokens.some((t) => t.ticker === ticker)) return null;
     const stock = await loadOne(ticker, tokens);
     const best = stock.offers![0];
     const token = { chainId: "56", contractAddress: best.contractAddress };
     const [m, c] = await Promise.allSettled([meta(token), klines(token, RANGES[range].interval, RANGES[range].limit)]);
-    const candles = c.status === "fulfilled" ? c.value.map((k) => ({ ...k, o: k.o / best.multiplier, h: k.h / best.multiplier, l: k.l / best.multiplier, c: k.c / best.multiplier })) : [];
-    return { stock, meta: m.status === "fulfilled" ? m.value : null, candles, sample: false };
+    return { stock, meta: m.status === "fulfilled" ? m.value : null, candles: c.status === "fulfilled" ? c.value.map((k) => perShare(k, best.multiplier)) : [], sample: false };
   } catch (e) {
     console.error(`live ${ticker} unavailable:`, e);
     const stock = SAMPLE_STOCKS.find((s) => s.ticker === ticker);
     return stock ? { stock, meta: null, candles: sampleCandles(stock.onchain, RANGES[range].limit), sample: true } : null;
   }
+}
+
+/** Every stock token on BSC, for balance reads. */
+export async function loadTokens(): Promise<{ ticker: string; address: `0x${string}`; multiplier: number }[]> {
+  try {
+    const tokens = await listStocks();
+    // `multiplier` from the list is unreliable for xStocks (see core); balances are re-priced through /api/quote anyway.
+    return tokens.map((t) => ({ ticker: t.ticker, address: t.contractAddress as `0x${string}`, multiplier: 1 }));
+  } catch (e) {
+    console.error("token list unavailable:", e);
+    return [];
+  }
+}
+
+export interface Quoted {
+  name: string;
+  icon: string | null;
+  onchain: number;
+  change24hPct: number | null;
+  /** Per-share closes, oldest first: [openTime, close]. */
+  series: [number, number][];
+  /** Per contract address, so a balance can be turned into shares. */
+  multipliers: Record<string, number>;
+}
+
+/** Prices and history for held tickers; the portfolio polls this. */
+export async function quoteMany(tickers: string[], range: Range): Promise<Record<string, Quoted>> {
+  const tokens = await listStocks();
+  const stocks = await loadMany(tickers.filter((t) => tokens.some((k) => k.ticker === t)), tokens);
+  const out: Record<string, Quoted> = {};
+  await Promise.all(
+    stocks.map(async (s) => {
+      const best = s.offers![0];
+      const c = await klines({ chainId: "56", contractAddress: best.contractAddress }, RANGES[range].interval, RANGES[range].limit).catch(() => []);
+      out[s.ticker] = {
+        name: s.name,
+        icon: s.icon,
+        onchain: s.onchain,
+        change24hPct: s.change24hPct,
+        series: c.map((k) => [k.t, k.c / best.multiplier]),
+        multipliers: Object.fromEntries(s.offers!.map((o) => [o.contractAddress.toLowerCase(), o.multiplier])),
+      };
+    }),
+  );
+  return out;
 }
 
 function sampleCandles(last: number, n: number): Candle[] {

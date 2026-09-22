@@ -21,7 +21,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${serif.variable} antialiased`}>
       <body className="font-sans">
         <Providers>
-          <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pb-28">
+          <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pb-32">
             <header className="flex items-center justify-between py-4">
               <Link href="/" className="text-2xl tracking-tight">
                 Port<span className="serif-italic text-[1.2em]">ir</span>

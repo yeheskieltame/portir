@@ -18,7 +18,7 @@ function stub(routes: Record<string, unknown>) {
   }) as typeof fetch;
 }
 
-const TOKEN: StockToken = { chainId: "56", contractAddress: "0xabc", symbol: "NVDAon", ticker: "NVDA", issuer: "ondo" };
+const TOKEN: StockToken = { chainId: "56", contractAddress: "0xabc", symbol: "NVDAon", ticker: "NVDA", issuer: "ondo", kind: "stock" };
 const dynamic = (stockPrice: string | null) => ({
   symbol: "NVDAon",
   ticker: "NVDA",

@@ -1,101 +1,173 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { erc20Abi, formatUnits } from "viem";
 import { bsc } from "wagmi/chains";
 import { useConnection, useReadContracts } from "wagmi";
 import { Logo } from "@/app/logo";
 import { pct, usd } from "@/app/verdict";
+import type { Quoted, Range } from "@/lib/live";
 
-export interface HoldingStock {
+export interface Token {
   ticker: string;
-  name: string;
-  icon: string | null;
-  onchain: number;
-  change24hPct: number | null;
-  tokens: { address: `0x${string}`; multiplier: number }[];
+  address: `0x${string}`;
+  multiplier: number;
 }
-interface Holding extends HoldingStock {
+interface Holding extends Quoted {
+  ticker: string;
   shares: number;
-  /** USD paid, when known. Live balances have no purchase history yet. */
+  /** USD paid; only the sample preview knows it until the buy flow records purchases. */
   cost?: number;
 }
 
+const RANGES: Range[] = ["1D", "1W", "1M", "1Y"];
+const POLL = 30_000;
 // Demo holdings so the screen can be judged before the first mainnet buy.
 const SAMPLE: Record<string, { shares: number; cost: number }> = { NVDA: { shares: 0.42, cost: 78.5 }, AAPL: { shares: 1.2, cost: 276 }, SPY: { shares: 0.3, cost: 195 } };
 
-export function Holdings({ stocks }: { stocks: HoldingStock[] }) {
+export function Holdings({ tokens }: { tokens: Token[] }) {
   const { address } = useConnection();
   const [preview, setPreview] = useState(false);
-  const calls = stocks.flatMap((s) => s.tokens.map((t) => ({ address: t.address, abi: erc20Abi, functionName: "balanceOf" as const, args: [address!] as const, chainId: bsc.id })));
-  const balances = useReadContracts({ contracts: calls, allowFailure: true, query: { enabled: !!address } });
+  const [range, setRange] = useState<Range>("1W");
+  const [q, setQ] = useState("");
 
-  let live: Holding[] = [];
-  if (balances.data) {
-    let i = 0;
-    live = stocks
-      .map((s) => ({ ...s, shares: s.tokens.reduce((sum, t) => { const r = balances.data![i++]; return sum + (r.status === "success" ? Number(formatUnits(r.result as bigint, 18)) * t.multiplier : 0); }, 0) }))
-      .filter((h) => h.shares > 0);
-  }
-  const holdings: Holding[] = preview
-    ? stocks.filter((s) => s.ticker in SAMPLE).map((s) => ({ ...s, ...SAMPLE[s.ticker] }))
-    : live;
+  const balances = useReadContracts({
+    contracts: tokens.map((t) => ({ address: t.address, abi: erc20Abi, functionName: "balanceOf" as const, args: [address!] as const, chainId: bsc.id })),
+    allowFailure: true,
+    query: { enabled: !!address && tokens.length > 0, refetchInterval: POLL },
+  });
+  // Raw token units per contract, only where the wallet holds something.
+  const raw = useMemo(() => {
+    const out: Record<string, { ticker: string; units: number }> = {};
+    balances.data?.forEach((r, i) => {
+      if (r.status === "success" && (r.result as bigint) > BigInt(0)) out[tokens[i].address.toLowerCase()] = { ticker: tokens[i].ticker, units: Number(formatUnits(r.result as bigint, 18)) };
+    });
+    return out;
+  }, [balances.data, tokens]);
+
+  const tickers = preview ? Object.keys(SAMPLE) : [...new Set(Object.values(raw).map((r) => r.ticker))].sort();
+  const quotes = useQuery({
+    queryKey: ["quote", tickers, range],
+    queryFn: () => fetch(`/api/quote?tickers=${tickers.join(",")}&range=${range}`).then((r) => r.json() as Promise<Record<string, Quoted>>),
+    enabled: tickers.length > 0,
+    refetchInterval: POLL,
+  });
+
+  const holdings: Holding[] = useMemo(() => {
+    const data = quotes.data ?? {};
+    return tickers.flatMap((ticker) => {
+      const qd = data[ticker];
+      if (!qd) return [];
+      const shares = preview
+        ? SAMPLE[ticker].shares
+        : Object.entries(raw).filter(([, r]) => r.ticker === ticker).reduce((n, [addr, r]) => n + r.units * (qd.multipliers[addr] ?? 1), 0);
+      return shares > 0 ? [{ ...qd, ticker, shares, cost: preview ? SAMPLE[ticker].cost : undefined }] : [];
+    });
+  }, [quotes.data, tickers, raw, preview]);
 
   const value = holdings.reduce((sum, h) => sum + h.shares * h.onchain, 0);
-  const cost = holdings.every((h) => h.cost != null) ? holdings.reduce((sum, h) => sum + h.cost!, 0) : null;
-  const dayChange = holdings.reduce((sum, h) => sum + h.shares * h.onchain * ((h.change24hPct ?? 0) / 100), 0);
+  // Portfolio history: each holding's per-share series × its shares, summed at matching candles from the end.
+  const series = useMemo(() => {
+    const n = Math.min(...holdings.map((h) => h.series.length));
+    if (!holdings.length || !Number.isFinite(n) || n < 2) return [] as number[];
+    return Array.from({ length: n }, (_, i) => holdings.reduce((sum, h) => sum + h.shares * h.series[h.series.length - n + i][1], 0));
+  }, [holdings]);
+  const cost = preview ? holdings.reduce((sum, h) => sum + h.cost!, 0) : null;
+  const delta = cost !== null ? value - cost : series.length ? value - series[0] : 0;
+  const base = cost !== null ? cost : series[0] || value;
+  const up = delta >= 0;
+
+  const shown = holdings.filter((h) => !q || h.ticker.includes(q.toUpperCase()) || h.name.toUpperCase().includes(q.toUpperCase()));
+  const empty = holdings.length === 0;
 
   return (
     <>
-      <p className="mt-4 font-mono text-[40px] leading-none tabular-nums tracking-tight">{usd.format(value)}</p>
-      <p className="mt-1 flex flex-wrap gap-x-3 font-mono text-xs tabular-nums">
-        <span className={dayChange < 0 ? "text-block" : "text-go"}>{dayChange >= 0 ? "+" : "-"}{usd.format(Math.abs(dayChange))} today</span>
-        {cost !== null && holdings.length > 0 && (
-          <span className={value - cost < 0 ? "text-block" : "text-go"}>
-            {value - cost >= 0 ? "+" : "-"}{usd.format(Math.abs(value - cost))} all time ({pct(((value - cost) / cost) * 100)})
-          </span>
-        )}
-      </p>
-      {preview && <p className="mt-2 text-xs text-warn">Sample holdings, not your wallet.</p>}
-
-      {holdings.length > 0 ? (
-        <ul className="glass mt-6 divide-y divide-line rounded-3xl">
-          {holdings.map((h) => (
-            <li key={h.ticker}>
-              <Link href={`/stock/${h.ticker}`} className="flex items-center gap-3 px-4 py-3.5 active:bg-white/5">
-                <Logo src={h.icon} name={h.name} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{h.name}</span>
-                  <span className="block font-mono text-xs text-muted tabular-nums">{h.shares.toFixed(4)} shares · {usd.format(h.onchain)}</span>
-                </span>
-                <span className="text-right font-mono tabular-nums">
-                  <span className="block">{usd.format(h.shares * h.onchain)}</span>
-                  {h.cost != null ? (
-                    <span className={`block text-xs ${h.shares * h.onchain - h.cost < 0 ? "text-block" : "text-go"}`}>{pct(((h.shares * h.onchain - h.cost) / h.cost) * 100)}</span>
-                  ) : (
-                    <span className={`block text-xs ${(h.change24hPct ?? 0) < 0 ? "text-block" : "text-go"}`}>{h.change24hPct === null ? "—" : pct(h.change24hPct)}</span>
-                  )}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="glass mt-6 rounded-3xl p-5 text-sm text-muted">
-          {!address ? "Connect your wallet to see your stocks." : balances.isLoading ? "Reading your wallet…" : "No stocks yet. Pick one from the list to make your first buy."}
-          <div className="mt-4 flex gap-2">
-            <Link href="/" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black">Browse stocks</Link>
-            <button onClick={() => setPreview(true)} className="rounded-full border border-line px-4 py-2 text-sm text-white">Preview with sample</button>
-          </div>
+      <div className="mt-4 flex items-end justify-between gap-4">
+        <div>
+          <p className="font-mono text-[40px] leading-none tabular-nums tracking-tight">{usd.format(value)}</p>
+          <p className={`mt-2 font-mono text-sm tabular-nums ${up ? "text-go" : "text-block"}`}>
+            {up ? "+" : "-"}{usd.format(Math.abs(delta))} ({pct(base ? (delta / base) * 100 : 0)}) <span className="text-muted">· {cost !== null ? "All time" : range}</span>
+          </p>
         </div>
-      )}
-      {preview && (
-        <button onClick={() => setPreview(false)} className="mt-3 text-xs text-muted underline">Back to my wallet</button>
-      )}
-      {!preview && holdings.length > 0 && (
-        <p className="mt-3 text-xs text-muted">Shares include dividends reinvested by the issuer. Cost basis and P&amp;L arrive with the buy flow.</p>
-      )}
+        <Spark series={series} up={up} />
+      </div>
+      <div className="glass mt-4 grid grid-cols-4 rounded-full p-1">
+        {RANGES.map((r) => (
+          <button key={r} onClick={() => setRange(r)} className={`rounded-full py-1.5 font-mono text-xs ${r === range ? "bg-white/15 text-white" : "text-muted"}`}>
+            {r === "1Y" ? "ALL" : r}
+          </button>
+        ))}
+      </div>
+      {preview && <p className="mt-3 text-xs text-warn">Sample holdings, not your wallet. <button className="underline" onClick={() => setPreview(false)}>Back to my wallet</button></p>}
+
+      <section className="glass mt-4 rounded-3xl">
+        <div className="flex items-center justify-between px-4 pt-4">
+          <h2 className="text-lg">Holdings</h2>
+          <span className="text-xs text-muted">{holdings.length} {holdings.length === 1 ? "asset" : "assets"}{quotes.isFetching && " · updating"}</span>
+        </div>
+        {holdings.length > 3 && (
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search holdings" className="mx-4 mt-3 w-[calc(100%-2rem)] rounded-full border border-line bg-white/5 px-4 py-2 text-sm outline-none placeholder:text-muted" />
+        )}
+        {empty ? (
+          <div className="p-4 pt-3 text-sm text-muted">
+            {!address ? "Connect your wallet to see your stocks." : balances.isLoading || quotes.isLoading ? "Reading your wallet…" : "No stocks yet. Pick one from Markets to make your first buy."}
+            <div className="mt-4 flex gap-2">
+              <Link href="/" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black">Browse markets</Link>
+              <button onClick={() => setPreview(true)} className="rounded-full border border-line px-4 py-2 text-sm text-white">Preview with sample</button>
+            </div>
+          </div>
+        ) : (
+          <ul className="mt-2 divide-y divide-line">
+            {shown.length === 0 && <li className="px-4 py-5 text-center text-sm text-muted">No holding matches “{q}”.</li>}
+            {shown.map((h) => {
+              const worth = h.shares * h.onchain;
+              const change = h.cost != null ? ((worth - h.cost) / h.cost) * 100 : h.series.length > 1 ? ((h.onchain - h.series[0][1]) / h.series[0][1]) * 100 : null;
+              return (
+                <li key={h.ticker}>
+                  <Link href={`/stock/${h.ticker}`} className="flex items-center gap-3 px-4 py-3.5 active:bg-white/5">
+                    <Logo src={h.icon} name={h.name} size={44} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{h.name}</span>
+                      <span className="block font-mono text-xs text-muted tabular-nums">{h.shares.toFixed(4)} shares · {usd.format(h.onchain)}</span>
+                    </span>
+                    <span className="text-right font-mono tabular-nums">
+                      <span className="block">{usd.format(worth)}</span>
+                      <span className={`block text-xs ${change === null ? "text-muted" : change < 0 ? "text-block" : "text-go"}`}>{change === null ? "—" : pct(change)}</span>
+                    </span>
+                    <span aria-hidden className="text-muted">›</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+      {!preview && !empty && <p className="mt-3 text-xs text-muted">Live from your wallet, refreshed every 30s. Shares include dividends the issuer reinvested. Cost basis arrives with the buy flow.</p>}
     </>
+  );
+}
+
+// ponytail: 120×56 sparkline, same idea as the stock chart. Shared component when a third chart appears.
+function Spark({ series, up }: { series: number[]; up: boolean }) {
+  if (series.length < 2) return <div className="h-14 w-32" />;
+  const W = 128, H = 56, lo = Math.min(...series), hi = Math.max(...series);
+  const x = (i: number) => (i / (series.length - 1)) * (W - 4) + 2;
+  const y = (v: number) => H - 4 - ((v - lo) / (hi - lo || 1)) * (H - 8);
+  const d = series.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  const color = up ? "var(--color-go)" : "var(--color-block)";
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-14 w-32 shrink-0" aria-hidden>
+      <defs>
+        <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={color} stopOpacity=".35" />
+          <stop offset="1" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${d} L${W - 2} ${H} L2 ${H} Z`} fill="url(#spark)" />
+      <path d={d} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" />
+      <circle cx={x(series.length - 1)} cy={y(series[series.length - 1])} r="2.5" fill={color} />
+    </svg>
   );
 }

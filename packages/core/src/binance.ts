@@ -17,12 +17,16 @@ export const BSC = "56";
 export type Issuer = "ondo" | "xstocks" | "bstocks";
 const ISSUERS: Record<number, Issuer> = { 1: "ondo", 2: "xstocks", 3: "bstocks" };
 
+export type AssetKind = "stock" | "etf";
+const KINDS: Record<number, AssetKind> = { 1: "stock", 3: "etf" }; // `assetType`, identified live (QQQ, SPY, IVV... are 3)
+
 export interface StockToken {
   chainId: string;
   contractAddress: string;
   symbol: string;
   ticker: string;
   issuer: Issuer;
+  kind: AssetKind | null;
 }
 
 export interface TradingStatus {
@@ -116,6 +120,7 @@ export async function listStocks(chainId: string = BSC): Promise<StockToken[]> {
       symbol: t.symbol,
       ticker: t.ticker,
       issuer: ISSUERS[t.type],
+      kind: KINDS[t.assetType] ?? null,
     }));
 }
 
