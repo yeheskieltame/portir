@@ -20,7 +20,7 @@ body{overflow-x:hidden}
 .scene{display:block}
 .glow{pointer-events:none;background:radial-gradient(60% 45% at 62% 58%,rgba(255,150,60,calc(.32*(1 - var(--night)))),transparent 70%),radial-gradient(70% 50% at 50% 70%,rgba(70,120,255,calc(.14 + .16*var(--night))),transparent 70%)}
 .shade{pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.25),transparent 25%,transparent 50%,rgba(2,5,12,.85));z-index:1}
-.header{position:absolute;z-index:5;top:0;left:0;width:100%;padding:20px 28px;display:flex;align-items:center;justify-content:space-between}
+.header{position:fixed;z-index:50;top:0;left:0;width:100%;padding:20px 28px;display:flex;align-items:center;justify-content:space-between}
 .logo{color:#fff;text-decoration:none;font-size:22px;letter-spacing:-.02em}
 .logo em{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:26px}
 .header-actions,.nav-pill{display:flex;align-items:center}
@@ -66,9 +66,18 @@ body{overflow-x:hidden}
 .section h2{font-size:56px;line-height:.95;letter-spacing:-.03em;font-weight:400;margin:0 0 20px;max-width:760px}
 .section h2 em,.wordmark em,.giant em{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:1.08em}
 .lead{font-size:18px;color:var(--muted);max-width:600px;line-height:1.35;margin:0 0 48px}
-.steps,.stack{display:grid;gap:16px}
-.steps{grid-template-columns:repeat(4,1fr)}
-.stack{grid-template-columns:repeat(3,1fr)}
+.steps{display:grid;gap:16px;grid-template-columns:repeat(4,1fr)}
+#stack{padding-bottom:0}
+.ring-scene{position:relative;height:420px;overflow:hidden;perspective:1400px;cursor:grab;user-select:none;touch-action:pan-y}
+.ring-scene:active{cursor:grabbing}
+.ring-scene::before,.ring-scene::after{content:"";position:absolute;top:0;bottom:0;width:22%;z-index:2;pointer-events:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.ring-scene::before{left:0;background:linear-gradient(90deg,var(--bg),transparent);mask:linear-gradient(90deg,#000 30%,transparent);-webkit-mask:linear-gradient(90deg,#000 30%,transparent)}
+.ring-scene::after{right:0;background:linear-gradient(270deg,var(--bg),transparent);mask:linear-gradient(270deg,#000 30%,transparent);-webkit-mask:linear-gradient(270deg,#000 30%,transparent)}
+.ring{position:absolute;left:50%;top:50%;transform-style:preserve-3d;transform:rotateY(var(--ry,0deg))}
+.tile{--w:200px;position:absolute;width:var(--w);height:var(--w);left:calc(var(--w)/-2);top:calc(var(--w)/-2);border-radius:28px;border:1px solid rgba(255,255,255,.14);background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.03));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:grid;place-content:center;justify-items:center;gap:18px;transform:rotateY(calc(var(--i)*var(--step)))translateZ(var(--r));backface-visibility:hidden}
+.tile img{width:56px;height:56px;filter:invert(1)}
+.tile i{font:500 34px/1 Geist,sans-serif;font-style:normal;color:var(--c);width:56px;height:56px;display:grid;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--c) 14%,transparent);letter-spacing:-.04em}
+.tile span{font-size:15px;font-weight:500;letter-spacing:-.01em;text-align:center;padding:0 12px}
 .card{border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
 .card b{display:block;font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:40px;line-height:1;color:var(--accent);margin-bottom:18px}
 .card h3{font-size:20px;font-weight:500;margin:0 0 8px;letter-spacing:-.01em}
@@ -110,10 +119,10 @@ html,body,a,button{cursor:none!important}
 .glass-card{width:min(330px,calc(100vw - 36px));padding:20px 20px 24px}
 .glass-card.left{left:18px;top:14%}.glass-card.right{right:18px;top:38%}
 .section{padding:80px 18px}.section h2{font-size:clamp(36px,9vw,48px)}
-.steps{grid-template-columns:1fr 1fr}.stack{grid-template-columns:1fr 1fr}
+.steps{grid-template-columns:1fr 1fr}.ring-scene{height:300px}.tile{--w:150px;border-radius:22px;gap:12px}.tile img,.tile i{width:40px;height:40px}.tile i{font-size:24px}.tile span{font-size:13px}
 .footer{padding:48px 18px 24px}.footer-top{flex-direction:column;align-items:flex-start}.footer-cols{grid-template-columns:1fr 1fr}.giant{margin:0 -18px -6px}
 }
-@media(max-width:560px){.steps,.stack,.footer-cols{grid-template-columns:1fr}.play{width:64px;height:64px;font-size:20px}}
+@media(max-width:560px){.steps,.footer-cols{grid-template-columns:1fr}.play{width:64px;height:64px;font-size:20px}}
 @media(max-width:560px){.content-state h1{font-size:clamp(40px,12vw,56px)}.copy,.glass-card p{font-size:16px}.glass-card h2{font-size:24px}}
 @media(prefers-reduced-motion:reduce){.header,.word,.copy{animation-duration:.01ms!important;animation-delay:0s!important}}
 </style>
@@ -172,19 +181,26 @@ html,body,a,button{cursor:none!important}
   <section class="section" id="stack">
     <p class="eyebrow">Built on the BNB stack</p>
     <h2>Every piece of the chain, <em>doing one job.</em></h2>
-    <p class="lead">Nothing custodial, and nothing off-chain that could live on-chain. Plans, runs and reasons are public; funds never leave your wallet.</p>
-    <div class="stack">
-      <article class="card"><span class="tag live">Live · testnet</span><h3>BNB Smart Chain</h3><p>Settlement for every trade in USDT, and home of <code>PlanRegistry</code>: DCA plans and their run history in a verified, upgradeable contract.</p></article>
-      <article class="card"><span class="tag live">Live</span><h3>Tokenized stocks: Ondo · bStocks · xStocks</h3><p>488 stock tokens on BSC read live, with prices, sessions, halts and share multipliers normalised into one catalog. You see NVIDIA, never a ticker suffix.</p></article>
-      <article class="card"><span class="tag live">Live</span><h3>Binance Web3 RWA Data API</h3><p>Market status, asset status and per-token dynamics. The data behind every Guard verdict, refreshed every 30 seconds.</p></article>
-      <article class="card"><span class="tag live">Live</span><h3>Binance Web3 Trading API</h3><p>RFQ and swap quotes, built transactions and approvals through the official SDK. The same execution path Binance Wallet uses.</p></article>
-      <article class="card"><span class="tag live">Live</span><h3>PancakeSwap via LiquidMesh</h3><p>Stock tokens route through PancakeSwap pools. Portir compares the quote per issuer and rejects fills more than 0.3% worse than the quote.</p></article>
-      <article class="card"><span class="tag next">Next</span><h3>Agentic Wallet</h3><p>A scoped session with a spend cap, allowed tokens and an expiry. The agent can buy your plan, and nothing else. No seed phrase in onboarding.</p></article>
-      <article class="card"><span class="tag next">Next</span><h3>BNB Agent Studio</h3><p>The executor runs as a persistent agent: wakes on schedule, runs the Guard, waits up to 48 hours for a fair window, then writes its reason on-chain.</p></article>
-      <article class="card"><span class="tag next">Next</span><h3>MCP server</h3><p>The same engine exposed as tools for Claude Desktop, Claude Code and any MCP client: market window, fair price, best issuer, create a plan.</p></article>
-      <article class="card"><span class="tag next">Next</span><h3>b402</h3><p>Pay-per-call metering so third-party agents can use the fair-price check without running Portir themselves.</p></article>
-    </div>
+    <p class="lead">Drag to spin.</p>
   </section>
+  <div class="ring-scene" aria-label="BNB stack: BNB Smart Chain, Agent Studio, Binance Web3 Wallet, Agentic Wallet, PancakeSwap, LiquidMesh, Ondo, bStocks, xStocks, MCP, Claude, b402, USDT, BscScan">
+    <div class="ring">
+      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/bnbchain.svg"><span>BNB Smart Chain</span></div>
+      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/bnbchain.svg"><span>BNB Agent Studio</span></div>
+      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/binance.svg"><span>Binance Web3 Wallet</span></div>
+      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/binance.svg"><span>Agentic Wallet</span></div>
+      <div class="tile"><i style="--c:#1fc7d4">P</i><span>PancakeSwap</span></div>
+      <div class="tile"><i style="--c:#8f7cff">LM</i><span>LiquidMesh</span></div>
+      <div class="tile"><i style="--c:#fff">O</i><span>Ondo</span></div>
+      <div class="tile"><i style="--c:#f0b90b">b</i><span>bStocks</span></div>
+      <div class="tile"><i style="--c:#ff6b6b">x</i><span>xStocks</span></div>
+      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/modelcontextprotocol.svg"><span>MCP</span></div>
+      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/claude.svg"><span>Claude</span></div>
+      <div class="tile"><i style="--c:#7ef0b0">402</i><span>b402</span></div>
+      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/tether.svg"><span>USDT</span></div>
+      <div class="tile"><i style="--c:#61a6f6">Bsc</i><span>BscScan</span></div>
+    </div>
+  </div>
 
   <section class="section" id="demo">
     <p class="eyebrow">Demo</p>
@@ -410,6 +426,30 @@ addEventListener("scroll", readScroll, { passive: true });
 addEventListener("resize", () => { readScroll(); resize(); });
 addEventListener("pointermove", (e) => { pointer.tx = (e.clientX / innerWidth - 0.5) * 2; pointer.ty = (e.clientY / innerHeight - 0.5) * 2; }, { passive: true });
 addEventListener("pointerleave", () => { pointer.tx = 0; pointer.ty = 0; });
+
+// ---- stack ring: tiles on a cylinder, auto-spins, drag to fling ----
+{
+  const ring = document.querySelector(".ring"), tiles = [...ring.children], N = tiles.length, step = 360 / N;
+  tiles.forEach((t, i) => t.style.setProperty("--i", i));
+  ring.style.setProperty("--step", `${step}deg`);
+  const fit = () => ring.style.setProperty("--r", `${(tiles[0].offsetWidth / 2 + 14) / Math.tan(Math.PI / N)}px`);
+  fit(); addEventListener("resize", fit);
+  let ry = 0, vel = 0, drag = null;
+  const sceneEl = ring.parentElement;
+  sceneEl.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, ry }; vel = 0; sceneEl.setPointerCapture(e.pointerId); });
+  sceneEl.addEventListener("pointermove", (e) => { if (!drag) return; const next = drag.ry + (e.clientX - drag.x) * 0.25; vel = next - ry; ry = next; });
+  const release = () => { drag = null; vel = clamp(vel, -12, 12); };
+  sceneEl.addEventListener("pointerup", release); sceneEl.addEventListener("pointercancel", release);
+  (function spin() {
+    if (!drag) { vel = lerp(vel, reduced ? 0 : 0.12, 0.02); ry += vel; }
+    ring.style.setProperty("--ry", `${ry}deg`);
+    tiles.forEach((t, i) => {
+      let a = ((i * step + ry) % 360 + 540) % 360 - 180;
+      t.style.opacity = clamp(1.2 - Math.abs(a) / 90);
+    });
+    requestAnimationFrame(spin);
+  })();
+}
 
 // ---- cursor ----
 const cursor = document.querySelector(".custom-cursor");
