@@ -8,6 +8,7 @@ import { bsc } from "wagmi/chains";
 import { useConnection, useReadContracts } from "wagmi";
 import { Logo } from "@/app/logo";
 import { pct, usd } from "@/app/verdict";
+import { useBuys } from "@/lib/buys";
 import type { Quoted, Range } from "@/lib/live";
 
 export interface Token {
@@ -32,6 +33,8 @@ export function Holdings({ tokens }: { tokens: Token[] }) {
   const [preview, setPreview] = useState(false);
   const [range, setRange] = useState<Range>("1W");
   const [q, setQ] = useState("");
+  const buys = useBuys();
+  const paid = (ticker: string) => buys.filter((b) => b.ticker === ticker).reduce((n, b) => n + b.usdt, 0) || undefined;
 
   const balances = useReadContracts({
     contracts: tokens.map((t) => ({ address: t.address, abi: erc20Abi, functionName: "balanceOf" as const, args: [address!] as const, chainId: bsc.id })),
@@ -63,9 +66,10 @@ export function Holdings({ tokens }: { tokens: Token[] }) {
       const shares = preview
         ? SAMPLE[ticker].shares
         : Object.entries(raw).filter(([, r]) => r.ticker === ticker).reduce((n, [addr, r]) => n + r.units * (qd.multipliers[addr] ?? 1), 0);
-      return shares > 0 ? [{ ...qd, ticker, shares, cost: preview ? SAMPLE[ticker].cost : undefined }] : [];
+      return shares > 0 ? [{ ...qd, ticker, shares, cost: preview ? SAMPLE[ticker].cost : paid(ticker) }] : [];
     });
-  }, [quotes.data, tickers, raw, preview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quotes.data, tickers, raw, preview, buys]);
 
   const value = holdings.reduce((sum, h) => sum + h.shares * h.onchain, 0);
   // Portfolio history: each holding's per-share series × its shares, summed at matching candles from the end.
@@ -74,7 +78,8 @@ export function Holdings({ tokens }: { tokens: Token[] }) {
     if (!holdings.length || !Number.isFinite(n) || n < 2) return [] as number[];
     return Array.from({ length: n }, (_, i) => holdings.reduce((sum, h) => sum + h.shares * h.series[h.series.length - n + i][1], 0));
   }, [holdings]);
-  const cost = preview ? holdings.reduce((sum, h) => sum + h.cost!, 0) : null;
+  // All-time P&L only when every holding has a recorded purchase; otherwise the change over the chosen range.
+  const cost = holdings.length > 0 && holdings.every((h) => h.cost != null) ? holdings.reduce((sum, h) => sum + h.cost!, 0) : null;
   const delta = cost !== null ? value - cost : series.length ? value - series[0] : 0;
   const base = cost !== null ? cost : series[0] || value;
   const up = delta >= 0;
@@ -144,7 +149,7 @@ export function Holdings({ tokens }: { tokens: Token[] }) {
           </ul>
         )}
       </section>
-      {!preview && !empty && <p className="mt-3 text-xs text-muted">Live from your wallet, refreshed every 30s. Shares include dividends the issuer reinvested. Cost basis arrives with the buy flow.</p>}
+      {!preview && !empty && <p className="mt-3 text-xs text-muted">Live from your wallet, refreshed every 30s. Shares include dividends the issuer reinvested. P&amp;L uses purchases made in this app on this device.</p>}
     </>
   );
 }
