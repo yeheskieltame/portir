@@ -10,6 +10,7 @@ the on-chain vs exchange price before every order.
 | `packages/core` | `@portir/core`: the Guard (pure verdict logic), the Binance RWA Data client (catalog, quotes, fundamentals, K-lines, logos) and the Trading client (official SDK). | quote + build verified live on mainnet; `simulate` blocked by an SDK bug (see DevEx report) |
 | `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | 13 tests, verified on BSC testnet |
 | `apps/landing` | Static landing page (one HTML file, no build). Its own Vercel project on the root domain; the app lives on `app.<domain>`. | `pnpm dev:landing` → :3001 |
+| `apps/portiragent` | The Portir agent on **BNB Agent Studio** (`bag` workspace, not part of the pnpm root workspace). One AgentCore runtime with three faces: **MCP** (`/mcp`, ten Portir tools for Claude or any client), **x402** (`/x402`, free passthrough answering with the same tools), **A2A**. Runs the **DCA executor**: scans `PlanRegistry` every 15 min, applies the Guard, records `Waited / Skipped / Executed` with a one-sentence reason. | runs locally (`cd apps/portiragent && bag dev`); trial deploy next; execution backend off until the Agentic Wallet test |
 | `apps/web` | Next.js app, mobile-first. Markets (510 US stocks/ETFs on BSC, search, filter, pages), stock detail (chart, Guard, providers, fundamentals), baskets, one-tap buy with the Guard, portfolio (live balances, history, dividends), plans, profile. | live; buying signs real BSC mainnet transactions |
 
 **No backend.** The PRD's Postgres plan store is replaced by `PlanRegistry`: the app writes plans to it,
@@ -18,8 +19,23 @@ The contract holds no funds. Two Next.js route handlers exist because `binance.c
 browsers here and the Trading API needs a server-side key: `/api/quote` (prices + history for the portfolio)
 and `/api/buy` (Guard verdict + approval and swap calldata; the wallet signs, nothing is sent from the server).
 
-Not here yet, on purpose: the Agent Studio executor and Agentic Wallet session (plans are owner-run until then),
-`@portir/mcp` (PRD day 17), the basket router contract (a basket buy is one guarded swap per holding, signed in sequence).
+Not here yet, on purpose: the Agentic Wallet session as the executor's signer (the executor decides and records, but
+does not buy yet), basket plans in the executor, the basket router contract (a basket buy is one guarded swap per
+holding, signed in sequence). The MCP server is the agent's `/mcp` face rather than a separate npm package.
+
+### The agent (`apps/portiragent`)
+
+```sh
+npm i -g @bnbagent/studio-cli && cd apps/portiragent
+bag doctor                # wallet, Pieverse key, config
+bag dev                   # A2A + MCP + /x402 on :9000, executor loop on
+```
+
+Env (in `.studio/.env.local`, set with `bag env set`): `PORTIR_REGISTRY` (PlanRegistry proxy), `PORTIR_REGISTRY_CHAIN`
+(`testnet` default), `PORTIR_SCAN_SECONDS` (900), `PORTIR_EXECUTION` (`off`), `BINANCE_W3_API_KEY/SECRET` (executable
+quotes), `COINDESK_API_KEY` (optional news). The agent wallet (`bag wallet new`) is the plan **executor**: the app passes
+it as `NEXT_PUBLIC_EXECUTOR`, and only it (or the owner) can `recordRun`. Connect Claude: `claude mcp add portir --transport
+http http://localhost:9000/mcp`.
 
 Trading runs on **BSC mainnet only** (stock tokens have no testnet). `PlanRegistry` stays on testnet until the app is done,
 so the wallet is asked to switch network between Plans and Buy. Put `BINANCE_W3_API_KEY` / `BINANCE_W3_API_SECRET` in

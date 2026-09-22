@@ -178,6 +178,31 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
   key allowlist its server IPs in the portal.** Until then the buy flow is demoed from a local run; the deployed app
   shows the real reason instead of a generic failure.
 
+### 2026-09-23 (day 5): BNB Agent Studio, from `bag init` to a signed `recordRun`
+
+- **Onboarding**: `npm i -g @bnbagent/studio-cli` → `bag init portiragent --protocols A2A,MCP,X402 --wallet-kind evm-local
+  --network bsc-testnet --seller-price-usd 0 --no-onboard` → `bag wallet new --generate-password` → `bag llm activate`
+  (zero-deposit Pieverse key) → `bag doctor` all green. About 20 minutes including reading the skill. Good: the CLI also
+  installs a Claude Code skill with playbooks; `bag doctor` explains every warning with the exact faucet command.
+- **Model of the product vs ours.** Studio scaffolds a *seller* (ERC-8183 negotiate/notify_funded + a B402-priced
+  `/x402`). Portir needs a *worker* that acts on a schedule. There is no cron primitive, but the runtime is one
+  long-running process, so a `setInterval` in the entrypoint works (`startDcaLoop()` after `app.listen`). **Ask: document
+  "background loops are fine in dualMain" — the docs only describe request-driven faces.**
+- **Signing boundary is well designed**: `getWallet().signTransaction()` takes a legacy tx + `chainId`, returns the raw tx,
+  and we broadcast with viem. `wallet.address` is a getter, not a method (the SDK docs read like a method).
+- **Bundling**: `bag deploy` bundles with esbuild, so linking our TypeScript-source package (`@portir/core`) works with
+  `rewriteRelativeImportExtensions: true` in the agent's tsconfig (core imports `./x.ts`). Local `bag dev` uses tsx.
+- **MCP face composes**: `buildMcpServer` is user-owned, so ten Portir tools registered next to the seller tools show
+  up in `tools/list` immediately; the same definitions wrap into AI SDK tools for the LLM behind `/x402`.
+- **First real run**: plan 0 (NVDA, 10 USDT weekly, smart timing, executor = agent wallet) → the agent recorded
+  `Waited: "The market is in after-hours and the price is fair; waiting for the open."` on BSC testnet
+  (`0x2e48f7…1a71c`), signed by the agent. The app's plan history shows it.
+- **Free model quality**: Pieverse `auto/free` answered the x402 question correctly using `get_fair_price` and
+  `market_window`, but leaked its `</think>` scratchpad into the answer. A paid model or output stripping is needed for
+  anything user-facing.
+- Not yet: the 48h trial deploy needs `bag platform login` (GitHub device flow, interactive) and whether the Trading API
+  accepts the trial's IPs is the open question from day 4.
+
 ## Issuer comparison (fill in during day 1-3)
 
 | | bStocks | Ondo | xStocks |
