@@ -2,8 +2,10 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
-import { formatUnits, parseUnits } from "viem";
+import { Suspense, useEffect, useSyncExternalStore } from "react";
+import { formatUnits, parseUnits, zeroAddress } from "viem";
+import { Logo } from "@/app/logo";
+import { usd } from "@/app/verdict";
 import {
   useConnection,
   useReadContract,
@@ -60,6 +62,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
   // chainId makes the wallet switch network before a write instead of sending it to the wrong chain.
   const contract = { address: registry, abi: planRegistryAbi, chainId: chain.id } as const;
   const preset = useSearchParams().get("target") ?? undefined; // from a stock page's "Set up a plan"
+  const now = useNow();
   const queryClient = useQueryClient();
   const write = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash: write.data });
@@ -166,32 +169,51 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
       <ul className="mt-3 space-y-3">
         {plans.data?.map((plan, i) => {
           const id = ids.data![i];
+          const target = decodeTarget(plan.target);
+          const basket = target.startsWith("BASKET:");
+          const label = basket ? target.slice(7) : (STOCK_NAMES[target] ?? target);
+          const due = plan.nextRunAt * 1000 <= now;
+          const status = !plan.active
+            ? { label: "Cancelled", cls: "text-muted border-line" }
+            : due
+              ? { label: plan.smartTiming ? "Due · waiting for a fair window" : "Due", cls: "text-warn border-warn/40 bg-warn/10" }
+              : { label: `Next in ${untilText(plan.nextRunAt, now)}`, cls: "text-go border-go/40 bg-go/10" };
+          const cadence = Object.entries(CADENCES).find(([, d]) => d * DAY === plan.interval)?.[0] ?? `Every ${plan.interval / DAY} days`;
           return (
-            <li key={id} className="glass rounded-3xl p-4 text-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-medium leading-tight">{decodeTarget(plan.target).replace("BASKET:", "")}</p>
-                  <p className="text-muted">
-                    {formatUnits(plan.amount, USDT_DECIMALS)} USDT every {plan.interval / DAY} days
+            <li key={id} className={`glass rounded-3xl p-4 text-sm ${plan.active ? "" : "opacity-60"}`}>
+              <div className="flex items-start gap-3">
+                <Logo src={null} name={label} size={44} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-lg font-medium leading-tight">
+                    {label}
+                    {basket && <span className="ml-2 rounded border border-line px-1 align-middle text-[10px] uppercase text-muted">Basket</span>}
+                  </p>
+                  <p className="mt-0.5 font-mono text-xs text-muted tabular-nums">
+                    {usd.format(Number(formatUnits(plan.amount, USDT_DECIMALS)))} · {cadence}
                     {plan.smartTiming && " · smart timing"}
                   </p>
-                  <p className="text-muted">{plan.active ? `Next: ${when(plan.nextRunAt)}` : "Cancelled"}</p>
                 </div>
                 {plan.active && (
-                  <button
-                    disabled={busy}
-                    className="text-block disabled:opacity-60"
-                    onClick={() => write.mutate({ ...contract, functionName: "cancelPlan", args: [id] })}
-                  >
+                  <button disabled={busy} className="text-xs text-block disabled:opacity-60" onClick={() => write.mutate({ ...contract, functionName: "cancelPlan", args: [id] })}>
                     Cancel
                   </button>
                 )}
               </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${status.cls}`}>{status.label}</span>
+                {plan.active && <span className="font-mono text-xs text-muted">{when(plan.nextRunAt)}</span>}
+              </div>
+              {plan.active && plan.smartTiming && (
+                <p className="mt-2 text-xs text-muted">The agent waits up to 48h after the due time for the market to open and the price to be fair, then buys and writes its reason here.</p>
+              )}
               <Runs registry={registry} planId={id} />
             </li>
           );
         })}
       </ul>
+      {ids.data && ids.data.length > 0 && executorAddress === zeroAddress && (
+        <p className="mt-3 text-xs text-muted">Runs are recorded by the executor agent on BNB Agent Studio once it is live; until then plans are owner-run.</p>
+      )}
     </>
   );
 }
@@ -204,18 +226,53 @@ function Runs({ registry, planId }: { registry: `0x${string}`; planId: bigint })
     args: [planId],
   });
   if (!runs.data?.length) return null;
+  const latest = runs.data[runs.data.length - 1];
+  const bought = runs.data.filter((r) => r.outcome === 0).length;
   return (
     <details className="mt-3 border-t border-line pt-3">
-      <summary className="cursor-pointer text-muted">History ({runs.data.length})</summary>
-      <ol className="mt-2 space-y-2">
+      <summary className="flex cursor-pointer items-center gap-2 text-xs">
+        <Outcome outcome={latest.outcome} />
+        <span className="text-muted">last run {when(latest.at)}</span>
+        <span className="ml-auto font-mono text-muted">{bought}/{runs.data.length} bought</span>
+      </summary>
+      <ol className="mt-3 space-y-3">
         {runs.data.toReversed().map((run, i) => (
-          <li key={i}>
-            <span className="font-medium">{OUTCOMES[run.outcome]}</span>{" "}
-            <span className="text-muted">{when(run.at)}</span>
-            {run.reason && <p className="text-muted">{run.reason}</p>}
+          <li key={i} className="flex gap-3">
+            <Outcome outcome={run.outcome} />
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-xs text-muted tabular-nums">
+                {when(run.at)}
+                {run.spreadBps !== 0 && ` · ${run.spreadBps > 0 ? "+" : ""}${(run.spreadBps / 100).toFixed(2)}% vs exchange`}
+              </p>
+              {run.reason && <p className="mt-0.5 text-xs">{run.reason}</p>}
+              {run.outcome === 0 && run.txHash !== ZERO_HASH && (
+                <a className="mt-0.5 block font-mono text-xs text-muted underline" href={`${chain.blockExplorers?.default.url}/tx/${run.txHash}`} target="_blank" rel="noopener">transaction ↗</a>
+              )}
+            </div>
           </li>
         ))}
       </ol>
     </details>
   );
+}
+
+const ZERO_HASH = `0x${"0".repeat(64)}`;
+const OUTCOME_CLS = ["text-go border-go/40 bg-go/10", "text-warn border-warn/40 bg-warn/10", "text-muted border-line"];
+function Outcome({ outcome }: { outcome: number }) {
+  return <span className={`shrink-0 self-start rounded-full border px-2 py-0.5 text-[11px] font-medium ${OUTCOME_CLS[outcome] ?? OUTCOME_CLS[2]}`}>{OUTCOMES[outcome] ?? "?"}</span>;
+}
+
+// The minute, ticking, so countdowns re-render without calling Date.now() in render.
+function useNow(step = 60_000) {
+  return useSyncExternalStore(
+    (cb) => { const t = setInterval(cb, step); return () => clearInterval(t); },
+    () => Math.floor(Date.now() / step) * step,
+    () => 0,
+  );
+}
+
+function untilText(at: number, now: number) {
+  const s = Math.max(0, at - now / 1000);
+  const d = Math.floor(s / DAY), h = Math.floor((s % DAY) / 3600), m = Math.floor((s % 3600) / 60);
+  return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
