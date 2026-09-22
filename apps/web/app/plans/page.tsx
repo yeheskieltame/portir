@@ -10,6 +10,7 @@ import {
   useConnection,
   useReadContract,
   useReadContracts,
+  useSwitchChain,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
@@ -65,6 +66,9 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
   const now = useNow();
   const queryClient = useQueryClient();
   const write = useWriteContract();
+  const { switchChainAsync } = useSwitchChain();
+  // Writes target the registry chain; ask the wallet to switch first instead of failing with a chain mismatch.
+  const onRegistry = (fn: () => void) => switchChainAsync({ chainId: chain.id }).then(fn).catch(() => {});
   const receipt = useWaitForTransactionReceipt({ hash: write.data });
 
   const ids = useReadContract({ ...contract, functionName: "planIdsOf", args: [owner] });
@@ -80,7 +84,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
 
   function create(form: FormData) {
     const days = CADENCES[form.get("cadence") as keyof typeof CADENCES];
-    write.mutate({
+    void onRegistry(() => write.mutate({
       ...contract,
       functionName: "createPlan",
       args: [
@@ -91,7 +95,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
         form.get("smart") === "on",
         executorAddress,
       ],
-    });
+    }));
   }
 
   const busy = write.isPending || receipt.isLoading;
@@ -196,7 +200,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
                   </p>
                 </div>
                 {plan.active && (
-                  <button disabled={busy} className="text-xs text-block disabled:opacity-60" onClick={() => write.mutate({ ...contract, functionName: "cancelPlan", args: [id] })}>
+                  <button disabled={busy} className="text-xs text-block disabled:opacity-60" onClick={() => void onRegistry(() => write.mutate({ ...contract, functionName: "cancelPlan", args: [id] }))}>
                     Cancel
                   </button>
                 )}

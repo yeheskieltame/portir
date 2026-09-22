@@ -1,7 +1,7 @@
 "use client";
 
 import { erc20Abi, formatUnits } from "viem";
-import { useConnect, useConnection, useConnectors, useDisconnect, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useConnect, useConnection, useConnectors, useDisconnect, useReadContract, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { useMode, useSetMode } from "@/app/mode";
 import { usd } from "@/app/verdict";
 import { type Mode, NET } from "@/lib/mode";
@@ -88,16 +88,22 @@ export default function Profile() {
 /** MockUSDT.faucet(): 1,000 tUSDT a day, signed by the user's wallet on BSC testnet. The contract enforces the cooldown. */
 function Faucet({ onDone }: { address: `0x${string}`; onDone: () => void }) {
   const write = useWriteContract();
+  const { switchChainAsync, isPending: switching } = useSwitchChain();
   const receipt = useWaitForTransactionReceipt({ hash: write.data, chainId: NET.testnet.chain.id, query: { enabled: !!write.data } });
-  const busy = write.isPending || receipt.isLoading;
+  const busy = write.isPending || receipt.isLoading || switching;
   const error = write.error;
+  // Make sure the wallet is on BSC testnet first; the wallet adds the chain if it does not know it.
+  const claim = async () => {
+    await switchChainAsync({ chainId: NET.testnet.chain.id });
+    write.mutate({ address: TESTNET.usdt, abi: mockUsdtAbi, functionName: "faucet", chainId: NET.testnet.chain.id }, { onSuccess: () => setTimeout(onDone, 4000) });
+  };
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3">
       <dt className="text-muted">Faucet</dt>
       <dd className="text-right">
         <button
           disabled={busy}
-          onClick={() => write.mutate({ address: TESTNET.usdt, abi: mockUsdtAbi, functionName: "faucet", chainId: NET.testnet.chain.id }, { onSuccess: () => setTimeout(onDone, 4000) })}
+          onClick={() => void claim().catch(() => {})}
           className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black disabled:opacity-50"
         >
           {busy ? "Sending…" : receipt.isSuccess ? "Sent · again tomorrow" : "Get 1,000 tUSDT"}
