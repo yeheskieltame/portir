@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { useState } from "react";
 import { erc20Abi, formatUnits, parseUnits } from "viem";
-import { bsc } from "wagmi/chains";
 import { useConnect, useConnection, useConnectors, useReadContract } from "wagmi";
 import { getBalance, readContract, sendTransaction, switchChain, waitForTransactionReceipt } from "wagmi/actions";
 import { NoWallet } from "@/app/connect-button";
+import { useMode } from "@/app/mode";
+import { NET } from "@/lib/mode";
 import type { BuyResponse } from "@/app/api/buy/route";
 import { TONE, pct, usd } from "@/app/verdict";
 import { recordBuy } from "@/lib/buys";
 import { config } from "@/lib/wagmi";
 
-const USDT = "0x55d398326f99059fF775485246999027B3197955";
 const QUICK = [10, 25, 50, 100];
 const MIN_GAS_BNB = parseUnits("0.0005", 18); // a swap on BSC costs well under this
 const ORDER = { GO: 0, WARN: 1, BLOCK: 2 } as const;
@@ -41,9 +41,12 @@ export function BuySheet({ name, legs }: { name: string; legs: Leg[] }) {
   const [amount, setAmount] = useState(legs.length > 1 ? "100" : "10");
   const [step, setStep] = useState<Step>({ at: "amount" });
   const { address } = useConnection();
+  const mode = useMode();
+  const net = NET[mode];
+  const USDT = net.usdt;
   const [connector] = useConnectors();
   const connect = useConnect();
-  const balance = useReadContract({ address: USDT, abi: erc20Abi, functionName: "balanceOf", args: [address!], chainId: bsc.id, query: { enabled: !!address } });
+  const balance = useReadContract({ address: USDT, abi: erc20Abi, functionName: "balanceOf", args: [address!], chainId: net.chain.id, query: { enabled: !!address } });
   const have = balance.data === undefined ? null : Number(formatUnits(balance.data, 18));
   const usdtIn = Number(amount);
   const minOrder = legs.length; // each leg needs at least 1 USDT
@@ -57,7 +60,7 @@ export function BuySheet({ name, legs }: { name: string; legs: Leg[] }) {
     const quoted: Quoted[] = [];
     for (const leg of legs) {
       const usdt = Math.floor(usdtIn * leg.weight * 100) / 100;
-      const res = await fetch("/api/buy", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker: leg.ticker, usdt, wallet: address }) });
+      const res = await fetch("/api/buy", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker: leg.ticker, usdt, wallet: address, mode }) });
       const q = (await res.json()) as BuyResponse & { error?: string };
       if (!res.ok || q.error) return setStep({ at: "error", message: `${leg.ticker}: ${q.error ?? "could not get a quote"}` });
       quoted.push({ ...leg, usdt, q });
@@ -68,25 +71,25 @@ export function BuySheet({ name, legs }: { name: string; legs: Leg[] }) {
   async function sign(quoted: Quoted[]) {
     const txs: string[] = [];
     try {
-      setStep({ at: "signing", legs: quoted, note: "Switching to BNB Chain…" });
-      await switchChain(config, { chainId: bsc.id });
-      const gas = await getBalance(config, { address: address!, chainId: bsc.id });
-      if (gas.value < MIN_GAS_BNB) throw new Error("You need a little BNB on BNB Chain for gas (about $0.05 covers a purchase). Top up BNB, then try again.");
+      setStep({ at: "signing", legs: quoted, note: `Switching to ${net.chain.name}…` });
+      await switchChain(config, { chainId: net.chain.id });
+      const gas = await getBalance(config, { address: address!, chainId: net.chain.id });
+      if (gas.value < MIN_GAS_BNB) throw new Error(`You need a little BNB on ${net.chain.name} for gas (about $0.05 covers a purchase). Top up BNB, then try again.`);
       for (const leg of quoted) {
         const who = basket ? `${leg.ticker}: ` : "";
         const wei = parseUnits(leg.usdt.toFixed(6), 18);
         for (const a of leg.q.approvals ?? []) {
           // The API always includes an approval; skip it when the allowance already covers this order.
-          const allowance = await readContract(config, { address: USDT, abi: erc20Abi, functionName: "allowance", args: [address!, a.spender as `0x${string}`], chainId: bsc.id });
+          const allowance = await readContract(config, { address: USDT, abi: erc20Abi, functionName: "allowance", args: [address!, a.spender as `0x${string}`], chainId: net.chain.id });
           if (allowance >= wei) continue;
           setStep({ at: "signing", legs: quoted, note: `${who}approve USDT in your wallet…` });
-          const hash = await sendTransaction(config, { chainId: bsc.id, to: a.to as `0x${string}`, data: a.data as `0x${string}` });
-          await waitForTransactionReceipt(config, { chainId: bsc.id, hash });
+          const hash = await sendTransaction(config, { chainId: net.chain.id, to: a.to as `0x${string}`, data: a.data as `0x${string}` });
+          await waitForTransactionReceipt(config, { chainId: net.chain.id, hash });
         }
         setStep({ at: "signing", legs: quoted, note: `${who}confirm the purchase in your wallet…` });
-        const hash = await sendTransaction(config, { chainId: bsc.id, to: leg.q.tx!.to as `0x${string}`, data: leg.q.tx!.data as `0x${string}`, value: BigInt(leg.q.tx!.value || "0") });
+        const hash = await sendTransaction(config, { chainId: net.chain.id, to: leg.q.tx!.to as `0x${string}`, data: leg.q.tx!.data as `0x${string}`, value: BigInt(leg.q.tx!.value || "0") });
         setStep({ at: "signing", legs: quoted, note: `${who}waiting for BNB Chain…` });
-        const receipt = await waitForTransactionReceipt(config, { chainId: bsc.id, hash });
+        const receipt = await waitForTransactionReceipt(config, { chainId: net.chain.id, hash });
         if (receipt.status !== "success") throw new Error(`${who}the transaction reverted. Nothing was spent except gas.`);
         recordBuy({ ticker: leg.ticker, shares: leg.q.shares!, usdt: leg.usdt, pricePerShare: leg.q.pricePerShare!, issuer: leg.q.issuer!, tx: hash, at: Date.now() });
         txs.push(hash);
@@ -122,7 +125,7 @@ export function BuySheet({ name, legs }: { name: string; legs: Leg[] }) {
             ) : step.at === "amount" || step.at === "quoting" ? (
               <>
                 <h2 className="text-xl">Buy {name}</h2>
-                <p className="mt-1 text-sm text-muted">{have === null ? "Reading your USDT…" : `You have ${usd.format(have)} USDT on BNB Chain`}</p>
+                <p className="mt-1 text-sm text-muted">{have === null ? "Reading your USDT…" : `You have ${usd.format(have)} ${mode === "testnet" ? "tUSDT on BSC testnet" : "USDT on BNB Chain"}`}</p>
                 <label className="mt-5 block">
                   <span className="text-xs text-muted">Amount in USDT{basket && ` · split across ${legs.length} holdings`}</span>
                   <span className="mt-1 flex items-baseline gap-1 border-b border-line pb-2 font-mono text-[40px] leading-none">
@@ -157,7 +160,7 @@ export function BuySheet({ name, legs }: { name: string; legs: Leg[] }) {
                 <h2 className="mt-1 text-xl">{basket ? `You own a slice of ${name}` : `You own ${step.legs[0].q.shares!.toFixed(4)} ${legs[0].ticker} shares`}</h2>
                 <dl className="glass mt-4 divide-y divide-line rounded-2xl text-sm">
                   {step.legs.map((l, i) => (
-                    <Row key={l.ticker} k={`${l.ticker} · ${l.q.issuer}`} v={`${l.q.shares!.toFixed(4)} sh at ${usd.format(l.q.pricePerShare!)}`} href={`https://bscscan.com/tx/${step.txs[i]}`} />
+                    <Row key={l.ticker} k={`${l.ticker} · ${l.q.issuer}`} v={`${l.q.shares!.toFixed(4)} sh at ${usd.format(l.q.pricePerShare!)}`} href={`${net.explorer}/tx/${step.txs[i]}`} />
                   ))}
                   <Row k="Paid" v={`${usd.format(step.legs.reduce((n, l) => n + l.usdt, 0))} USDT`} />
                 </dl>

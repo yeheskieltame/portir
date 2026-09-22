@@ -7,6 +7,7 @@ import { RANGES, type Range, loadStock } from "@/lib/live";
 import { BuySheet } from "@/app/buy-sheet";
 import { Suspense } from "react";
 import { StockChart } from "./chart";
+import { ModeNote } from "./mode-note";
 import { News } from "./news";
 
 export const revalidate = 30;
@@ -95,6 +96,7 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
         </Link>
         <BuySheet name={s.name} legs={[{ ticker: s.ticker, name: s.name, onchain: s.onchain, weight: 1 }]} />
       </div>
+      <ModeNote ticker={s.ticker} />
 
       {s.offers && s.offers.length > 0 && (
         <section className="mt-6">

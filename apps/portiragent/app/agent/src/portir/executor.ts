@@ -51,13 +51,52 @@ const viaAgenticWallet: Execute = async (plan, ticker) => {
   return { txHash: (txHash || `0x${"0".repeat(64)}`) as Hex, note: `Bought ≈${(q.tokensOut * offer.multiplier).toFixed(4)} shares from ${offer.issuer} at $${pricePerShare.toFixed(2)} via Agentic Wallet.` };
 };
 
+/** `testnet`: buy on the TestExchange with the agent's own tUSDT, Guard on the exchange's mirrored price. */
+const viaTestnet: Execute = async (plan, ticker) => {
+  const { testnetPrice, buyOnTestnet } = await import("./testnet.js");
+  const a = await assess(ticker);
+  const { price, fresh, feeBps } = await testnetPrice(ticker);
+  if (!fresh) throw new Error("testnet price is stale (keeper has not pushed in the last hour)");
+  if (a.view.reference !== null) {
+    const d = guard({ session: a.view.session ?? "closed", onchain: price, reference: a.view.reference });
+    if (d.verdict === "BLOCK") throw new Error(`testnet price failed the Guard: ${d.reason}`);
+  }
+  const amount = Number(formatUnits(plan.amount, 18));
+  const shares = (amount * (10_000 - feeBps)) / 10_000 / price;
+  const txHash = await buyOnTestnet(ticker, amount, shares * 0.995);
+  return { txHash, note: `Bought ≈${shares.toFixed(4)} shares on the testnet exchange at $${price.toFixed(2)}.` };
+};
+
+/**
+ * Safety rules, checked on every execution:
+ *  - the backend must live on the same chain as the registry (a testnet plan can never spend mainnet money);
+ *  - mainnet backends also need PORTIR_MAINNET_ARMED=yes, set deliberately after the checklist in contracts/AUDIT.md.
+ */
+function backend(): "off" | "testnet" | "agentic-wallet" {
+  const mode = process.env.PORTIR_EXECUTION ?? "off";
+  const registryChain = process.env.PORTIR_REGISTRY_CHAIN === "mainnet" ? "mainnet" : "testnet";
+  if (mode === "testnet" && registryChain === "testnet") return "testnet";
+  if (mode === "agentic-wallet" && registryChain === "mainnet" && process.env.PORTIR_MAINNET_ARMED === "yes") return "agentic-wallet";
+  if (mode !== "off") log(`execution "${mode}" refused: registry is on ${registryChain}${registryChain === "mainnet" && process.env.PORTIR_MAINNET_ARMED !== "yes" ? " and PORTIR_MAINNET_ARMED is not set" : ""}`);
+  return "off";
+}
 const execute: Execute = async (plan, ticker) => {
-  if (process.env.PORTIR_EXECUTION === "agentic-wallet") return viaAgenticWallet(plan, ticker);
+  const mode = backend();
+  if (mode === "agentic-wallet") return viaAgenticWallet(plan, ticker);
+  if (mode === "testnet") return viaTestnet(plan, ticker);
   throw new Error("execution is not enabled on this agent (PORTIR_EXECUTION=off)");
 };
-const executionEnabled = () => (process.env.PORTIR_EXECUTION ?? "off") !== "off";
+const executionEnabled = () => backend() !== "off";
 
 export async function scanOnce(): Promise<void> {
+  // Keeper duty first, so testnet plans and the app see fresh mirrored prices.
+  if (process.env.PORTIR_KEEPER !== "off" && process.env.PORTIR_REGISTRY_CHAIN !== "mainnet") {
+    try {
+      await (await import("./testnet.js")).pushPrices();
+    } catch (e) {
+      log(`keeper: ${e instanceof Error ? e.message : e}`);
+    }
+  }
   const n = await planCount();
   const now = Math.floor(Date.now() / 1000);
   for (let i = 0; i < n; i++) {

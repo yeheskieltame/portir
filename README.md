@@ -32,8 +32,15 @@ bag dev                   # A2A + MCP + /x402 on :9000, executor loop on
 ```
 
 Env (in `.studio/.env.local`, set with `bag env set`): `PORTIR_REGISTRY` (PlanRegistry proxy), `PORTIR_REGISTRY_CHAIN`
-(`testnet` default), `PORTIR_SCAN_SECONDS` (900), `PORTIR_EXECUTION` (`off`), `BINANCE_W3_API_KEY/SECRET` (executable
-quotes), `COINDESK_API_KEY` (optional news). The agent wallet (`bag wallet new`) is the plan **executor**: the app passes
+(`testnet` default), `PORTIR_SCAN_SECONDS` (900), `PORTIR_EXECUTION` (`off` | `testnet` | `agentic-wallet`),
+`PORTIR_MAINNET_ARMED=yes` (required, on top of `agentic-wallet`, before any mainnet spend), `PORTIR_KEEPER` (`off` to stop
+mirroring prices onto the TestExchange), `BAW_SESSION_B64` (Agentic Wallet session), `BINANCE_W3_API_KEY/SECRET`
+(executable quotes), `COINDESK_API_KEY` (optional news). The executor refuses a backend whose chain differs from the
+registry's chain.
+
+**Modes.** Profile → Mode switches the app between **testnet** (default: buys settle on BSC testnet with faucet tUSDT
+against the featured stocks, keeper-mirrored prices) and **mainnet** (real USDT and stock tokens). Prices, sessions,
+the Guard and news are live from mainnet in both. The agent wallet (`bag wallet new`) is the plan **executor**: the app passes
 it as `NEXT_PUBLIC_EXECUTOR`, and only it (or the owner) can `recordRun`. Connect Claude: `claude mcp add portir --transport
 http http://localhost:9000/mcp`.
 

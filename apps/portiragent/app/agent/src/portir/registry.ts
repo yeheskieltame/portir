@@ -52,21 +52,26 @@ export async function planIdsOf(owner: Address): Promise<readonly bigint[]> {
   return client().readContract({ address: registryAddress(), abi: planRegistryAbi, functionName: "planIdsOf", args: [owner] });
 }
 
-/** Sign + broadcast `recordRun` with the agent wallet. Returns the tx hash. */
-export async function recordRun(planId: bigint, outcome: Outcome, spreadBps: number, txHash: Hex, reason: string): Promise<Hex> {
+/** Sign a call with the agent wallet (legacy tx via the studio provider) and broadcast it. Fixed code, never an LLM tool. */
+export async function sendTx(to: Address, data: Hex): Promise<Hex> {
   const wallet = getWallet();
   const from = wallet.address as Address;
   const pc = client();
-  const data = encodeFunctionData({ abi: planRegistryAbi, functionName: "recordRun", args: [planId, OUTCOME[outcome], Math.round(spreadBps), txHash, reason.slice(0, 200)] });
   const [nonce, gasPrice, gas] = await Promise.all([
     pc.getTransactionCount({ address: from, blockTag: "pending" }),
     pc.getGasPrice(),
-    pc.estimateGas({ account: from, to: registryAddress(), data }),
+    pc.estimateGas({ account: from, to, data }),
   ]);
-  const signed = await wallet.signTransaction({ to: registryAddress(), data, nonce, gasPrice, gas: (gas * 12n) / 10n, value: 0n, chainId: chain().id });
+  const signed = await wallet.signTransaction({ to, data, nonce, gasPrice, gas: (gas * 12n) / 10n, value: 0n, chainId: chain().id });
   const hash = await pc.sendRawTransaction({ serializedTransaction: signed.rawTransaction });
-  await pc.waitForTransactionReceipt({ hash });
+  const receipt = await pc.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error(`tx ${hash} reverted`);
   return hash;
+}
+
+/** `recordRun` with the agent wallet. Returns the tx hash. */
+export function recordRun(planId: bigint, outcome: Outcome, spreadBps: number, txHash: Hex, reason: string): Promise<Hex> {
+  return sendTx(registryAddress(), encodeFunctionData({ abi: planRegistryAbi, functionName: "recordRun", args: [planId, OUTCOME[outcome], Math.round(spreadBps), txHash, reason.slice(0, 200)] }));
 }
 
 /** Calldata for a user's wallet to create a plan bound to this agent as executor. */

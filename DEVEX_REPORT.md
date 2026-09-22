@@ -229,6 +229,22 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
   settlement asset in the app, and the wallet path is the only way to spend USDC. **Ask: expose the allowed stablecoin list
   per issuer in the RWA meta, and return it in the 40368 message.**
 
+### 2026-09-23 (day 5, night): testnet mode end to end, and a near-miss
+
+- **Why a testnet mode.** Stock tokens exist only on mainnet, so "try before you spend" needs fixtures: `MockUSDT`
+  (faucet), `MockStock` per featured ticker, and a `TestExchange` whose keeper mirrors the mainnet on-chain price. The
+  Guard, sessions and news stay live from mainnet; only settlement moves to BSC testnet. The app switches with a cookie
+  (Profile → Mode), the executor with `PORTIR_EXECUTION=testnet`. Whole loop verified: keeper push → app quote (GO, −84
+  bps, calldata to the exchange) → executor faucet/approve/buy → `Executed` recorded with the tx.
+- **Near-miss, our side.** `bag env set PORTIR_EXECUTION testnet` printed `export PORTIR_EXECUTION=testnet` but did
+  **not** change the file (the key already existed; earlier sets of new keys worked). The next scan therefore ran the
+  Agentic Wallet backend — a real mainnet `market-order swap` for plan 1 — which Binance refused for lack of USDT. No money
+  moved. Two fixes landed the same hour: the executor now refuses any backend whose chain differs from the registry's
+  chain, and mainnet additionally requires `PORTIR_MAINNET_ARMED=yes`. **Ask (Studio): make `bag env set` fail loudly
+  when it cannot persist, and print the value it read back.**
+- Agentic Wallet's refusal message was clear and cheap ("USDT balance is insufficient"), and the wallet's own limits would
+  have capped a real order. Defence in depth worked; it should not have been needed.
+
 ## Issuer comparison (fill in during day 1-3)
 
 | | bStocks | Ondo | xStocks |

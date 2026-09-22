@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { erc20Abi, formatUnits } from "viem";
-import { bsc } from "wagmi/chains";
 import { useConnection, useReadContracts } from "wagmi";
 import { Logo } from "@/app/logo";
 import { pct, usd } from "@/app/verdict";
@@ -29,7 +28,7 @@ const POLL = 30_000;
 // Demo holdings so the screen can be judged before the first mainnet buy.
 const SAMPLE: Record<string, { shares: number; cost: number }> = { NVDA: { shares: 0.42, cost: 78.5 }, AAPL: { shares: 1.2, cost: 276 }, SPY: { shares: 0.3, cost: 195 } };
 
-export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; initialPreview?: boolean }) {
+export function Holdings({ tokens, chainId, initialPreview = false }: { tokens: Token[]; chainId: 56 | 97; initialPreview?: boolean }) {
   const { address } = useConnection();
   const [preview, setPreview] = useState(initialPreview);
   const [range, setRange] = useState<Range>("1W");
@@ -39,15 +38,15 @@ export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; 
   const paid = (ticker: string) => buys.filter((b) => b.ticker === ticker).reduce((n, b) => n + b.usdt, 0) || undefined;
 
   const balances = useReadContracts({
-    contracts: tokens.map((t) => ({ address: t.address, abi: erc20Abi, functionName: "balanceOf" as const, args: [address!] as const, chainId: bsc.id })),
+    contracts: tokens.map((t) => ({ address: t.address, abi: erc20Abi, functionName: "balanceOf" as const, args: [address!] as const, chainId })),
     allowFailure: true,
     query: { enabled: !!address && tokens.length > 0, refetchInterval: POLL },
   });
   // Raw token units per contract, only where the wallet holds something.
   const raw = useMemo(() => {
-    const out: Record<string, { ticker: string; units: number }> = {};
+    const out: Record<string, { ticker: string; units: number; multiplier: number }> = {};
     balances.data?.forEach((r, i) => {
-      if (r.status === "success" && (r.result as bigint) > BigInt(0)) out[tokens[i].address.toLowerCase()] = { ticker: tokens[i].ticker, units: Number(formatUnits(r.result as bigint, 18)) };
+      if (r.status === "success" && (r.result as bigint) > BigInt(0)) out[tokens[i].address.toLowerCase()] = { ticker: tokens[i].ticker, units: Number(formatUnits(r.result as bigint, 18)), multiplier: tokens[i].multiplier };
     });
     return out;
   }, [balances.data, tokens]);
@@ -67,7 +66,7 @@ export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; 
       if (!qd) return [];
       const shares = preview
         ? SAMPLE[ticker].shares
-        : Object.entries(raw).filter(([, r]) => r.ticker === ticker).reduce((n, [addr, r]) => n + r.units * (qd.multipliers[addr] ?? 1), 0);
+        : Object.entries(raw).filter(([, r]) => r.ticker === ticker).reduce((n, [addr, r]) => n + r.units * (qd.multipliers[addr] ?? r.multiplier), 0);
       return shares > 0 ? [{ ...qd, ticker, shares, cost: preview ? SAMPLE[ticker].cost : paid(ticker) }] : [];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
