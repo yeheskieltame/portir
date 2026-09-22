@@ -53,7 +53,7 @@ export default async function Markets({ searchParams }: PageProps<"/">) {
       )}
 
       {!q && !kind && current === 1 && (
-        <div className="-mx-4 mt-5 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
+        <div className="mt-5 flex snap-x gap-3 overflow-x-auto pb-1 [scrollbar-width:none] lg:grid lg:grid-cols-4 lg:overflow-visible">
           {BASKETS.map((b) => (
             <Link key={b.slug} href={`/basket/${b.slug}`} className="glass w-44 shrink-0 snap-start rounded-3xl p-4 transition-colors active:scale-95 lg:w-auto lg:p-5 lg:hover:bg-white/10">
               <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">Basket · {b.legs.length}</span>

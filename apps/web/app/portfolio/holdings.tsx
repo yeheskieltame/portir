@@ -10,6 +10,7 @@ import { Logo } from "@/app/logo";
 import { pct, usd } from "@/app/verdict";
 import { useBuys } from "@/lib/buys";
 import type { Quoted, Range } from "@/lib/live";
+import { AllocationPie, type ChartType, type Point, ValueChart } from "./charts";
 
 export interface Token {
   ticker: string;
@@ -32,6 +33,7 @@ export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; 
   const { address } = useConnection();
   const [preview, setPreview] = useState(initialPreview);
   const [range, setRange] = useState<Range>("1W");
+  const [chartType, setChartType] = useState<ChartType>("area");
   const [q, setQ] = useState("");
   const buys = useBuys();
   const paid = (ticker: string) => buys.filter((b) => b.ticker === ticker).reduce((n, b) => n + b.usdt, 0) || undefined;
@@ -73,15 +75,16 @@ export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; 
 
   const value = holdings.reduce((sum, h) => sum + h.shares * h.onchain, 0);
   // Portfolio history: each holding's per-share series × its shares, summed at matching candles from the end.
-  const series = useMemo(() => {
+  const series = useMemo((): Point[] => {
     const n = Math.min(...holdings.map((h) => h.series.length));
-    if (!holdings.length || !Number.isFinite(n) || n < 2) return [] as number[];
-    return Array.from({ length: n }, (_, i) => holdings.reduce((sum, h) => sum + h.shares * h.series[h.series.length - n + i][1], 0));
+    if (!holdings.length || !Number.isFinite(n) || n < 2) return [];
+    const at = (h: Holding, i: number) => h.series[h.series.length - n + i];
+    return Array.from({ length: n }, (_, i) => ({ t: at(holdings[0], i)[0], v: holdings.reduce((sum, h) => sum + h.shares * at(h, i)[1], 0) }));
   }, [holdings]);
   // All-time P&L only when every holding has a recorded purchase; otherwise the change over the chosen range.
   const cost = holdings.length > 0 && holdings.every((h) => h.cost != null) ? holdings.reduce((sum, h) => sum + h.cost!, 0) : null;
-  const delta = cost !== null ? value - cost : series.length ? value - series[0] : 0;
-  const base = cost !== null ? cost : series[0] || value;
+  const delta = cost !== null ? value - cost : series.length ? value - series[0].v : 0;
+  const base = cost !== null ? cost : series[0]?.v || value;
   const up = delta >= 0;
 
   const shown = holdings.filter((h) => !q || h.ticker.includes(q.toUpperCase()) || h.name.toUpperCase().includes(q.toUpperCase()));
@@ -89,23 +92,36 @@ export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; 
 
   return (
     <>
-      <div className="mt-4 flex items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-[40px] leading-none tabular-nums tracking-tight lg:text-[56px]">{usd.format(value)}</p>
-          <p className={`mt-2 font-mono text-sm tabular-nums ${up ? "text-go" : "text-block"}`}>
-            {up ? "+" : "-"}{usd.format(Math.abs(delta))} ({pct(base ? (delta / base) * 100 : 0)}) <span className="text-muted">· {cost !== null ? "All time" : range}</span>
-          </p>
-        </div>
-        <Spark series={series} up={up} />
-      </div>
-      <div className="glass mt-4 grid grid-cols-4 rounded-full p-1 lg:max-w-sm">
-        {RANGES.map((r) => (
-          <button key={r} onClick={() => setRange(r)} className={`rounded-full py-1.5 font-mono text-xs ${r === range ? "bg-white/15 text-white" : "text-muted"}`}>
-            {r === "1Y" ? "ALL" : r}
-          </button>
-        ))}
+      <div className="mt-4">
+        <p className="font-mono text-[40px] leading-none tabular-nums tracking-tight lg:text-[56px]">{usd.format(value)}</p>
+        <p className={`mt-2 font-mono text-sm tabular-nums ${up ? "text-go" : "text-block"}`}>
+          {up ? "+" : "-"}{usd.format(Math.abs(delta))} ({pct(base ? (delta / base) * 100 : 0)}) <span className="text-muted">· {cost !== null ? "All time" : range}</span>
+        </p>
       </div>
       {preview && <p className="mt-3 text-xs text-warn">Sample holdings, not your wallet. <button className="underline" onClick={() => setPreview(false)}>Back to my wallet</button></p>}
+
+      {!empty && (
+        <section className="glass mt-4 rounded-3xl">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
+            <div className="glass grid grid-cols-2 rounded-full p-1">
+              {(["area", "bar"] as const).map((t) => (
+                <button key={t} onClick={() => setChartType(t)} className={`rounded-full px-3 py-1 text-xs capitalize ${t === chartType ? "bg-white text-black" : "text-muted"}`}>{t === "area" ? "Line" : "Bars"}</button>
+              ))}
+            </div>
+            <div className="glass grid grid-cols-4 rounded-full p-1">
+              {RANGES.map((r) => (
+                <button key={r} onClick={() => setRange(r)} className={`rounded-full px-3 py-1 font-mono text-xs ${r === range ? "bg-white/15 text-white" : "text-muted"}`}>
+                  {r === "1Y" ? "ALL" : r}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-2 px-2 pb-2">
+            <ValueChart points={series} type={chartType} />
+          </div>
+          <p className="px-4 pb-4 text-xs text-muted">Portfolio value from each holding&apos;s on-chain price history. Touch or hover the chart for the value at that time.</p>
+        </section>
+      )}
 
       <div className="lg:mt-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
       <section className="glass mt-4 rounded-3xl">
@@ -150,7 +166,20 @@ export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; 
           </ul>
         )}
       </section>
-      {!empty && <Dividends holdings={holdings} />}
+      {!empty && (
+        <div>
+          <section className="glass mt-4 rounded-3xl p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg">Allocation</h2>
+              <span className="text-xs text-muted">by value</span>
+            </div>
+            <div className="mt-4">
+              <AllocationPie slices={holdings.map((h) => ({ label: h.name, value: h.shares * h.onchain }))} />
+            </div>
+          </section>
+          <Dividends holdings={holdings} />
+        </div>
+      )}
       {!preview && !empty && <p className="mt-3 text-xs text-muted lg:col-span-2">Live from your wallet, refreshed every 30s. P&amp;L uses purchases made in this app on this device.</p>}
       </div>
     </>
@@ -200,28 +229,5 @@ function Dividends({ holdings }: { holdings: Holding[] }) {
       </ul>
       <p className="px-4 pb-4 pt-3 text-xs text-muted">Read from each token&apos;s share multiplier: every dividend the issuer received became extra shares in your wallet, no claiming needed.</p>
     </section>
-  );
-}
-
-// ponytail: 120×56 sparkline, same idea as the stock chart. Shared component when a third chart appears.
-function Spark({ series, up }: { series: number[]; up: boolean }) {
-  if (series.length < 2) return <div className="h-14 w-32 lg:h-24 lg:w-80" />;
-  const W = 128, H = 56, lo = Math.min(...series), hi = Math.max(...series);
-  const x = (i: number) => (i / (series.length - 1)) * (W - 4) + 2;
-  const y = (v: number) => H - 4 - ((v - lo) / (hi - lo || 1)) * (H - 8);
-  const d = series.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
-  const color = up ? "var(--color-go)" : "var(--color-block)";
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-14 w-32 shrink-0 lg:h-24 lg:w-80" aria-hidden>
-      <defs>
-        <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={color} stopOpacity=".35" />
-          <stop offset="1" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${d} L${W - 2} ${H} L2 ${H} Z`} fill="url(#spark)" />
-      <path d={d} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" />
-      <circle cx={x(series.length - 1)} cy={y(series[series.length - 1])} r="2.5" fill={color} />
-    </svg>
   );
 }
