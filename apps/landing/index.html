@@ -76,6 +76,8 @@ body{overflow-x:hidden}
 .ring{position:absolute;left:50%;top:50%;transform-style:preserve-3d;transform:rotateY(var(--ry,0deg))}
 .tile{--w:200px;position:absolute;width:var(--w);height:var(--w);left:calc(var(--w)/-2);top:calc(var(--w)/-2);border-radius:28px;border:1px solid rgba(255,255,255,.14);background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.03));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:grid;place-content:center;justify-items:center;gap:18px;transform:rotateY(calc(var(--i)*var(--step)))translateZ(var(--r));backface-visibility:hidden}
 .tile img{width:56px;height:56px;filter:invert(1)}
+.tile img.brand{filter:none;border-radius:16px}
+.tile img.wide{width:auto;max-width:130px;height:auto;max-height:56px;border-radius:10px}
 .tile i{font:500 34px/1 Geist,sans-serif;font-style:normal;color:var(--c);width:56px;height:56px;display:grid;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--c) 14%,transparent);letter-spacing:-.04em}
 .tile span{font-size:15px;font-weight:500;letter-spacing:-.01em;text-align:center;padding:0 12px}
 .card{border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
@@ -119,7 +121,7 @@ html,body,a,button{cursor:none!important}
 .glass-card{width:min(330px,calc(100vw - 36px));padding:20px 20px 24px}
 .glass-card.left{left:18px;top:14%}.glass-card.right{right:18px;top:38%}
 .section{padding:80px 18px}.section h2{font-size:clamp(36px,9vw,48px)}
-.steps{grid-template-columns:1fr 1fr}.ring-scene{height:300px}.tile{--w:150px;border-radius:22px;gap:12px}.tile img,.tile i{width:40px;height:40px}.tile i{font-size:24px}.tile span{font-size:13px}
+.steps{grid-template-columns:1fr 1fr}.ring-scene{height:300px}.tile{--w:150px;border-radius:22px;gap:12px}.tile img,.tile i{width:40px;height:40px}.tile img.wide{width:auto;max-width:100px;height:auto;max-height:40px}.tile i{font-size:24px}.tile span{font-size:13px}
 .footer{padding:48px 18px 24px}.footer-top{flex-direction:column;align-items:flex-start}.footer-cols{grid-template-columns:1fr 1fr}.giant{margin:0 -18px -6px}
 }
 @media(max-width:560px){.steps,.footer-cols{grid-template-columns:1fr}.play{width:64px;height:64px;font-size:20px}}
@@ -189,16 +191,16 @@ html,body,a,button{cursor:none!important}
       <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/bnbchain.svg"><span>BNB Agent Studio</span></div>
       <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/binance.svg"><span>Binance Web3 Wallet</span></div>
       <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/binance.svg"><span>Agentic Wallet</span></div>
-      <div class="tile"><i style="--c:#1fc7d4">P</i><span>PancakeSwap</span></div>
+      <div class="tile"><img class="brand" alt="" src="logos/pancakeswap.png"><span>PancakeSwap</span></div>
       <div class="tile"><i style="--c:#8f7cff">LM</i><span>LiquidMesh</span></div>
-      <div class="tile"><i style="--c:#fff">O</i><span>Ondo</span></div>
+      <div class="tile"><img class="brand" alt="" src="logos/ondo.png"><span>Ondo</span></div>
       <div class="tile"><i style="--c:#f0b90b">b</i><span>bStocks</span></div>
       <div class="tile"><i style="--c:#ff6b6b">x</i><span>xStocks</span></div>
       <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/modelcontextprotocol.svg"><span>MCP</span></div>
       <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/claude.svg"><span>Claude</span></div>
-      <div class="tile"><i style="--c:#7ef0b0">402</i><span>b402</span></div>
+      <div class="tile"><img class="brand wide" alt="" src="logos/b402.png"><span>b402</span></div>
       <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/tether.svg"><span>USDT</span></div>
-      <div class="tile"><i style="--c:#61a6f6">Bsc</i><span>BscScan</span></div>
+      <div class="tile"><img class="brand wide" alt="" src="logos/bscscan.svg"><span>BscScan</span></div>
     </div>
   </div>
 
