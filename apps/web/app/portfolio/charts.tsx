@@ -10,8 +10,8 @@ export interface Point {
 export type ChartType = "area" | "bar";
 
 const W = 100, H = 100; // percent space; shapes stretch, text stays HTML so nothing distorts
-const day = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-const when = (t: number) => new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+const day = (t: number) => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const when = (t: number) => new Date(t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 /** Portfolio value over time. Area or bars, hover/touch for the exact value, y-grid with dollar labels. */
 export function ValueChart({ points, type }: { points: Point[]; type: ChartType }) {

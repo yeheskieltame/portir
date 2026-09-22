@@ -9,8 +9,8 @@ export interface Candle {
 }
 
 const W = 340, H = 140, P = 4;
-const day = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-const when = (t: number) => new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+const day = (t: number) => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const when = (t: number) => new Date(t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 /** Same area chart as before, now with a crosshair and a tooltip that follows the finger or mouse. */
 export function StockChart({ candles, reference }: { candles: Candle[]; reference: number | null }) {
