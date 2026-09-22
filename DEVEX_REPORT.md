@@ -203,6 +203,27 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
 - Not yet: the 48h trial deploy needs `bag platform login` (GitHub device flow, interactive) and whether the Trading API
   accepts the trial's IPs is the open question from day 4.
 
+### 2026-09-23 (day 5, later): Agentic Wallet as the executor's hands
+
+- **Install**: `npx skills add binance/binance-skills-hub/skills/binance-web3/binance-agentic-wallet` asks which of 79
+  agents to install to and defaults to a dozen; the CLI itself is `npx @binance/agentic-wallet` (1.10.0), not on PATH
+  as `baw`. The skill references are excellent (one file per command, every response documented).
+- **Sign-in is a race.** `auth signin --json` → open `urlForWeb` → scan in the Binance App → `auth verify` blocks. The QR
+  died on us twice ("QR code does not exist or expired") within well under the documented 5 minutes; third try worked
+  when the app was already open on the scan screen. **Ask: longer QR TTL, or a resumable verify.**
+- **Headless works.** The session is one 112-byte file, `~/.baw/session.json` (0600); the CLI honours `BINANCE_BAW_DIR`
+  (undocumented; found by grepping `process.env`), so a deployed agent can materialise it from a secret into a writable
+  dir. Limits: `maxSigninDuration 48h`, `inactiveSignoutDuration 48h`, `signInMaxTime` seven days → an executor must be
+  re-paired weekly by a human. Fine for a demo; an "agent session" that outlives a week is the real ask.
+- **Limits live in the app, read-only from the CLI**: daily limit (default 50,000), token scope, abnormal-tx handling
+  `AutoReject`, x402 daily limit 20, dev mode off. Exactly the scoped-session guardrail the PRD wanted, without any code.
+- **Quotes agree.** `market-order quote 10 USDT → NVDAon` returned 0.043493 shares; our Trading API route quoted 0.043826
+  seconds earlier (same Ondo pool, 0.5% default slippage on the wallet side). The wallet also runs the swap from Binance's
+  side, so this path is not affected by the cloud-IP `40304` block — the executor now buys through it
+  (`PORTIR_EXECUTION=agentic-wallet`), re-running the Guard on the wallet's executable price first.
+- **`baw` stores raw JSON badly through env channels**: `bag env set KEY '{"…"}'` kept one character. Base64 it.
+- Untested until funds land: a real `market-order swap` + `market-order list` poll to `FINISHED`.
+
 ## Issuer comparison (fill in during day 1-3)
 
 | | bStocks | Ondo | xStocks |

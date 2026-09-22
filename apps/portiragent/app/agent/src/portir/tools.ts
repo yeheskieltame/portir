@@ -134,6 +134,23 @@ export const PORTIR_TOOLS = [
   }),
 ];
 
+PORTIR_TOOLS.push(
+  def({
+    name: "executor_status",
+    description: "How this agent executes plans: execution backend, Agentic Wallet session state and limits, scan interval.",
+    input: {},
+    run: async () => {
+      const mode = process.env.PORTIR_EXECUTION ?? "off";
+      let wallet: unknown = null;
+      if (mode === "agentic-wallet") {
+        const { status, settings, bscAddress } = await import("./agenticWallet.js");
+        wallet = await Promise.all([status(), settings(), bscAddress()]).then(([s, cfg, address]) => ({ status: s.status, address, sessionExpireTime: cfg.sessionExpireTime, dailyLimit: cfg.dailyLimit, quotaLeft: cfg.quotaLeft })).catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+      }
+      return { execution: mode, registry: process.env.PORTIR_REGISTRY ?? null, scanSeconds: Number(process.env.PORTIR_SCAN_SECONDS ?? 900), agenticWallet: wallet };
+    },
+  }),
+);
+
 const text = (payload: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(payload) }] });
 
 export function registerPortirMcpTools(server: McpServer): void {

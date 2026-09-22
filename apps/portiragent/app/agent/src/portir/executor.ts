@@ -14,7 +14,9 @@
  * Decisions are deterministic (@portir/core thresholds). The LLM is not in
  * this loop. Signing is fixed code in registry.ts.
  */
-import { type Hex } from "viem";
+import { formatUnits, type Hex } from "viem";
+import { guard, isSuspectDiscount } from "@portir/core";
+import * as aw from "./agenticWallet.js";
 import { assess } from "./market.js";
 import { OUTCOME, type Plan, decodeTarget, getPlan, planCount, recordRun, runsOf } from "./registry.js";
 
@@ -28,7 +30,29 @@ const log = (msg: string) => console.log(`[portir.executor] ${msg}`);
  * (Agentic Wallet session, Trading API + agent wallet) plug in here.
  */
 type Execute = (plan: Plan, ticker: string) => Promise<{ txHash: Hex; note: string }>;
-const execute: Execute = async () => {
+
+/**
+ * `agentic-wallet`: quote through the user's Binance Agentic Wallet, re-run the
+ * Guard on the executable price, then swap and wait for the order to finish.
+ * The wallet's own daily limit and token scope bound what this can do.
+ */
+const viaAgenticWallet: Execute = async (plan, ticker) => {
+  const a = await assess(ticker);
+  const offer = a.view.offers.find((o) => !o.halted && !(o.spreadBps !== null && isSuspectDiscount(o.spreadBps)));
+  if (!offer) throw new Error("no tradable issuer");
+  const amount = Number(formatUnits(plan.amount, 18));
+  const q = await aw.quote(offer.contractAddress, amount);
+  const pricePerShare = amount / (q.tokensOut * offer.multiplier);
+  if (a.view.reference !== null) {
+    const d = guard({ session: a.view.session ?? "closed", onchain: pricePerShare, reference: a.view.reference });
+    if (d.verdict === "BLOCK") throw new Error(`executable price failed the Guard: ${d.reason}`);
+  }
+  const { txHash } = await aw.swap(offer.contractAddress, amount);
+  return { txHash: (txHash || `0x${"0".repeat(64)}`) as Hex, note: `Bought ≈${(q.tokensOut * offer.multiplier).toFixed(4)} shares from ${offer.issuer} at $${pricePerShare.toFixed(2)} via Agentic Wallet.` };
+};
+
+const execute: Execute = async (plan, ticker) => {
+  if (process.env.PORTIR_EXECUTION === "agentic-wallet") return viaAgenticWallet(plan, ticker);
   throw new Error("execution is not enabled on this agent (PORTIR_EXECUTION=off)");
 };
 const executionEnabled = () => (process.env.PORTIR_EXECUTION ?? "off") !== "off";

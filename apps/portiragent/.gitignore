@@ -22,3 +22,7 @@ dist/
 
 # Skills installed at workspace root (regeneratable via `bag skills install`).
 .claude/skills/
+
+# Agent skills installed by `npx skills add` (regeneratable)
+.agents/
+skills-lock.json
