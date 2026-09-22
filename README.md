@@ -67,6 +67,14 @@ are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
 | --- | --- | --- | --- |
 | BSC testnet (97) | `0x28daDC35523CE792C7C09faf516763830C38f36b` | `0xD408f733B94Bee65714C0fE99212F47cD55A315C` | [BscScan](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code) (proxy linked) + Sourcify |
 
+Testnet fixtures (`contracts/src/testnet/`, non-upgradeable test doubles, all verified; addresses in
+`contracts/deployments/testnet.json`): `MockUSDT` with a 1,000/day faucet
+([`0x913A…0f54`](https://testnet.bscscan.com/address/0x913A1FF1cc200D573885876B128f5214bF140f54#code)), `TestExchange`
+that sells and buys back shares at a keeper-set price ([`0x901a…5Cb3`](https://testnet.bscscan.com/address/0x901a327BCC8AD124197457D48BDbf88520665Cb3#code)),
+and one `MockStock` per featured ticker. The agent wallet is the keeper: it mirrors mainnet on-chain prices so the Guard
+sees real spreads. `pnpm deploy:testnet:fixtures` / `pnpm verify:testnet:fixtures`. Security review of `PlanRegistry`:
+`contracts/AUDIT.md`.
+
 ## Run
 
 ```sh

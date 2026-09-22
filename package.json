@@ -13,6 +13,8 @@
     "deploy:testnet": "cd contracts && forge clean && forge script script/Deploy.s.sol --account portir-deployer --password-file .keystore-password --broadcast --rpc-url bsc_testnet",
     "deploy:mainnet": "cd contracts && forge clean && forge script script/Deploy.s.sol --account portir-deployer --password-file .keystore-password --broadcast --rpc-url bsc",
     "verify:testnet": "contracts/script/verify.sh bsc_testnet 0x28daDC35523CE792C7C09faf516763830C38f36b",
-    "dev:landing": "pnpm --filter landing dev"
+    "dev:landing": "pnpm --filter landing dev",
+    "deploy:testnet:fixtures": "cd contracts && forge clean && KEEPER=${KEEPER:-0xFA0Be0E8a604250C3fdCCE4C35f645bdA03328A5} forge script script/testnet/DeployTestnet.s.sol --account portir-deployer --password-file .keystore-password --broadcast --rpc-url bsc_testnet",
+    "verify:testnet:fixtures": "contracts/script/testnet/verify.sh"
   }
 }
