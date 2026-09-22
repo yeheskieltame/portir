@@ -33,19 +33,20 @@ export default async function BasketPage({ params }: PageProps<"/basket/[slug]">
   const change = legs.reduce((n, l) => n + (l.stock.change24hPct ?? 0) * (l.weight / weight), 0);
 
   return (
-    <>
-      <div className="sticky top-0 z-10 -mx-4 flex items-center gap-3 bg-paper/85 px-4 py-2 backdrop-blur-md">
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-x-10">
+      <div className="sticky top-0 z-10 -mx-4 flex items-center gap-3 bg-paper/85 px-4 py-2 backdrop-blur-md lg:static lg:mx-0 lg:bg-transparent lg:px-0">
         <Link href="/" className="glass inline-flex size-9 items-center justify-center rounded-full text-base" aria-label="Back to markets">←</Link>
         <span className="font-mono text-xs text-muted">Basket · {legs.length} holdings</span>
       </div>
 
       <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">Basket</p>
-      <h1 className="mt-1 text-[34px] leading-[1] tracking-[-0.03em]">{basket.name}</h1>
+      <h1 className="mt-1 text-[34px] leading-[1] tracking-[-0.03em] lg:text-[52px]">{basket.name}</h1>
       <p className="mt-2 text-sm text-muted">{basket.blurb}</p>
       <p className={`mt-3 font-mono text-sm tabular-nums ${change < 0 ? "text-block" : "text-go"}`}>{pct(change)} today <span className="text-muted">· weighted</span></p>
       {error && <p role="status" className="mt-3 rounded-xl border border-dashed border-line px-3 py-2 text-xs text-muted">Sample prices. Live market data could not be loaded.</p>}
 
-      <section className="glass mt-5 rounded-3xl p-4">
+      <aside className="lg:col-start-2 lg:row-start-1 lg:row-span-[12] lg:sticky lg:top-6 lg:self-start">
+      <section className="glass mt-5 rounded-3xl p-4 lg:mt-0">
         <div className="flex items-center gap-2">
           <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${tone.chip}`}>{tone.label}</span>
           <span className="text-xs text-muted">across every holding</span>
@@ -62,8 +63,9 @@ export default async function BasketPage({ params }: PageProps<"/basket/[slug]">
         <Link href={`/plans?target=BASKET:${encodeURIComponent(basket.name)}`} className="glass rounded-full py-3 text-center text-sm font-medium active:scale-95">Set up a plan</Link>
         <BuySheet name={basket.name} legs={legs.map((l) => ({ ticker: l.ticker, name: l.stock.name, onchain: l.stock.onchain, weight: l.weight / weight }))} />
       </div>
+      </aside>
 
-      <section className="mt-6">
+      <section className="mt-6 lg:col-start-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">Composition · $100 buys</h2>
         <ul className="glass mt-2 divide-y divide-line rounded-3xl">
           {legs.map((l) => {
@@ -95,6 +97,6 @@ export default async function BasketPage({ params }: PageProps<"/basket/[slug]">
         {missing > 0 && <p className="mt-2 text-xs text-muted">{missing} holding{missing > 1 ? "s" : ""} could not be priced and {missing > 1 ? "are" : "is"} left out for now.</p>}
         <p className="mt-2 text-xs text-muted">Fixed weights, on-chain tokens from the cheapest fair provider per holding. Prices {usd.format(legs.reduce((n, l) => n + l.stock.onchain * (l.weight / weight), 0))} per weighted share.</p>
       </section>
-    </>
+    </div>
   );
 }

@@ -99,7 +99,8 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
 
   return (
     <>
-      <form action={create} className="glass mt-6 space-y-4 rounded-3xl p-4 text-sm">
+      <div className="lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-8">
+      <form action={create} className="glass mt-6 space-y-4 rounded-3xl p-4 text-sm lg:sticky lg:top-6 lg:p-5">
         <label className="block">
           What to buy
           <select name="target" className={field} defaultValue={preset}>
@@ -159,7 +160,8 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
         )}
       </form>
 
-      <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">Your plans</h2>
+      <div className="lg:mt-6">
+      <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-muted lg:mt-0">Your plans</h2>
       {ids.error && (
         <p role="alert" className="mt-2 text-sm text-block">
           Could not read your plans. Check that your wallet is on the right network.
@@ -214,6 +216,8 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
       {ids.data && ids.data.length > 0 && executorAddress === zeroAddress && (
         <p className="mt-3 text-xs text-muted">Runs are recorded by the executor agent on BNB Agent Studio once it is live; until then plans are owner-run.</p>
       )}
+      </div>
+      </div>
     </>
   );
 }

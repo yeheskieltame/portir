@@ -91,14 +91,14 @@ export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; 
     <>
       <div className="mt-4 flex items-end justify-between gap-4">
         <div>
-          <p className="font-mono text-[40px] leading-none tabular-nums tracking-tight">{usd.format(value)}</p>
+          <p className="font-mono text-[40px] leading-none tabular-nums tracking-tight lg:text-[56px]">{usd.format(value)}</p>
           <p className={`mt-2 font-mono text-sm tabular-nums ${up ? "text-go" : "text-block"}`}>
             {up ? "+" : "-"}{usd.format(Math.abs(delta))} ({pct(base ? (delta / base) * 100 : 0)}) <span className="text-muted">· {cost !== null ? "All time" : range}</span>
           </p>
         </div>
         <Spark series={series} up={up} />
       </div>
-      <div className="glass mt-4 grid grid-cols-4 rounded-full p-1">
+      <div className="glass mt-4 grid grid-cols-4 rounded-full p-1 lg:max-w-sm">
         {RANGES.map((r) => (
           <button key={r} onClick={() => setRange(r)} className={`rounded-full py-1.5 font-mono text-xs ${r === range ? "bg-white/15 text-white" : "text-muted"}`}>
             {r === "1Y" ? "ALL" : r}
@@ -107,6 +107,7 @@ export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; 
       </div>
       {preview && <p className="mt-3 text-xs text-warn">Sample holdings, not your wallet. <button className="underline" onClick={() => setPreview(false)}>Back to my wallet</button></p>}
 
+      <div className="lg:mt-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
       <section className="glass mt-4 rounded-3xl">
         <div className="flex items-center justify-between px-4 pt-4">
           <h2 className="text-lg">Holdings</h2>
@@ -149,9 +150,9 @@ export function Holdings({ tokens, initialPreview = false }: { tokens: Token[]; 
           </ul>
         )}
       </section>
-      {!preview && !empty && <p className="mt-3 text-xs text-muted">Live from your wallet, refreshed every 30s. P&amp;L uses purchases made in this app on this device.</p>}
-
       {!empty && <Dividends holdings={holdings} />}
+      {!preview && !empty && <p className="mt-3 text-xs text-muted lg:col-span-2">Live from your wallet, refreshed every 30s. P&amp;L uses purchases made in this app on this device.</p>}
+      </div>
     </>
   );
 }
@@ -204,14 +205,14 @@ function Dividends({ holdings }: { holdings: Holding[] }) {
 
 // ponytail: 120×56 sparkline, same idea as the stock chart. Shared component when a third chart appears.
 function Spark({ series, up }: { series: number[]; up: boolean }) {
-  if (series.length < 2) return <div className="h-14 w-32" />;
+  if (series.length < 2) return <div className="h-14 w-32 lg:h-24 lg:w-80" />;
   const W = 128, H = 56, lo = Math.min(...series), hi = Math.max(...series);
   const x = (i: number) => (i / (series.length - 1)) * (W - 4) + 2;
   const y = (v: number) => H - 4 - ((v - lo) / (hi - lo || 1)) * (H - 8);
   const d = series.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
   const color = up ? "var(--color-go)" : "var(--color-block)";
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-14 w-32 shrink-0" aria-hidden>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-14 w-32 shrink-0 lg:h-24 lg:w-80" aria-hidden>
       <defs>
         <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={color} stopOpacity=".35" />

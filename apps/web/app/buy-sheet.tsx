@@ -105,9 +105,10 @@ export function BuySheet({ name, legs }: { name: string; legs: Leg[] }) {
         {basket ? "Buy basket" : "Buy"}
       </button>
       {open && (
-        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={close}>
-          <div className="animate-rise max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-line bg-[#0b111c] p-5 pb-8" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`Buy ${name}`}>
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 backdrop-blur-sm lg:items-center" onClick={close}>
+          {/* Bottom sheet on phones, centered dialog on desktop. */}
+          <div className="animate-rise max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-line bg-[#0b111c] p-5 pb-8 lg:rounded-3xl lg:p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`Buy ${name}`}>
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20 lg:hidden" />
 
             {!address ? (
               <>

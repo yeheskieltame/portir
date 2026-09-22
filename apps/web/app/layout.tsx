@@ -21,16 +21,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${serif.variable} antialiased`}>
       <body className="font-sans">
         <Providers>
-          <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pb-32">
-            <header className="flex items-center justify-between py-4">
-              <Link href="/" className="text-2xl tracking-tight">
+          <Nav />
+          {/* Phone: one column with a tab bar. Desktop: sidebar + a wide content area. */}
+          <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pb-32 lg:ml-60 lg:max-w-none lg:px-10 lg:pb-16 xl:px-16">
+            <header className="flex items-center justify-between py-4 lg:py-6">
+              <Link href="/" className="text-2xl tracking-tight lg:invisible">
                 Port<span className="serif-italic text-[1.2em]">ir</span>
               </Link>
               <ConnectButton />
             </header>
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 lg:mx-auto lg:w-full lg:max-w-6xl">{children}</main>
           </div>
-          <Nav />
         </Providers>
       </body>
     </html>

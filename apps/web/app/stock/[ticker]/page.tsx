@@ -34,9 +34,9 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
     : null;
 
   return (
-    <>
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-x-10">
       {/* Stays at the top while the page scrolls, so "back" is always one tap away. */}
-      <div className="sticky top-0 z-10 -mx-4 flex items-center gap-3 bg-paper/85 px-4 py-2 backdrop-blur-md">
+      <div className="sticky top-0 z-10 -mx-4 flex items-center gap-3 bg-paper/85 px-4 py-2 backdrop-blur-md lg:static lg:mx-0 lg:bg-transparent lg:px-0">
         <Link href="/" className="glass inline-flex size-9 items-center justify-center rounded-full text-base" aria-label="Back to markets">
           ←
         </Link>
@@ -54,7 +54,7 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
           </p>
         </div>
       </div>
-      <p className="mt-4 font-mono text-[40px] leading-none tabular-nums tracking-tight">{usd.format(s.onchain)}</p>
+      <p className="mt-4 font-mono text-[40px] leading-none tabular-nums tracking-tight lg:text-[56px]">{usd.format(s.onchain)}</p>
       <p className="mt-1 flex items-center gap-2 font-mono text-xs tabular-nums">
         <span className={change === null ? "text-muted" : change < 0 ? "text-block" : "text-go"}>{change === null ? "—" : pct(change)} today</span>
         <span className="text-muted">·</span>
@@ -76,7 +76,9 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
         {sample && <span className="ml-auto self-center text-xs text-muted">sample data</span>}
       </div>
 
-      <section className="glass mt-6 rounded-3xl p-4">
+      {/* Right column on desktop: verdict, actions, providers, facts. Same order on phones, after the chart. */}
+      <aside className="lg:col-start-2 lg:row-start-1 lg:row-span-[12] lg:sticky lg:top-6 lg:self-start">
+      <section className="glass mt-6 rounded-3xl p-4 lg:mt-0">
         <div className="flex items-center gap-2">
           <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${tone.chip}`}>{tone.label}</span>
           {d && <span className="font-mono text-xs text-muted tabular-nums">{pct(d.spreadBps / 100)} vs exchange</span>}
@@ -137,9 +139,10 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
           </dl>
         </div>
       </section>
+      </aside>
 
       {meta?.company.description && (
-        <section className="mt-6">
+        <section className="mt-6 lg:col-start-1">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">About</h2>
           <div className="glass mt-2 rounded-3xl p-4 text-sm">
             <p className="text-muted">{meta.company.description}</p>
@@ -150,8 +153,7 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
           </div>
         </section>
       )}
-
-    </>
+    </div>
   );
 }
 
@@ -178,7 +180,7 @@ function Chart({ candles }: { candles: Candle[] }) {
   const at = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
   return (
     <figure className="mt-5">
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-36 w-full" role="img" aria-label="Price chart">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-36 w-full lg:h-64" role="img" aria-label="Price chart">
         <defs>
           <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={color} stopOpacity=".35" />

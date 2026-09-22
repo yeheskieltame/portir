@@ -35,8 +35,8 @@ export default function Profile() {
           </button>
         </div>
       ) : (
-        <>
-          <div className="glass mt-6 flex items-center gap-3 rounded-3xl p-4">
+        <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+          <div className="glass mt-6 flex items-center gap-3 rounded-3xl p-4 lg:col-span-2">
             <span aria-hidden className="size-12 shrink-0 rounded-full" style={{ background: `conic-gradient(from ${parseInt(address.slice(2, 5), 16) % 360}deg, #61a6f6, #ffb040, #7ef0b0, #61a6f6)` }} />
             <div className="min-w-0">
               <p className="truncate font-mono text-sm">{address}</p>
@@ -44,18 +44,18 @@ export default function Profile() {
             </div>
           </div>
 
-          <dl className="glass mt-4 divide-y divide-line rounded-3xl text-sm">
+          <dl className="glass mt-4 divide-y divide-line rounded-3xl text-sm lg:mt-0">
             <Row label="USDT on BNB Chain" value={usdt.data === undefined ? "…" : usd.format(Number(formatUnits(usdt.data, 18)))} />
             <Row label="Agentic Wallet session" value="Next" chip />
             <Row label="Executor agent" value="Next" chip />
           </dl>
 
-          <div className="glass mt-4 divide-y divide-line rounded-3xl text-sm">
+          <div className="glass mt-4 divide-y divide-line rounded-3xl text-sm lg:mt-0">
             {explorer && <a className="block px-4 py-3" href={`${explorer}/address/${address}`} target="_blank" rel="noopener">Wallet on BscScan ↗</a>}
             {explorer && planRegistryAddress && <a className="block px-4 py-3" href={`${explorer}/address/${planRegistryAddress}`} target="_blank" rel="noopener">Plan registry contract ↗</a>}
             <button className="block w-full px-4 py-3 text-left text-block" onClick={() => disconnect.mutate()}>Disconnect</button>
           </div>
-        </>
+        </div>
       )}
     </>
   );
