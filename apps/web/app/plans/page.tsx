@@ -26,25 +26,31 @@ import { chain } from "@/lib/wagmi";
 const DAY = 86_400;
 const when = (seconds: number) =>
   new Date(seconds * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-const field = "mt-1 w-full rounded-lg border border-line bg-paper px-3 py-2";
+const field = "field";
 
 export default function Plans() {
   const { address } = useConnection();
-
-  if (!planRegistryAddress) {
-    return (
-      <Notice>
-        The plan registry is not deployed yet. Deploy <code>contracts/</code> and set{" "}
-        <code>NEXT_PUBLIC_PLAN_REGISTRY</code>.
-      </Notice>
-    );
-  }
-  if (!address) return <Notice>Connect your wallet to set up a recurring investment.</Notice>;
-  return <PlansFor owner={address} registry={planRegistryAddress} />;
+  return (
+    <>
+      <h1 className="mt-4 text-[34px] leading-[1] tracking-[-0.03em]">
+        Invest on <span className="serif-italic text-[1.1em]">a schedule.</span>
+      </h1>
+      <p className="mt-3 text-sm text-muted">Set an amount and a cadence. The agent buys only when the market is open and the price is fair.</p>
+      {!planRegistryAddress ? (
+        <Notice>
+          The plan registry is not deployed yet. Deploy <code>contracts/</code> and set <code>NEXT_PUBLIC_PLAN_REGISTRY</code>.
+        </Notice>
+      ) : !address ? (
+        <Notice>Connect your wallet to set up a recurring investment.</Notice>
+      ) : (
+        <PlansFor owner={address} registry={planRegistryAddress} />
+      )}
+    </>
+  );
 }
 
 function Notice({ children }: { children: React.ReactNode }) {
-  return <p className="mt-10 rounded-2xl border border-line bg-card p-5 text-sm text-muted">{children}</p>;
+  return <p className="glass mt-6 rounded-3xl p-5 text-sm text-muted">{children}</p>;
 }
 
 function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${string}` }) {
@@ -86,9 +92,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
 
   return (
     <>
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight">Invest on a schedule</h1>
-
-      <form action={create} className="mt-4 space-y-4 rounded-2xl border border-line bg-card p-4 text-sm">
+      <form action={create} className="glass mt-6 space-y-4 rounded-3xl p-4 text-sm">
         <label className="block">
           What to buy
           <select name="target" className={field}>
@@ -138,7 +142,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
             <span className="block text-muted">Wait up to 48 hours for the market to open and the price to be fair.</span>
           </span>
         </label>
-        <button disabled={busy} className="w-full rounded-full bg-brand py-3 font-medium text-white disabled:opacity-60">
+        <button disabled={busy} className="w-full rounded-full bg-white py-3 font-medium text-black disabled:opacity-60">
           {busy ? "Confirming…" : "Start plan"}
         </button>
         {error && (
@@ -148,7 +152,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
         )}
       </form>
 
-      <h2 className="mt-8 font-medium">Your plans</h2>
+      <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">Your plans</h2>
       {ids.error && (
         <p role="alert" className="mt-2 text-sm text-block">
           Could not read your plans. Check that your wallet is on the right network.
@@ -159,10 +163,10 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
         {plans.data?.map((plan, i) => {
           const id = ids.data![i];
           return (
-            <li key={id} className="rounded-2xl border border-line bg-card p-4 text-sm">
+            <li key={id} className="glass rounded-3xl p-4 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-medium">{decodeTarget(plan.target).replace("BASKET:", "")}</p>
+                  <p className="text-lg font-medium leading-tight">{decodeTarget(plan.target).replace("BASKET:", "")}</p>
                   <p className="text-muted">
                     {formatUnits(plan.amount, USDT_DECIMALS)} USDT every {plan.interval / DAY} days
                     {plan.smartTiming && " · smart timing"}

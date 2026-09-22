@@ -8,16 +8,19 @@ export function ConnectButton() {
   const connect = useConnect();
   const disconnect = useDisconnect();
 
-  const cls = "rounded-full border border-line bg-card px-4 py-2 text-sm font-medium";
   if (address) {
     return (
-      <button className={cls} onClick={() => disconnect.mutate()} title="Disconnect">
+      <button className="glass rounded-full px-4 py-2 font-mono text-sm" onClick={() => disconnect.mutate()} title="Disconnect">
         {address.slice(0, 6)}…{address.slice(-4)}
       </button>
     );
   }
   return (
-    <button className={cls} disabled={connect.isPending} onClick={() => connect.mutate({ connector })}>
+    <button
+      className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black disabled:opacity-60"
+      disabled={connect.isPending}
+      onClick={() => connect.mutate({ connector })}
+    >
       {connect.isPending ? "Connecting…" : "Connect wallet"}
     </button>
   );
