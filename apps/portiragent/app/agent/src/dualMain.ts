@@ -89,6 +89,7 @@ import {
 import type { RunWork } from "./sellerCore.js";
 import { LLM_READ_TOOLS } from "./tools.js";
 import { startDcaLoop } from "./portir/executor.js";
+import { cleanAnswer } from "./portir/text.js";
 
 const APP_NAME = "agent";
 
@@ -207,7 +208,7 @@ export function buildRunWork(): RunWork {
       stopWhen: stepCountIs(8), // bounded tool-call loop, then final text
       abortSignal,
     });
-    return result.text.trim();
+    return cleanAnswer(result.text);
   };
 }
 

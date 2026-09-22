@@ -95,6 +95,7 @@ import {
 import * as signing from "./signing.js";
 import { READ_TOOL_CATALOG, type ReadToolName } from "./readToolCatalog.js";
 import { registerPortirMcpTools } from "./portir/tools.js";
+import { cleanAnswer } from "./portir/text.js";
 
 const APP_NAME = "agent";
 function safeLogText(value: unknown): string {
@@ -255,7 +256,7 @@ export function buildRunWork(): McpRunWork {
           stopWhen: stepCountIs(8),
           abortSignal: signal,
         });
-        return result.text.trim();
+        return cleanAnswer(result.text);
       };
     }
     return run(prompt, context);

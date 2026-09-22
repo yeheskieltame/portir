@@ -5,7 +5,9 @@ import { NA_REASON, compact, decide, pct, toneOf, usd } from "@/app/verdict";
 import { STOCK_NAMES } from "@/lib/catalog";
 import { RANGES, type Range, loadStock } from "@/lib/live";
 import { BuySheet } from "@/app/buy-sheet";
+import { Suspense } from "react";
 import { StockChart } from "./chart";
+import { News } from "./news";
 
 export const revalidate = 30;
 
@@ -140,6 +142,10 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
         </div>
       </section>
       </aside>
+
+      <Suspense fallback={null}>
+        <News ticker={s.ticker} name={s.name} />
+      </Suspense>
 
       {meta?.company.description && (
         <section className="mt-6 lg:col-start-1">
