@@ -30,7 +30,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           {/* Phone: one column with a tab bar. Desktop: sidebar + a wide content area. */}
           <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pb-32 lg:ml-60 lg:max-w-none lg:px-10 lg:pb-16 xl:px-16">
             <header className="flex items-center justify-between py-4 lg:py-6">
-              <Link href="/" className="flex items-center gap-2 text-2xl tracking-tight lg:invisible">
+              <Link href="/" className="text-2xl tracking-tight lg:invisible">
                 Port<span className="serif-italic text-[1.2em]">ir</span>
               </Link>
               <div className="flex items-center gap-2">
