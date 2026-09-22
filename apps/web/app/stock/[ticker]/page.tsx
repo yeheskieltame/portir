@@ -1,4 +1,3 @@
-import type { Candle } from "@portir/core/binance";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Logo } from "@/app/logo";
@@ -6,6 +5,7 @@ import { NA_REASON, compact, decide, pct, toneOf, usd } from "@/app/verdict";
 import { STOCK_NAMES } from "@/lib/catalog";
 import { RANGES, type Range, loadStock } from "@/lib/live";
 import { BuySheet } from "@/app/buy-sheet";
+import { StockChart } from "./chart";
 
 export const revalidate = 30;
 
@@ -61,7 +61,7 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
         <span className="text-muted">{s.reference === null ? "exchange n/a" : `exchange ${usd.format(s.reference)}`}</span>
       </p>
 
-      <Chart candles={candles} />
+      <StockChart candles={candles.map((c) => ({ t: c.t, c: c.c }))} reference={s.reference} />
       <div className="mt-3 flex gap-1">
         {(Object.keys(RANGES) as Range[]).map((k) => (
           <Link
@@ -163,40 +163,5 @@ function Fact({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-muted">{label}</dt>
       <dd className="mt-0.5 font-mono tabular-nums">{value}</dd>
     </div>
-  );
-}
-
-// ponytail: plain SVG line + fill, server-rendered. Candlesticks and hover if users ask.
-function Chart({ candles }: { candles: Candle[] }) {
-  if (candles.length < 2) return <p className="mt-6 h-36 rounded-2xl border border-dashed border-line text-center text-xs leading-[9rem] text-muted">No price history yet.</p>;
-  const W = 340, H = 140, P = 4;
-  const closes = candles.map((c) => c.c);
-  const lo = Math.min(...closes), hi = Math.max(...closes);
-  const x = (i: number) => P + (i / (closes.length - 1)) * (W - 2 * P);
-  const y = (v: number) => H - P - ((v - lo) / (hi - lo || 1)) * (H - 2 * P);
-  const line = closes.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
-  const up = closes[closes.length - 1] >= closes[0];
-  const color = up ? "var(--color-go)" : "var(--color-block)";
-  const at = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  return (
-    <figure className="mt-5">
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-36 w-full lg:h-64" role="img" aria-label="Price chart">
-        <defs>
-          <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={color} stopOpacity=".35" />
-            <stop offset="1" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={`${line} L${x(closes.length - 1).toFixed(1)} ${H} L${x(0).toFixed(1)} ${H} Z`} fill="url(#fill)" />
-        <path d={line} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-      </svg>
-      <figcaption className="mt-1 flex justify-between font-mono text-[11px] text-muted tabular-nums">
-        <span>{at(candles[0].t)}</span>
-        <span>
-          {usd.format(lo)} – {usd.format(hi)}
-        </span>
-        <span>{at(candles[candles.length - 1].t)}</span>
-      </figcaption>
-    </figure>
   );
 }
