@@ -223,6 +223,11 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
   (`PORTIR_EXECUTION=agentic-wallet`), re-running the Guard on the wallet's executable price first.
 - **`baw` stores raw JSON badly through env channels**: `bag env set KEY '{"…"}'` kept one character. Base64 it.
 - Untested until funds land: a real `market-order swap` + `market-order list` poll to `FINISHED`.
+- **Which stablecoin?** The Trading API refuses USDC for Ondo tokens: `40368 "Ondo asset on chain 56 can only pair with
+  allowed stablecoin(s); got: 0x8ac7…d580d"` — the allowed list is not published anywhere we found (USDT works). The
+  Agentic Wallet quotes the same USDC → NVDAon at 0.043534 shares (it routes through USDT itself). So USDT is the
+  settlement asset in the app, and the wallet path is the only way to spend USDC. **Ask: expose the allowed stablecoin list
+  per issuer in the RWA meta, and return it in the 40368 message.**
 
 ## Issuer comparison (fill in during day 1-3)
 
@@ -256,3 +261,5 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
 | 09-22 | RWA Data `stock/detail/list` | Tell stocks from ETFs | `assetType` works (1 / 3) but is undocumented | Document it |
 | 09-23 | Trading `buildSwapTransaction` | Send the approval | `signatureData` is JSON strings; calldata goes to the token contract; always included | Document the format; omit when allowance suffices |
 | 09-23 | Trading `aggregator/quote` | Call from Vercel (6 regions) | `40304 compliance restriction` for every cloud IP; fine from a home IP | Document it; allow per-key server IP allowlists |
+| 09-23 | Trading `aggregator/quote` | Buy NVDAon with USDC | `40368` "can only pair with allowed stablecoin(s)"; list unpublished | Publish the allowed stables per issuer; include them in the error |
+| 09-23 | Agentic Wallet `auth signin` | Scan QR from the app | Code expired twice in well under 5 min | Longer TTL or resumable verify |
