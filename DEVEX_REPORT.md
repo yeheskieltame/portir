@@ -160,6 +160,24 @@ bStocks **+4.55 bps**, both through LiquidMesh. Corrections to the entry above, 
 - Tooling: `@portir/core` uses `bigint` literals, and Next's default `tsconfig` targets ES2017, which rejects them under
   `tsc` while the bundler is fine; `target: ES2020` fixes the mismatch.
 
+### 2026-09-23 (day 4, night): deployed to Vercel. The Trading API refuses every cloud region
+
+Landing and app are live (`portir-landing.vercel.app`, `portir-app.vercel.app`); the RWA Data API works from Vercel
+without a VPN, so the catalog, charts and portfolio are live for anyone. The Trading API is not:
+
+- **`/api/buy` returned "no route" from Vercel while the same key and order worked from a laptop in Indonesia.** The
+  SDK hides the reason (see day 2), so we re-implemented its signing (`rawGet` in core: prehash = ISO timestamp + method +
+  `/build` + path + query + body, HMAC-SHA256, base64; note the request goes to `/build/api/v1/...` and the signed path
+  includes `/build`) to read the envelope: **`code 40304, "Service not available due to compliance restriction"`**.
+- Same answer from six Vercel regions: Washington (iad1), Singapore (sin1), Hong Kong (hkg1), Dubai (dxb1), São Paulo
+  (gru1), Frankfurt (fra1). Brazil, France and the UAE are markets where Binance is licensed, so this is not a country
+  rule: cloud / datacenter IP ranges are refused as a class. Authentication passes (a wrong key or secret gives distinct
+  errors), and the same request from a residential IP succeeds.
+- Consequence for any "agent" product on this API: a server-side signer cannot live on Vercel, AWS, or similar. Options
+  are a residential egress, or Binance whitelisting the key's IPs. **Ask: document the restriction, and let a developer
+  key allowlist its server IPs in the portal.** Until then the buy flow is demoed from a local run; the deployed app
+  shows the real reason instead of a generic failure.
+
 ## Issuer comparison (fill in during day 1-3)
 
 | | bStocks | Ondo | xStocks |
@@ -191,3 +209,4 @@ bStocks **+4.55 bps**, both through LiquidMesh. Corrections to the entry above, 
 | 09-22 | `bin.bnbstatic.com` logos | `<img src>` from a page | 403 when a Referer is sent | Allow hotlinking or document `no-referrer` |
 | 09-22 | RWA Data `stock/detail/list` | Tell stocks from ETFs | `assetType` works (1 / 3) but is undocumented | Document it |
 | 09-23 | Trading `buildSwapTransaction` | Send the approval | `signatureData` is JSON strings; calldata goes to the token contract; always included | Document the format; omit when allowance suffices |
+| 09-23 | Trading `aggregator/quote` | Call from Vercel (6 regions) | `40304 compliance restriction` for every cloud IP; fine from a home IP | Document it; allow per-key server IP allowlists |

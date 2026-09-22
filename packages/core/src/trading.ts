@@ -147,3 +147,31 @@ export function createTrader(credentials: { apiKey: string; apiSecret: string })
 }
 
 export const usdt = (amount: number) => BigInt(Math.round(amount * 1e6)) * (UNIT / 10n ** 6n);
+
+const BUILD = "https://web3.binance.com/build";
+
+/**
+ * The same signed GET the SDK makes, but returning the raw envelope `{ code, msg, data }` the SDK throws away.
+ * Prehash = ISO timestamp + method + "/build" + path?query + body, HMAC-SHA256, base64 (see @binance-web3/common).
+ * Use it to learn *why* a quote came back empty.
+ */
+export async function rawGet(credentials: { apiKey: string; apiSecret: string }, path: string, params: Record<string, string>) {
+  const { createHmac } = await import("node:crypto");
+  const withQuery = `${path}?${new URLSearchParams(params)}`;
+  const timestamp = new Date().toISOString();
+  const sign = createHmac("sha256", credentials.apiSecret).update(`${timestamp}GET${new URL(BUILD).pathname}${withQuery}`).digest("base64");
+  const res = await fetch(BUILD + withQuery, {
+    headers: { "X-OC-APIKEY": credentials.apiKey, "X-OC-SIGN": sign, "X-OC-TIMESTAMP": timestamp, "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(15_000),
+  });
+  const text = await res.text();
+  try {
+    return { status: res.status, ...(JSON.parse(text) as { code?: number | string; msg?: string; data?: unknown }) };
+  } catch {
+    return { status: res.status, msg: text.slice(0, 200) };
+  }
+}
+
+/** Raw aggregated quote, for diagnostics when `quoteBuy` reports no route. */
+export const quoteEnvelope = (credentials: { apiKey: string; apiSecret: string }, o: { token: string; usdt: bigint; wallet: string }) =>
+  rawGet(credentials, "/api/v1/dex/aggregator/quote", { binanceChainId: BSC, amount: o.usdt.toString(), fromTokenAddress: USDT, toTokenAddress: o.token, userWalletAddress: o.wallet });

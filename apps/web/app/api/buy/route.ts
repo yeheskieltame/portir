@@ -1,6 +1,6 @@
 import { guard, isSuspectDiscount, spreadBps } from "@portir/core";
 import { quoteStock } from "@portir/core/binance";
-import { USDT, createTrader, usdt } from "@portir/core/trading";
+import { USDT, createTrader, quoteEnvelope, usdt } from "@portir/core/trading";
 import { isAddress } from "viem";
 import { NA_REASON } from "@/app/verdict";
 import { tokenList } from "@/lib/live";
@@ -54,7 +54,17 @@ export async function POST(req: Request) {
     const routed = quotes.flatMap((q, i) => (q.status === "fulfilled" ? [{ order: orders[i], quote: q.value }] : []));
     if (routed.length === 0) {
       const halted = view.offers.find((o) => o.halted)?.halted;
-      return Response.json({ verdict: "BLOCK", reason: halted ? `Trading is paused for this stock (${halted}).` : "No provider can fill this order right now.", spreadBps: null, reference } satisfies BuyResponse);
+      // The SDK hides the API's error envelope; ask once more without it so the reason is visible.
+      const raw = await quoteEnvelope({ apiKey, apiSecret }, orders[0]).catch((e) => ({ status: 0, code: undefined, msg: String(e) }));
+      const detail = `${quotes.flatMap((q) => (q.status === "rejected" ? [q.reason instanceof Error ? q.reason.message : String(q.reason)] : [])).join("; ")} | api: ${JSON.stringify({ status: raw.status, code: raw.code, msg: raw.msg })}`;
+      console.error("buy api: no route:", detail);
+      // 40304: Binance refuses trading calls from cloud/datacenter IPs. Works from a home connection; see DEVEX_REPORT.
+      const reason = halted
+        ? `Trading is paused for this stock (${halted}).`
+        : String(raw.code) === "40304"
+          ? "Binance's trading service refuses requests from this server's network (compliance restriction). Prices are live, but orders must be quoted from an allowed network."
+          : "No provider can fill this order right now.";
+      return Response.json({ verdict: "BLOCK", reason, spreadBps: null, reference, detail } satisfies BuyResponse & { detail: string });
     }
     routed.sort((a, b) => a.quote.pricePerShare - b.quote.pricePerShare);
     const { order, quote } = routed[0];

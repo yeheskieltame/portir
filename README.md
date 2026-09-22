@@ -41,6 +41,12 @@ are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
 
 ## Deployments
 
+- Landing: https://portir-landing.vercel.app · App: https://portir-app.vercel.app (Vercel, root directories `apps/landing`
+  and `apps/web`; env vars from `apps/web/.env.example` set in the project).
+- On Vercel the catalog, charts and portfolio are live. **Buying is quoted only from a non-cloud network**: the Binance
+  Trading API answers `40304 compliance restriction` to every cloud region we tried, so `/api/buy` is demoed from a local
+  run (`pnpm dev`, works from Indonesia). Details in `DEVEX_REPORT.md`.
+
 | Network | PlanRegistry (proxy) | Implementation | Verified |
 | --- | --- | --- | --- |
 | BSC testnet (97) | `0x28daDC35523CE792C7C09faf516763830C38f36b` | `0xD408f733B94Bee65714C0fE99212F47cD55A315C` | [BscScan](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code) (proxy linked) + Sourcify |
