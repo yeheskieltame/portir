@@ -78,8 +78,9 @@ Testnet fixtures (`contracts/src/testnet/`, non-upgradeable test doubles, all ve
 `contracts/deployments/testnet.json`): `MockUSDT` with a 1,000/day faucet
 ([`0x913A…0f54`](https://testnet.bscscan.com/address/0x913A1FF1cc200D573885876B128f5214bF140f54#code)), `TestExchange`
 that sells and buys back shares at a keeper-set price ([`0x901a…5Cb3`](https://testnet.bscscan.com/address/0x901a327BCC8AD124197457D48BDbf88520665Cb3#code)),
-and one `MockStock` per featured ticker. The agent wallet is the keeper: it mirrors mainnet on-chain prices so the Guard
-sees real spreads. `pnpm deploy:testnet:fixtures` / `pnpm verify:testnet:fixtures`. Security review of `PlanRegistry`:
+and one `MockStock` for every featured and basket ticker (18). The agent wallet is the keeper: it mirrors mainnet on-chain
+prices so the Guard sees real spreads. `pnpm deploy:testnet:fixtures` / `pnpm add:testnet:stocks` (idempotent, add tickers
+to the list in `AddStocks.s.sol`) / `pnpm verify:testnet:fixtures`. Security review of `PlanRegistry`:
 `contracts/AUDIT.md`.
 
 ## Run
