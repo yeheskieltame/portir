@@ -1,11 +1,11 @@
 /**
- * BSC testnet fixtures (contracts/src/testnet): the agent is the keeper of the TestExchange,
- * mirroring mainnet on-chain prices so testnet buys face the same Guard spreads; it can also
- * buy there with its own tUSDT (`PORTIR_EXECUTION=testnet`).
+ * BSC testnet fixtures (contracts/src/testnet): the agent buys on the TestExchange with its own tUSDT
+ * (`PORTIR_EXECUTION=testnet`). The exchange settles at a quote signed by the keeper key
+ * (`PORTIR_TESTNET_KEEPER_KEY`, same signer the app uses), carrying the live mainnet price the Guard judged.
  */
 import { type Address, type Hex, encodeFunctionData, erc20Abi, parseAbi, parseUnits } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import deployments from "../../../../../../contracts/deployments/testnet.json" with { type: "json" };
-import { assess } from "./market.js";
 import { client, sendTx } from "./registry.js";
 
 export const TESTNET = {
@@ -15,30 +15,21 @@ export const TESTNET = {
 };
 
 const exchangeAbi = parseAbi([
-  "function setPrices(address[] stocks, uint128[] prices)",
-  "function buy(address stock, uint256 usdtIn, uint256 minSharesOut) returns (uint256)",
-  "function priceOf(address stock) view returns (uint256 price, uint40 updatedAt, bool fresh)",
+  "function buy(address stock, uint256 usdtIn, uint256 minSharesOut, uint128 price, uint40 deadline, bytes sig) returns (uint256)",
   "function feeBps() view returns (uint16)",
 ]);
 const usdtAbi = parseAbi(["function faucet()"]);
+const QUOTE_DOMAIN = { name: "Portir TestExchange", version: "1", chainId: 97, verifyingContract: TESTNET.exchange } as const;
+const QUOTE_TYPES = { Quote: [{ name: "stock", type: "address" }, { name: "price", type: "uint128" }, { name: "deadline", type: "uint40" }] } as const;
 
-const log = (msg: string) => console.log(`[portir.keeper] ${msg}`);
+export const testnetFeeBps = () => client().readContract({ address: TESTNET.exchange, abi: exchangeAbi, functionName: "feeBps" });
 
-/** Push the mirrored per-share price of every featured stock. One tx. */
-export async function pushPrices(): Promise<Hex | null> {
-  const entries = Object.entries(TESTNET.stocks);
-  const priced = await Promise.allSettled(entries.map(async ([ticker, stock]) => ({ stock, price: (await assess(ticker)).view.offers[0].onchain })));
-  const ok = priced.flatMap((p) => (p.status === "fulfilled" && p.value.price > 0 ? [p.value] : []));
-  if (ok.length === 0) return null;
-  const hash = await sendTx(TESTNET.exchange, encodeFunctionData({ abi: exchangeAbi, functionName: "setPrices", args: [ok.map((o) => o.stock), ok.map((o) => parseUnits(o.price.toFixed(6), 18))] }));
-  log(`prices for ${ok.length} stocks → ${hash}`);
-  return hash;
-}
-
-/** Buy `usdt` worth of `ticker` on the TestExchange with the agent's own tUSDT (faucet if empty). */
-export async function buyOnTestnet(ticker: string, usdt: number, minShares: number): Promise<Hex> {
+/** Buy `usdt` worth of `ticker` at `pricePerShare` (live mainnet price) with the agent's own tUSDT (faucet if empty). */
+export async function buyOnTestnet(ticker: string, usdt: number, pricePerShare: number, minShares: number): Promise<Hex> {
   const stock = TESTNET.stocks[ticker];
   if (!stock) throw new Error(`${ticker} is not on the testnet exchange`);
+  const key = process.env.PORTIR_TESTNET_KEEPER_KEY as Hex | undefined;
+  if (!key) throw new Error("PORTIR_TESTNET_KEEPER_KEY is not set");
   const pc = client();
   const me = (await import("@bnbagent/studio-runtime/wallet")).getWallet().address as Address;
   const amount = parseUnits(usdt.toFixed(6), 18);
@@ -46,16 +37,8 @@ export async function buyOnTestnet(ticker: string, usdt: number, minShares: numb
   if (balance < amount) await sendTx(TESTNET.usdt, encodeFunctionData({ abi: usdtAbi, functionName: "faucet" }));
   const allowance = await pc.readContract({ address: TESTNET.usdt, abi: erc20Abi, functionName: "allowance", args: [me, TESTNET.exchange] });
   if (allowance < amount) await sendTx(TESTNET.usdt, encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [TESTNET.exchange, amount] }));
-  return sendTx(TESTNET.exchange, encodeFunctionData({ abi: exchangeAbi, functionName: "buy", args: [stock, amount, parseUnits(minShares.toFixed(18), 18)] }));
-}
-
-export async function testnetPrice(ticker: string): Promise<{ price: number; fresh: boolean; feeBps: number }> {
-  const stock = TESTNET.stocks[ticker];
-  if (!stock) throw new Error(`${ticker} is not on the testnet exchange`);
-  const pc = client();
-  const [[price, , fresh], feeBps] = await Promise.all([
-    pc.readContract({ address: TESTNET.exchange, abi: exchangeAbi, functionName: "priceOf", args: [stock] }),
-    pc.readContract({ address: TESTNET.exchange, abi: exchangeAbi, functionName: "feeBps" }),
-  ]);
-  return { price: Number(price) / 1e18, fresh, feeBps };
+  const price = parseUnits(pricePerShare.toFixed(6), 18);
+  const deadline = Math.floor(Date.now() / 1000) + 600;
+  const sig = await privateKeyToAccount(key).signTypedData({ domain: QUOTE_DOMAIN, types: QUOTE_TYPES, primaryType: "Quote", message: { stock, price, deadline } });
+  return sendTx(TESTNET.exchange, encodeFunctionData({ abi: exchangeAbi, functionName: "buy", args: [stock, amount, parseUnits(minShares.toFixed(18), 18), price, deadline, sig] }));
 }

@@ -23,7 +23,7 @@ line_length = 110
 
 [rpc_endpoints]
 bsc = "https://bsc-dataseed.bnbchain.org"
-bsc_testnet = "https://bsc-testnet-rpc.publicnode.com"
+bsc_testnet = "https://data-seed-prebsc-1-s1.bnbchain.org:8545"
 
 [lint]
 # Schedules are day-granular; a validator nudging the timestamp by seconds changes nothing.

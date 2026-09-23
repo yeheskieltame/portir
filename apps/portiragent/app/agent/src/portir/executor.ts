@@ -51,20 +51,18 @@ const viaAgenticWallet: Execute = async (plan, ticker) => {
   return { txHash: (txHash || `0x${"0".repeat(64)}`) as Hex, note: `Bought ≈${(q.tokensOut * offer.multiplier).toFixed(4)} shares from ${offer.issuer} at $${pricePerShare.toFixed(2)} via Agentic Wallet.` };
 };
 
-/** `testnet`: buy on the TestExchange with the agent's own tUSDT, Guard on the exchange's mirrored price. */
+/** `testnet`: same live price and Guard as mainnet; settlement on the TestExchange with the agent's own tUSDT. */
 const viaTestnet: Execute = async (plan, ticker) => {
-  const { testnetPrice, buyOnTestnet } = await import("./testnet.js");
+  const { testnetFeeBps, buyOnTestnet } = await import("./testnet.js");
   const a = await assess(ticker);
-  const { price, fresh, feeBps } = await testnetPrice(ticker);
-  if (!fresh) throw new Error("testnet price is stale (keeper has not pushed in the last hour)");
-  if (a.view.reference !== null) {
-    const d = guard({ session: a.view.session ?? "closed", onchain: price, reference: a.view.reference });
-    if (d.verdict === "BLOCK") throw new Error(`testnet price failed the Guard: ${d.reason}`);
-  }
+  const offer = a.view.offers.find((o) => !o.halted && !(o.spreadBps !== null && isSuspectDiscount(o.spreadBps)));
+  if (!offer) throw new Error("no tradable issuer");
+  const price = offer.onchain;
+  const feeBps = await testnetFeeBps();
   const amount = Number(formatUnits(plan.amount, 18));
   const shares = (amount * (10_000 - feeBps)) / 10_000 / price;
-  const txHash = await buyOnTestnet(ticker, amount, shares * 0.995);
-  return { txHash, note: `Bought ≈${shares.toFixed(4)} shares on the testnet exchange at $${price.toFixed(2)}.` };
+  const txHash = await buyOnTestnet(ticker, amount, price, shares * 0.995);
+  return { txHash, note: `Bought ≈${shares.toFixed(4)} shares at $${price.toFixed(2)} (${offer.issuer} price), settled on BSC testnet.` };
 };
 
 /**
@@ -89,14 +87,6 @@ const execute: Execute = async (plan, ticker) => {
 const executionEnabled = () => backend() !== "off";
 
 export async function scanOnce(): Promise<void> {
-  // Keeper duty first, so testnet plans and the app see fresh mirrored prices.
-  if (process.env.PORTIR_KEEPER !== "off" && process.env.PORTIR_REGISTRY_CHAIN !== "mainnet") {
-    try {
-      await (await import("./testnet.js")).pushPrices();
-    } catch (e) {
-      log(`keeper: ${e instanceof Error ? e.message : e}`);
-    }
-  }
   const n = await planCount();
   const now = Math.floor(Date.now() / 1000);
   for (let i = 0; i < n; i++) {

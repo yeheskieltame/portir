@@ -33,14 +33,14 @@ bag dev                   # A2A + MCP + /x402 on :9000, executor loop on
 
 Env (in `.studio/.env.local`, set with `bag env set`): `PORTIR_REGISTRY` (PlanRegistry proxy), `PORTIR_REGISTRY_CHAIN`
 (`testnet` default), `PORTIR_SCAN_SECONDS` (900), `PORTIR_EXECUTION` (`off` | `testnet` | `agentic-wallet`),
-`PORTIR_MAINNET_ARMED=yes` (required, on top of `agentic-wallet`, before any mainnet spend), `PORTIR_KEEPER` (`off` to stop
-mirroring prices onto the TestExchange), `BAW_SESSION_B64` (Agentic Wallet session), `BINANCE_W3_API_KEY/SECRET`
+`PORTIR_MAINNET_ARMED=yes` (required, on top of `agentic-wallet`, before any mainnet spend), `PORTIR_TESTNET_KEEPER_KEY`
+(signs TestExchange quotes; same key as the app's `TESTNET_KEEPER_KEY`), `BAW_SESSION_B64` (Agentic Wallet session), `BINANCE_W3_API_KEY/SECRET`
 (executable quotes), `COINDESK_API_KEY` (optional news). The executor refuses a backend whose chain differs from the
 registry's chain.
 
 **Modes.** Profile → Mode switches the app between **testnet** (default: buys settle on BSC testnet with faucet tUSDT
-against the featured stocks, keeper-mirrored prices) and **mainnet** (real USDT and stock tokens). Prices, sessions,
-the Guard and news are live from mainnet in both. The agent wallet (`bag wallet new`) is the plan **executor**: the app passes
+against test stock tokens) and **mainnet** (real USDT and stock tokens). Prices, sessions, the Guard and news are live from
+mainnet in both: testnet only changes where the trade settles, at a quote signed with the live mainnet price. The agent wallet (`bag wallet new`) is the plan **executor**: the app passes
 it as `NEXT_PUBLIC_EXECUTOR`, and only it (or the owner) can `recordRun`. Connect Claude: `claude mcp add portir --transport
 http http://localhost:9000/mcp`.
 
@@ -76,12 +76,13 @@ are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
 
 Testnet fixtures (`contracts/src/testnet/`, non-upgradeable test doubles, all verified; addresses in
 `contracts/deployments/testnet.json`): `MockUSDT` with a 1,000/day faucet
-([`0x913A…0f54`](https://testnet.bscscan.com/address/0x913A1FF1cc200D573885876B128f5214bF140f54#code)), `TestExchange`
-that sells and buys back shares at a keeper-set price ([`0x901a…5Cb3`](https://testnet.bscscan.com/address/0x901a327BCC8AD124197457D48BDbf88520665Cb3#code)),
-and one `MockStock` for every featured and basket ticker (18). The agent wallet is the keeper: it mirrors mainnet on-chain
-prices so the Guard sees real spreads. `pnpm deploy:testnet:fixtures` / `pnpm add:testnet:stocks` (idempotent, add tickers
-to the list in `AddStocks.s.sol`) / `pnpm verify:testnet:fixtures`. Security review of `PlanRegistry`:
-`contracts/AUDIT.md`.
+([`0xa3Ce…73e3`](https://testnet.bscscan.com/address/0xa3CeC722a4FBDD4901Ab6d19281A2646786773e3#code)), `TestExchange`
+that sells and buys back shares at an EIP-712 quote signed by the keeper key
+([`0x9cc2…37DF`](https://testnet.bscscan.com/address/0x9cc2e2A087084243D909C6b4Cc681C0734bc37DF#code)), and one `MockStock`
+for every featured and basket ticker (18). `/api/buy` (and the agent) sign the live mainnet price into each quote, valid 10
+minutes, so nothing on testnet can go stale and the Guard sees exactly what mainnet would. `KEEPER=<signer> pnpm
+deploy:testnet:fixtures` / `pnpm add:testnet:stocks` (idempotent, add tickers to the list in `AddStocks.s.sol`) /
+`pnpm verify:testnet:fixtures`. Security review of `PlanRegistry`: `contracts/AUDIT.md`.
 
 ## Run
 

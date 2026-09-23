@@ -2,11 +2,12 @@ import { guard, isSuspectDiscount, spreadBps } from "@portir/core";
 import { quoteStock } from "@portir/core/binance";
 import { USDT, createTrader, quoteEnvelope, usdt } from "@portir/core/trading";
 import { createPublicClient, encodeFunctionData, erc20Abi, http, isAddress, parseUnits } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { bscTestnet } from "viem/chains";
 import { NA_REASON } from "@/app/verdict";
 import { tokenList } from "@/lib/live";
 import { asMode } from "@/lib/mode";
-import { TESTNET, testExchangeAbi } from "@/lib/testnet";
+import { QUOTE_DOMAIN, QUOTE_TYPES, TESTNET, testExchangeAbi } from "@/lib/testnet";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,10 @@ export async function POST(req: Request) {
     const view = await quoteStock(tokens);
     const session = view.session ?? "closed";
     const reference = view.reference;
-    if (mode === "testnet") return Response.json(await testnetRoute(ticker, amount, body.wallet, session, reference));
+    if (mode === "testnet") {
+      const offer = view.offers.find((o) => !o.halted && !(o.spreadBps !== null && isSuspectDiscount(o.spreadBps)));
+      return Response.json(await testnetRoute(ticker, amount, body.wallet, session, reference, offer));
+    }
     if (reference === null) return Response.json({ verdict: "BLOCK", reason: NA_REASON, spreadBps: null, reference, chainId: 56 } satisfies BuyResponse);
 
     const { BINANCE_W3_API_KEY: apiKey = "", BINANCE_W3_API_SECRET: apiSecret = "" } = process.env;
@@ -106,32 +110,36 @@ export async function POST(req: Request) {
   }
 }
 
+const QUOTE_TTL = 10 * 60; // seconds a signed testnet quote stays valid
+
 /**
- * Testnet: the same Guard, priced by the TestExchange (its keeper mirrors mainnet on-chain prices),
- * settled with tUSDT on BSC testnet. Only the featured tickers exist there.
+ * Testnet: the same Guard on the same live mainnet data; only settlement differs. The best mainnet
+ * offer's price is signed as an EIP-712 quote the TestExchange honours until the deadline, so the
+ * trade fills at exactly the price the Guard judged, with tUSDT on BSC testnet.
  */
-async function testnetRoute(ticker: string, amount: number, wallet: string, session: "open" | "pre" | "after" | "closed", reference: number | null): Promise<BuyResponse | { error: string }> {
+async function testnetRoute(ticker: string, amount: number, wallet: string, session: "open" | "pre" | "after" | "closed", reference: number | null, offer: { onchain: number; issuer: string } | undefined): Promise<BuyResponse | { error: string }> {
   const stock = TESTNET.stocks[ticker];
-  if (!stock) return { error: `${ticker} is not on the testnet exchange (featured stocks only). Switch to mainnet mode for the full list.` };
-  const pc = createPublicClient({ chain: bscTestnet, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
-  const [[price, , fresh], feeBps] = await Promise.all([
-    pc.readContract({ address: TESTNET.exchange, abi: testExchangeAbi, functionName: "priceOf", args: [stock] }),
-    pc.readContract({ address: TESTNET.exchange, abi: testExchangeAbi, functionName: "feeBps" }),
-  ]);
+  if (!stock) return { error: `${ticker} is not on the testnet exchange yet. Switch to mainnet mode for the full list.` };
   const chainId = bscTestnet.id;
-  if (!fresh) return { verdict: "BLOCK", reason: "The testnet price for this stock has not been refreshed in the last hour (the keeper is offline), so the order waits.", spreadBps: null, reference, chainId };
-  const onchain = Number(price) / 1e18;
-  if (reference === null) return { verdict: "BLOCK", reason: NA_REASON, spreadBps: null, reference, chainId, issuer: "testnet", pricePerShare: onchain };
+  if (!offer || reference === null) return { verdict: "BLOCK", reason: NA_REASON, spreadBps: null, reference, chainId, issuer: "testnet", pricePerShare: offer?.onchain };
+  const key = process.env.TESTNET_KEEPER_KEY;
+  if (!key) return { error: "Testnet quotes are not configured on this server (TESTNET_KEEPER_KEY)" };
+  const pc = createPublicClient({ chain: bscTestnet, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });
+  const feeBps = await pc.readContract({ address: TESTNET.exchange, abi: testExchangeAbi, functionName: "feeBps" });
+  const onchain = offer.onchain;
   const decision = guard({ session, onchain, reference });
   const usdtIn = parseUnits(amount.toFixed(6), 18);
   const shares = (amount * (10_000 - feeBps)) / 10_000 / onchain;
   const minShares = shares * 0.995;
-  const base: BuyResponse = { verdict: decision.verdict, reason: decision.reason, spreadBps: decision.spreadBps, reference, chainId, issuer: "testnet", vendor: "TestExchange", pricePerShare: onchain, impactBps: 0, shares, token: stock };
+  const base: BuyResponse = { verdict: decision.verdict, reason: decision.reason, spreadBps: decision.spreadBps, reference, chainId, issuer: offer.issuer, vendor: "TestExchange", pricePerShare: onchain, impactBps: 0, shares, token: stock };
   if (decision.verdict === "BLOCK") return base;
+  const price = parseUnits(onchain.toFixed(6), 18);
+  const deadline = Math.floor(Date.now() / 1000) + QUOTE_TTL;
+  const sig = await privateKeyToAccount(key as `0x${string}`).signTypedData({ domain: QUOTE_DOMAIN, types: QUOTE_TYPES, primaryType: "Quote", message: { stock, price, deadline } });
   return {
     ...base,
     minShares,
     approvals: [{ to: TESTNET.usdt, data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [TESTNET.exchange, usdtIn] }), spender: TESTNET.exchange }],
-    tx: { to: TESTNET.exchange, data: encodeFunctionData({ abi: testExchangeAbi, functionName: "buy", args: [stock, usdtIn, parseUnits(minShares.toFixed(18), 18)] }), value: "0" },
+    tx: { to: TESTNET.exchange, data: encodeFunctionData({ abi: testExchangeAbi, functionName: "buy", args: [stock, usdtIn, parseUnits(minShares.toFixed(18), 18), price, deadline, sig] }), value: "0" },
   };
 }

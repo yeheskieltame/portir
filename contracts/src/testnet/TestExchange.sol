@@ -4,19 +4,17 @@ pragma solidity 0.8.28;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {MockStock} from "./MockStock.sol";
 
-/// @notice Testnet issuer + DEX in one: sells and buys back MockStock shares at a keeper-set price.
-/// The keeper mirrors mainnet on-chain prices so the Guard sees the same spreads it would on mainnet.
-contract TestExchange is Ownable {
+/// @notice Testnet issuer + DEX in one: sells and buys back MockStock shares at a signed quote.
+/// The keeper signs (stock, price, deadline) off-chain with the live mainnet price at quote time,
+/// so a testnet trade settles at the same price the Guard judged, with no on-chain price feed to go stale.
+contract TestExchange is Ownable, EIP712 {
     using SafeERC20 for IERC20;
 
-    struct Quote {
-        uint128 price; // USDT per share, 18 decimals
-        uint40 updatedAt;
-    }
-
-    uint256 public constant MAX_PRICE_AGE = 1 hours;
+    bytes32 private constant QUOTE_TYPEHASH = keccak256("Quote(address stock,uint128 price,uint40 deadline)");
     uint16 public constant MAX_FEE_BPS = 200;
 
     IERC20 public immutable usdt;
@@ -24,30 +22,30 @@ contract TestExchange is Ownable {
     uint16 public feeBps;
 
     address[] public stocks;
-    mapping(address stock => Quote) public quotes;
+    mapping(address stock => bool) public isStock;
     mapping(string ticker => address) public stockOf;
 
     event StockAdded(address indexed stock, string ticker);
-    event PriceSet(address indexed stock, uint128 price);
-    event Bought(address indexed buyer, address indexed stock, uint256 usdtIn, uint256 sharesOut);
-    event Sold(address indexed seller, address indexed stock, uint256 sharesIn, uint256 usdtOut);
+    event Bought(
+        address indexed buyer, address indexed stock, uint256 usdtIn, uint256 sharesOut, uint128 price
+    );
+    event Sold(
+        address indexed seller, address indexed stock, uint256 sharesIn, uint256 usdtOut, uint128 price
+    );
 
-    error NotKeeper();
     error UnknownStock();
     error DuplicateTicker();
-    error StalePrice(uint40 updatedAt);
+    error QuoteExpired(uint40 deadline);
+    error BadQuote();
     error ZeroAmount();
     error Slippage(uint256 out, uint256 min);
-    error LengthMismatch();
     error FeeTooHigh();
     error InsufficientLiquidity();
 
-    modifier onlyKeeper() {
-        if (msg.sender != keeper && msg.sender != owner()) revert NotKeeper();
-        _;
-    }
-
-    constructor(IERC20 usdt_, address keeper_, uint16 feeBps_) Ownable(msg.sender) {
+    constructor(IERC20 usdt_, address keeper_, uint16 feeBps_)
+        Ownable(msg.sender)
+        EIP712("Portir TestExchange", "1")
+    {
         usdt = usdt_;
         keeper = keeper_;
         _setFee(feeBps_);
@@ -69,41 +67,46 @@ contract TestExchange is Ownable {
         if (stockOf[ticker] != address(0)) revert DuplicateTicker();
         stock = address(new MockStock(name, symbol, ticker, address(this)));
         stocks.push(stock);
+        isStock[stock] = true;
         stockOf[ticker] = stock;
         emit StockAdded(stock, ticker);
     }
 
-    function setPrices(address[] calldata stocks_, uint128[] calldata prices) external onlyKeeper {
-        if (stocks_.length != prices.length) revert LengthMismatch();
-        for (uint256 i = 0; i < stocks_.length; i++) {
-            if (quotes[stocks_[i]].updatedAt == 0 && !_isStock(stocks_[i])) revert UnknownStock();
-            if (prices[i] == 0) revert ZeroAmount();
-            quotes[stocks_[i]] = Quote(prices[i], uint40(block.timestamp));
-            emit PriceSet(stocks_[i], prices[i]);
-        }
-    }
-
-    /// @notice Pay `usdtIn`, receive shares at the current price minus the fee.
-    function buy(address stock, uint256 usdtIn, uint256 minSharesOut) external returns (uint256 sharesOut) {
+    /// @notice Pay `usdtIn`, receive shares at the quoted price minus the fee.
+    function buy(
+        address stock,
+        uint256 usdtIn,
+        uint256 minSharesOut,
+        uint128 price,
+        uint40 deadline,
+        bytes calldata sig
+    ) external returns (uint256 sharesOut) {
         if (usdtIn == 0) revert ZeroAmount();
-        uint256 price = _freshPrice(stock);
-        sharesOut = usdtIn * (10_000 - feeBps) * 1e18 / (10_000 * price);
+        _verify(stock, price, deadline, sig);
+        sharesOut = usdtIn * (10_000 - feeBps) * 1e18 / (10_000 * uint256(price));
         if (sharesOut < minSharesOut) revert Slippage(sharesOut, minSharesOut);
         usdt.safeTransferFrom(msg.sender, address(this), usdtIn);
         MockStock(stock).mint(msg.sender, sharesOut);
-        emit Bought(msg.sender, stock, usdtIn, sharesOut);
+        emit Bought(msg.sender, stock, usdtIn, sharesOut, price);
     }
 
-    /// @notice Burn shares, receive USDT at the current price minus the fee, from what buyers paid in.
-    function sell(address stock, uint256 sharesIn, uint256 minUsdtOut) external returns (uint256 usdtOut) {
+    /// @notice Burn shares, receive USDT at the quoted price minus the fee, from what buyers paid in.
+    function sell(
+        address stock,
+        uint256 sharesIn,
+        uint256 minUsdtOut,
+        uint128 price,
+        uint40 deadline,
+        bytes calldata sig
+    ) external returns (uint256 usdtOut) {
         if (sharesIn == 0) revert ZeroAmount();
-        uint256 price = _freshPrice(stock);
-        usdtOut = sharesIn * price * (10_000 - feeBps) / (1e18 * 10_000);
+        _verify(stock, price, deadline, sig);
+        usdtOut = sharesIn * uint256(price) * (10_000 - feeBps) / (1e18 * 10_000);
         if (usdtOut < minUsdtOut) revert Slippage(usdtOut, minUsdtOut);
         if (usdt.balanceOf(address(this)) < usdtOut) revert InsufficientLiquidity();
         MockStock(stock).burn(msg.sender, sharesIn);
         usdt.safeTransfer(msg.sender, usdtOut);
-        emit Sold(msg.sender, stock, sharesIn, usdtOut);
+        emit Sold(msg.sender, stock, sharesIn, usdtOut, price);
     }
 
     function stockCount() external view returns (uint256) {
@@ -114,23 +117,16 @@ contract TestExchange is Ownable {
         return stocks;
     }
 
-    function priceOf(address stock) external view returns (uint256 price, uint40 updatedAt, bool fresh) {
-        Quote memory q = quotes[stock];
-        return (q.price, q.updatedAt, q.updatedAt != 0 && block.timestamp - q.updatedAt <= MAX_PRICE_AGE);
+    /// @notice The EIP-712 digest the keeper signs for a quote.
+    function quoteDigest(address stock, uint128 price, uint40 deadline) public view returns (bytes32) {
+        return _hashTypedDataV4(keccak256(abi.encode(QUOTE_TYPEHASH, stock, price, deadline)));
     }
 
-    function _freshPrice(address stock) private view returns (uint256) {
-        Quote memory q = quotes[stock];
-        if (q.updatedAt == 0) revert UnknownStock();
-        if (block.timestamp - q.updatedAt > MAX_PRICE_AGE) revert StalePrice(q.updatedAt);
-        return q.price;
-    }
-
-    function _isStock(address stock) private view returns (bool) {
-        for (uint256 i = 0; i < stocks.length; i++) {
-            if (stocks[i] == stock) return true;
-        }
-        return false;
+    function _verify(address stock, uint128 price, uint40 deadline, bytes calldata sig) private view {
+        if (!isStock[stock]) revert UnknownStock();
+        if (price == 0) revert ZeroAmount();
+        if (block.timestamp > deadline) revert QuoteExpired(deadline);
+        if (ECDSA.recover(quoteDigest(stock, price, deadline), sig) != keeper) revert BadQuote();
     }
 
     function _setFee(uint16 feeBps_) private {

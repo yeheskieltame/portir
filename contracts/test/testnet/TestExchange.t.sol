@@ -10,7 +10,8 @@ contract TestExchangeTest is Test {
     MockUSDT usdt;
     TestExchange ex;
     address nvda;
-    address keeper = makeAddr("keeper");
+    uint256 keeperPk = 0xA11CE;
+    address keeper = vm.addr(keeperPk);
     address alice = makeAddr("alice");
 
     function setUp() public {
@@ -23,13 +24,23 @@ contract TestExchangeTest is Test {
         usdt.approve(address(ex), type(uint256).max);
     }
 
-    function _price(uint128 p) internal {
-        address[] memory s = new address[](1);
-        uint128[] memory ps = new uint128[](1);
-        s[0] = nvda;
-        ps[0] = p;
-        vm.prank(keeper);
-        ex.setPrices(s, ps);
+    function _quote(address stock, uint128 price, uint40 deadline, uint256 pk)
+        internal
+        view
+        returns (bytes memory)
+    {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, ex.quoteDigest(stock, price, deadline));
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _quote(uint128 price) internal view returns (bytes memory) {
+        return _quote(nvda, price, uint40(block.timestamp + 10 minutes), keeperPk);
+    }
+
+    // Sign first: a prank or expectRevert must land on `buy`, not on the `quoteDigest` view.
+    function _buy(uint128 price, uint256 usdtIn, uint256 minShares) internal returns (uint256) {
+        bytes memory sig = _quote(price);
+        return ex.buy(nvda, usdtIn, minShares, price, uint40(block.timestamp + 10 minutes), sig);
     }
 
     function test_Faucet_OncePerDay() public {
@@ -45,59 +56,61 @@ contract TestExchangeTest is Test {
         assertEq(usdt.balanceOf(alice), 2_000e18);
     }
 
-    function test_Buy_MintsSharesAtPriceMinusFee() public {
-        _price(200e18);
-        vm.prank(alice);
-        uint256 shares = ex.buy(nvda, 100e18, 0);
+    function test_Buy_MintsSharesAtQuotedPriceMinusFee() public {
+        vm.startPrank(alice);
+        uint256 shares = _buy(200e18, 100e18, 0);
+        vm.stopPrank();
         // 100 USDT - 0.1% = 99.9 USDT / 200 = 0.4995 shares
         assertEq(shares, 0.4995e18);
         assertEq(MockStock(nvda).balanceOf(alice), 0.4995e18);
         assertEq(usdt.balanceOf(address(ex)), 100e18);
     }
 
-    function test_Buy_RevertsOnSlippageStaleAndUnknown() public {
-        _price(200e18);
-        vm.prank(alice);
+    function test_Buy_RevertsOnSlippageExpiredForgedAndUnknown() public {
+        uint40 deadline = uint40(block.timestamp + 10 minutes);
+        bytes memory sig = _quote(200e18);
+        bytes memory forged = _quote(nvda, 200e18, deadline, 0xBAD);
+        vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(TestExchange.Slippage.selector, 0.4995e18, 0.5e18));
-        ex.buy(nvda, 100e18, 0.5e18);
+        ex.buy(nvda, 100e18, 0.5e18, 200e18, deadline, sig);
 
-        vm.warp(block.timestamp + 2 hours);
-        vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(TestExchange.StalePrice.selector, uint40(block.timestamp - 2 hours))
-        );
-        ex.buy(nvda, 100e18, 0);
+        vm.expectRevert(TestExchange.BadQuote.selector);
+        ex.buy(nvda, 100e18, 0, 100e18, deadline, sig); // price differs from what was signed
 
-        vm.prank(alice);
+        vm.expectRevert(TestExchange.BadQuote.selector);
+        ex.buy(nvda, 100e18, 0, 200e18, deadline, forged);
+
         vm.expectRevert(TestExchange.UnknownStock.selector);
-        ex.buy(address(usdt), 100e18, 0);
+        ex.buy(address(usdt), 100e18, 0, 200e18, deadline, sig);
+
+        vm.warp(deadline + 1);
+        vm.expectRevert(abi.encodeWithSelector(TestExchange.QuoteExpired.selector, deadline));
+        ex.buy(nvda, 100e18, 0, 200e18, deadline, sig);
+        vm.stopPrank();
     }
 
     function test_Sell_BurnsAndPaysFromLiquidity() public {
-        _price(200e18);
+        bytes memory sig = _quote(200e18);
         vm.startPrank(alice);
-        ex.buy(nvda, 100e18, 0);
-        uint256 out = ex.sell(nvda, 0.4995e18, 0);
+        _buy(200e18, 100e18, 0);
+        uint256 out = ex.sell(nvda, 0.4995e18, 0, 200e18, uint40(block.timestamp + 10 minutes), sig);
         vm.stopPrank();
         // 0.4995 * 200 = 99.9, minus 0.1% = 99.8001
         assertEq(out, 99.8001e18);
         assertEq(MockStock(nvda).balanceOf(alice), 0);
     }
 
-    function test_OnlyKeeperOrOwnerSetsPrices_OnlyOwnerAddsStocks() public {
-        address[] memory s = new address[](1);
-        uint128[] memory ps = new uint128[](1);
-        s[0] = nvda;
-        ps[0] = 1e18;
-        vm.prank(alice);
-        vm.expectRevert(TestExchange.NotKeeper.selector);
-        ex.setPrices(s, ps);
-        ex.setPrices(s, ps); // owner may
+    function test_OnlyOwnerAddsStocksAndSetsKeeper() public {
         vm.prank(alice);
         vm.expectRevert();
         ex.addStock("x", "x", "X");
         vm.expectRevert(TestExchange.DuplicateTicker.selector);
         ex.addStock("NVIDIA again", "NVDAt2", "NVDA");
+        vm.prank(alice);
+        vm.expectRevert();
+        ex.setKeeper(alice);
+        ex.setKeeper(alice);
+        assertEq(ex.keeper(), alice);
     }
 
     function test_OnlyExchangeMints() public {
@@ -109,10 +122,11 @@ contract TestExchangeTest is Test {
     function testFuzz_BuyThenSellNeverPaysOutMoreThanPaidIn(uint96 usdtIn, uint96 price) public {
         usdtIn = uint96(bound(usdtIn, 1e12, 1_000e18));
         price = uint96(bound(price, 1e15, 100_000e18));
-        _price(price);
+        bytes memory sig = _quote(price);
         vm.startPrank(alice);
-        uint256 shares = ex.buy(nvda, usdtIn, 0);
-        uint256 out = shares == 0 ? 0 : ex.sell(nvda, shares, 0);
+        uint256 shares = _buy(price, usdtIn, 0);
+        uint256 out =
+            shares == 0 ? 0 : ex.sell(nvda, shares, 0, price, uint40(block.timestamp + 10 minutes), sig);
         vm.stopPrank();
         assertLe(out, usdtIn);
     }

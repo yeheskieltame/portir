@@ -244,6 +244,11 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
   when it cannot persist, and print the value it read back.**
 - Agentic Wallet's refusal message was clear and cheap ("USDT balance is insufficient"), and the wallet's own limits would
   have capped a real order. Defence in depth worked; it should not have been needed.
+- **Dropped the keeper loop the next day.** A pushed price is only as fresh as the last cron tick: the first real click
+  after a quiet hour hit "testnet price has not been refreshed", a failure mode that exists only on testnet and would teach
+  the agent the wrong lesson. `TestExchange` v2 takes an EIP-712 quote `(stock, price, deadline)` signed by a keeper key
+  instead; `/api/buy` and the executor sign the live mainnet price into every order (10-minute deadline). Testnet is now
+  purely a settlement venue: same data, same Guard, same reasons as mainnet. Redeployed all 20 fixtures (~0.0015 tBNB).
 
 ## Issuer comparison (fill in during day 1-3)
 
