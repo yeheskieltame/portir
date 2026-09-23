@@ -16,8 +16,9 @@ export async function generateMetadata({ params }: PageProps<"/basket/[slug]">) 
 
 const ORDER = { GO: 0, WARN: 1, BLOCK: 2 } as const;
 
-export default async function BasketPage({ params }: PageProps<"/basket/[slug]">) {
+export default async function BasketPage({ params, searchParams }: PageProps<"/basket/[slug]">) {
   const { slug } = await params;
+  const { plan } = await searchParams;
   const basket = BASKETS.find((b) => b.slug === slug);
   if (!basket) notFound();
   const { stocks, error } = await loadStocks(basket.legs.map((l) => l.ticker));
@@ -60,8 +61,7 @@ export default async function BasketPage({ params }: PageProps<"/basket/[slug]">
       </section>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Link href={`/plans?target=BASKET:${encodeURIComponent(basket.name)}`} className="glass rounded-full py-3 text-center text-sm font-medium active:scale-95">Set up a plan</Link>
-        <BuySheet name={basket.name} legs={legs.map((l) => ({ ticker: l.ticker, name: l.stock.name, onchain: l.stock.onchain, weight: l.weight / weight }))} />
+        <BuySheet name={basket.name} legs={legs.map((l) => ({ ticker: l.ticker, name: l.stock.name, onchain: l.stock.onchain, weight: l.weight / weight }))} initial={plan !== undefined ? "plan" : undefined} />
       </div>
       </aside>
 

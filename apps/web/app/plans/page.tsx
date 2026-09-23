@@ -1,9 +1,9 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useSyncExternalStore } from "react";
-import { formatUnits, parseUnits, zeroAddress } from "viem";
+import Link from "next/link";
+import { useEffect, useSyncExternalStore } from "react";
+import { formatUnits, zeroAddress } from "viem";
 import { Logo } from "@/app/logo";
 import { usd } from "@/app/verdict";
 import {
@@ -20,7 +20,6 @@ import {
   OUTCOMES,
   USDT_DECIMALS,
   decodeTarget,
-  encodeTarget,
   executorAddress,
   planRegistryAbi,
   planRegistryAddress,
@@ -30,7 +29,6 @@ import { chain } from "@/lib/wagmi";
 const DAY = 86_400;
 const when = (seconds: number) =>
   new Date(seconds * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-const field = "field";
 
 export default function Plans() {
   const { address } = useConnection();
@@ -47,9 +45,7 @@ export default function Plans() {
       ) : !address ? (
         <Notice>Connect your wallet to set up a recurring investment.</Notice>
       ) : (
-        <Suspense>
-          <PlansFor owner={address} registry={planRegistryAddress} />
-        </Suspense>
+        <PlansFor owner={address} registry={planRegistryAddress} />
       )}
     </>
   );
@@ -62,7 +58,6 @@ function Notice({ children }: { children: React.ReactNode }) {
 function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${string}` }) {
   // chainId makes the wallet switch network before a write instead of sending it to the wrong chain.
   const contract = { address: registry, abi: planRegistryAbi, chainId: chain.id } as const;
-  const preset = useSearchParams().get("target") ?? undefined; // from a stock page's "Set up a plan"
   const now = useNow();
   const queryClient = useQueryClient();
   const write = useWriteContract();
@@ -82,93 +77,47 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
     if (receipt.isSuccess) queryClient.invalidateQueries();
   }, [receipt.isSuccess, queryClient]);
 
-  function create(form: FormData) {
-    const days = CADENCES[form.get("cadence") as keyof typeof CADENCES];
-    void onRegistry(() => write.mutate({
-      ...contract,
-      functionName: "createPlan",
-      args: [
-        encodeTarget(String(form.get("target"))),
-        parseUnits(String(form.get("amount")), USDT_DECIMALS),
-        days * DAY,
-        0, // first run: as soon as the executor sees it
-        form.get("smart") === "on",
-        executorAddress,
-      ],
-    }));
-  }
-
   const busy = write.isPending || receipt.isLoading;
   const error = write.error ?? receipt.error;
 
   return (
     <>
       <div className="lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-8">
-      <form action={create} className="glass mt-6 space-y-4 rounded-3xl p-4 text-sm lg:sticky lg:top-6 lg:p-5">
-        <label className="block">
-          What to buy
-          <select name="target" className={field} defaultValue={preset}>
-            <optgroup label="Stocks">
-              {Object.entries(STOCK_NAMES).map(([ticker, name]) => (
-                <option key={ticker} value={ticker}>
-                  {name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Baskets">
-              {BASKETS.map((b) => (
-                <option key={b.slug} value={`BASKET:${b.name}`}>
-                  {b.name}
-                </option>
-              ))}
-            </optgroup>
-          </select>
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            Amount (USDT)
-            <input
-              name="amount"
-              type="number"
-              inputMode="decimal"
-              min="1"
-              step="any"
-              defaultValue="50"
-              required
-              className={field}
-            />
-          </label>
-          <label className="block">
-            How often
-            <select name="cadence" className={field}>
-              {Object.keys(CADENCES).map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </label>
+      <section className="mt-6 lg:sticky lg:top-6">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">New plan</h2>
+        <p className="mt-2 text-sm text-muted">Pick what to buy; the amount and cadence are set right there.</p>
+        <ul className="mt-3 space-y-2">
+          {BASKETS.map((b) => (
+            <li key={b.slug}>
+              <Link href={`/basket/${b.slug}?plan`} className="glass flex items-center gap-3 rounded-2xl px-4 py-3 text-sm active:bg-white/5">
+                <Logo src={null} name={b.name} size={36} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{b.name}</span>
+                  <span className="block truncate font-mono text-xs text-muted">{b.legs.map((l) => l.ticker).join(" · ")}</span>
+                </span>
+                <span className="text-muted">→</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {Object.keys(STOCK_NAMES).map((t) => (
+            <Link key={t} href={`/stock/${t}?plan`} className="glass rounded-full px-3 py-1.5 font-mono text-xs active:bg-white/5">{t}</Link>
+          ))}
+          <Link href="/" className="rounded-full px-3 py-1.5 text-xs text-muted underline">all stocks</Link>
         </div>
-        <label className="flex items-start gap-3">
-          <input name="smart" type="checkbox" defaultChecked className="mt-1 accent-brand" />
-          <span>
-            Smart timing
-            <span className="block text-muted">Wait up to 48 hours for the market to open and the price to be fair.</span>
-          </span>
-        </label>
-        <button disabled={busy} className="w-full rounded-full bg-white py-3 font-medium text-black disabled:opacity-60">
-          {busy ? "Confirming…" : "Start plan"}
-        </button>
-        {error && (
-          <p role="alert" className="text-block">
-            {"shortMessage" in error ? error.shortMessage : error.message}
-          </p>
-        )}
-      </form>
+      </section>
 
       <div className="lg:mt-6">
       <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-muted lg:mt-0">Your plans</h2>
       {ids.error && (
         <p role="alert" className="mt-2 text-sm text-block">
           Could not read your plans. Check that your wallet is on the right network.
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-block">
+          {"shortMessage" in error ? error.shortMessage : error.message}
         </p>
       )}
       {ids.data?.length === 0 && <p className="mt-2 text-sm text-muted">No plans yet.</p>}

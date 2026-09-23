@@ -22,7 +22,7 @@ const SESSION: Record<string, string> = { open: "Market open", pre: "Pre-market"
 
 export default async function StockPage({ params, searchParams }: PageProps<"/stock/[ticker]">) {
   const { ticker } = await params;
-  const { range: r } = await searchParams;
+  const { range: r, plan } = await searchParams;
   const range: Range = typeof r === "string" && r in RANGES ? (r as Range) : "1W";
   const detail = await loadStock(ticker.toUpperCase(), range);
   if (!detail) notFound();
@@ -91,10 +91,7 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
       </section>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Link href={`/plans?target=${s.ticker}`} className="glass rounded-full py-3 text-center text-sm font-medium active:scale-95">
-          Set up a plan
-        </Link>
-        <BuySheet name={s.name} legs={[{ ticker: s.ticker, name: s.name, onchain: s.onchain, weight: 1 }]} />
+        <BuySheet name={s.name} legs={[{ ticker: s.ticker, name: s.name, onchain: s.onchain, weight: 1 }]} initial={plan !== undefined ? "plan" : undefined} />
       </div>
       <ModeNote ticker={s.ticker} />
 
