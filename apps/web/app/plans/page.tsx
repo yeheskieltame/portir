@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
 import { formatUnits, zeroAddress } from "viem";
+import { BasketCard, basketImage } from "@/app/basket-card";
 import { Logo } from "@/app/logo";
 import { usd } from "@/app/verdict";
 import {
@@ -79,27 +80,21 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
 
   const busy = write.isPending || receipt.isLoading;
   const error = write.error ?? receipt.error;
+  const active = (plans.data ?? []).filter((p) => p.active);
+  const perMonth = active.reduce((n, p) => n + (Number(formatUnits(p.amount, USDT_DECIMALS)) * 30) / (p.interval / DAY), 0);
+  const nextRun = active.map((p) => p.nextRunAt).filter((t) => t * 1000 > now).sort((a, b) => a - b)[0];
 
   return (
     <>
       <div className="lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-8">
       <section className="mt-6 lg:sticky lg:top-6">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">New plan</h2>
-        <p className="mt-2 text-sm text-muted">Pick what to buy; the amount and cadence are set right there.</p>
-        <ul className="mt-3 space-y-2">
+        <p className="mt-2 text-sm text-muted">Pick what to buy. Amount and cadence come next, on the same screen.</p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
           {BASKETS.map((b) => (
-            <li key={b.slug}>
-              <Link href={`/basket/${b.slug}?plan`} className="glass flex items-center gap-3 rounded-2xl px-4 py-3 text-sm active:bg-white/5">
-                <Logo src={null} name={b.name} size={36} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{b.name}</span>
-                  <span className="block truncate font-mono text-xs text-muted">{b.legs.map((l) => l.ticker).join(" · ")}</span>
-                </span>
-                <span className="text-muted">→</span>
-              </Link>
-            </li>
+            <BasketCard key={b.slug} basket={b} href={`/basket/${b.slug}?plan`} />
           ))}
-        </ul>
+        </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {Object.keys(STOCK_NAMES).map((t) => (
             <Link key={t} href={`/stock/${t}?plan`} className="glass rounded-full px-3 py-1.5 font-mono text-xs active:bg-white/5">{t}</Link>
@@ -110,6 +105,13 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
 
       <div className="lg:mt-6">
       <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-muted lg:mt-0">Your plans</h2>
+      {active.length > 0 && (
+        <dl className="glass mt-3 grid grid-cols-3 divide-x divide-line rounded-3xl text-sm">
+          <Stat label="Active" value={String(active.length)} />
+          <Stat label="Per month" value={usd.format(perMonth)} />
+          <Stat label="Next run" value={nextRun ? untilText(nextRun, now) : "due"} />
+        </dl>
+      )}
       {ids.error && (
         <p role="alert" className="mt-2 text-sm text-block">
           Could not read your plans. Check that your wallet is on the right network.
@@ -137,7 +139,12 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
           return (
             <li key={id} className={`glass rounded-3xl p-4 text-sm ${plan.active ? "" : "opacity-60"}`}>
               <div className="flex items-start gap-3">
-                <Logo src={null} name={label} size={44} />
+                {basket && BASKETS.some((b) => b.name === label) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={basketImage(BASKETS.find((b) => b.name === label)!.slug)} alt="" className="size-11 shrink-0 rounded-2xl object-cover" />
+                ) : (
+                  <Logo src={null} name={label} size={44} />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-lg font-medium leading-tight">
                     {label}
@@ -175,6 +182,15 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
   );
 }
 
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="px-4 py-3">
+      <dt className="text-[11px] text-muted">{label}</dt>
+      <dd className="mt-0.5 font-mono tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
 function Runs({ registry, planId }: { registry: `0x${string}`; planId: bigint }) {
   const runs = useReadContract({
     address: registry,
@@ -190,7 +206,10 @@ function Runs({ registry, planId }: { registry: `0x${string}`; planId: bigint })
       <summary className="flex cursor-pointer items-center gap-2 text-xs">
         <Outcome outcome={latest.outcome} />
         <span className="text-muted">last run {when(latest.at)}</span>
-        <span className="ml-auto font-mono text-muted">{bought}/{runs.data.length} bought</span>
+        <span className="ml-auto flex items-center gap-2 font-mono text-muted">
+          <span aria-hidden className="h-1 w-16 overflow-hidden rounded-full bg-white/10"><span className="block h-full rounded-full bg-go" style={{ width: `${(bought / runs.data.length) * 100}%` }} /></span>
+          {bought}/{runs.data.length} bought
+        </span>
       </summary>
       <ol className="mt-3 space-y-3">
         {runs.data.toReversed().map((run, i) => (

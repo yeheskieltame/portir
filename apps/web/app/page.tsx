@@ -1,7 +1,8 @@
 import type { AssetKind } from "@portir/core/binance";
 import Link from "next/link";
 import { BASKETS } from "@/lib/catalog";
-import { PER_PAGE, loadMarket } from "@/lib/live";
+import { PER_PAGE, iconOf, loadMarket } from "@/lib/live";
+import { BasketCard } from "./basket-card";
 import { Logo } from "./logo";
 import { decide, pct, toneOf, usd } from "./verdict";
 
@@ -27,6 +28,8 @@ export default async function Markets({ searchParams }: PageProps<"/">) {
   const kind = sp.kind === "stock" || sp.kind === "etf" ? sp.kind : undefined;
   const page = Number(sp.page) || 1;
   const { stocks, total, page: current, pages, error } = await loadMarket({ q, kind, page });
+  const basketTickers = [...new Set(BASKETS.flatMap((b) => b.legs.map((l) => l.ticker)))];
+  const icons = Object.fromEntries(await Promise.all(basketTickers.map(async (t) => [t, await iconOf(t)] as const)));
   const open = stocks.some((s) => s.session === "open");
   const href = (p: Partial<{ q: string; kind: string; page: number }>) => {
     const u = new URLSearchParams();
@@ -55,11 +58,7 @@ export default async function Markets({ searchParams }: PageProps<"/">) {
       {!q && !kind && current === 1 && (
         <div className="mt-5 flex snap-x gap-3 overflow-x-auto pb-1 [scrollbar-width:none] lg:grid lg:grid-cols-4 lg:overflow-visible">
           {BASKETS.map((b) => (
-            <Link key={b.slug} href={`/basket/${b.slug}`} className="glass w-44 shrink-0 snap-start rounded-3xl p-4 transition-colors active:scale-95 lg:w-auto lg:p-5 lg:hover:bg-white/10">
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">Basket · {b.legs.length}</span>
-              <span className="mt-2 block text-lg leading-tight">{b.name}</span>
-              <span className="mt-2 block truncate font-mono text-[11px] text-muted">{b.legs.map((l) => l.ticker).join(" · ")}</span>
-            </Link>
+            <BasketCard key={b.slug} basket={b} icons={icons} className="w-64 shrink-0 snap-start lg:w-auto" />
           ))}
         </div>
       )}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { basketImage } from "@/app/basket-card";
 import { BuySheet } from "@/app/buy-sheet";
 import { Logo } from "@/app/logo";
 import { NA, TONE, decide, pct, usd } from "@/app/verdict";
@@ -40,7 +41,9 @@ export default async function BasketPage({ params, searchParams }: PageProps<"/b
         <span className="font-mono text-xs text-muted">Basket · {legs.length} holdings</span>
       </div>
 
-      <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">Basket</p>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={basketImage(basket.slug)} alt="" className="mt-3 aspect-[21/9] w-full rounded-3xl border border-line object-cover" />
+      <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">Basket</p>
       <h1 className="mt-1 text-[34px] leading-[1] tracking-[-0.03em] lg:text-[52px]">{basket.name}</h1>
       <p className="mt-2 text-sm text-muted">{basket.blurb}</p>
       <p className={`mt-3 font-mono text-sm tabular-nums ${change < 0 ? "text-block" : "text-go"}`}>{pct(change)} today <span className="text-muted">· weighted</span></p>

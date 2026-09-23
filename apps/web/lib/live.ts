@@ -18,6 +18,18 @@ export function tokenList(): Promise<StockToken[]> {
 /** "C3.ai (Ondo Tokenized)" → "C3.ai". Issuer token names carry the issuer in a trailing bracket. */
 const cleanName = (name: string) => name.replace(/\s*\([^)]*\)\s*$/, "").trim();
 
+// Logo URL per ticker, cached for the process: basket cards show the holdings' logos without a full quote.
+const icons = new Map<string, Promise<string | null>>();
+export function iconOf(ticker: string): Promise<string | null> {
+  if (!icons.has(ticker)) {
+    icons.set(ticker, tokenList().then((ts) => {
+      const t = ts.find((k) => k.ticker === ticker);
+      return t ? meta({ chainId: "56", contractAddress: t.contractAddress }).then((m) => m?.icon ?? null) : null;
+    }).catch(() => null));
+  }
+  return icons.get(ticker)!;
+}
+
 async function loadOne(ticker: string, tokens: StockToken[]): Promise<Stock> {
   const own = tokens.filter((t) => t.ticker === ticker);
   const view = await quoteStock(own);
