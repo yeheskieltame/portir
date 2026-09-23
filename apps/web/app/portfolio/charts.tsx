@@ -16,7 +16,7 @@ const when = (t: number) => new Date(t).toLocaleString("en-US", { month: "short"
 /** Portfolio value over time. Area or bars, hover/touch for the exact value, y-grid with dollar labels. */
 export function ValueChart({ points, type }: { points: Point[]; type: ChartType }) {
   const [hover, setHover] = useState<number | null>(null);
-  if (points.length < 2) return <div className="grid h-56 place-items-center text-sm text-muted">Not enough history yet.</div>;
+  if (points.length < 2) return <div className="grid h-56 place-items-center px-6 text-center text-sm text-muted">Your history starts with your first purchase. Check back after a few hours, or pick 1D.</div>;
 
   // Bars: at most 40, each the mean of its slice, coloured by direction.
   const bars = type === "bar" ? bucket(points, 40) : points;

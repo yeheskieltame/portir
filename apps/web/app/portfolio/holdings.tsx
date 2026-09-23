@@ -73,13 +73,17 @@ export function Holdings({ tokens, chainId, initialPreview = false }: { tokens: 
   }, [quotes.data, tickers, raw, preview, buys]);
 
   const value = holdings.reduce((sum, h) => sum + h.shares * h.onchain, 0);
-  // Portfolio history: each holding's per-share series × its shares, summed at matching candles from the end.
+  // Portfolio history: each holding's per-share series × the shares held at that time, summed at matching candles from
+  // the end. Shares bought (on this device) after a candle were not held yet; shares with no record count as held all along.
   const series = useMemo((): Point[] => {
     const n = Math.min(...holdings.map((h) => h.series.length));
     if (!holdings.length || !Number.isFinite(n) || n < 2) return [];
     const at = (h: Holding, i: number) => h.series[h.series.length - n + i];
-    return Array.from({ length: n }, (_, i) => ({ t: at(holdings[0], i)[0], v: holdings.reduce((sum, h) => sum + h.shares * at(h, i)[1], 0) }));
-  }, [holdings]);
+    const held = (h: Holding, t: number) => (preview ? h.shares : Math.max(0, h.shares - buys.filter((b) => b.ticker === h.ticker && b.at > t).reduce((s, b) => s + b.shares, 0)));
+    const points = Array.from({ length: n }, (_, i) => ({ t: at(holdings[0], i)[0], v: holdings.reduce((sum, h) => sum + held(h, at(h, i)[0]) * at(h, i)[1], 0) }));
+    const first = points.findIndex((p) => p.v > 0);
+    return first < 0 ? [] : points.slice(first);
+  }, [holdings, buys, preview]);
   // All-time P&L only when every holding has a recorded purchase; otherwise the change over the chosen range.
   const cost = holdings.length > 0 && holdings.every((h) => h.cost != null) ? holdings.reduce((sum, h) => sum + h.cost!, 0) : null;
   const delta = cost !== null ? value - cost : series.length ? value - series[0].v : 0;
@@ -118,7 +122,7 @@ export function Holdings({ tokens, chainId, initialPreview = false }: { tokens: 
           <div className="mt-2 px-2 pb-2">
             <ValueChart points={series} type={chartType} />
           </div>
-          <p className="px-4 pb-4 text-xs text-muted">Portfolio value from each holding&apos;s on-chain price history. Touch or hover the chart for the value at that time.</p>
+          <p className="px-4 pb-4 text-xs text-muted">What your holdings were worth over time, from each one&apos;s on-chain price history, starting at your first purchase. Touch or hover the chart for the value at that time.</p>
         </section>
       )}
 
