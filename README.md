@@ -80,8 +80,8 @@ Testnet fixtures (`contracts/src/testnet/`, non-upgradeable test doubles, all ve
 that sells and buys back shares at an EIP-712 quote signed by the keeper key, one holding or a whole basket per transaction (`buyBatch`)
 ([`0x3525…A46b`](https://testnet.bscscan.com/address/0x3525EB9a9875451b631eFF23357EC87B63A7A46b#code)), and one `MockStock`
 for every featured and basket ticker (18). `/api/buy` (and the agent) sign the live mainnet price into each quote, valid 10
-minutes, so nothing on testnet can go stale and the Guard sees exactly what mainnet would. `KEEPER=<signer> pnpm
-deploy:testnet:fixtures` / `pnpm add:testnet:stocks` (idempotent, add tickers to the list in `AddStocks.s.sol`) /
+minutes, so nothing on testnet can go stale and the Guard sees exactly what mainnet would. `pnpm deploy:testnet:usdt` (once) / `KEEPER=<signer> pnpm
+deploy:testnet:exchange` (exchange + stocks, reuses tUSDT) / `pnpm add:testnet:stocks` (idempotent, add tickers to the list in `AddStocks.s.sol`) /
 `pnpm verify:testnet:fixtures`. Security review of `PlanRegistry`: `contracts/AUDIT.md`.
 
 ## Run

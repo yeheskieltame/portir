@@ -5,9 +5,10 @@ import {Script, console} from "forge-std/Script.sol";
 import {MockUSDT} from "../../src/testnet/MockUSDT.sol";
 import {TestExchange} from "../../src/testnet/TestExchange.sol";
 
-/// Testnet fixtures: tUSDT with a faucet, the TestExchange, and one MockStock per featured and basket ticker.
+/// Testnet exchange + one MockStock per featured and basket ticker. Reuses the tUSDT already in
+/// deployments/testnet.json (deploy it once with DeployUSDT.s.sol); never redeploys a token that did not change.
 /// KEEPER: the address whose signed quotes the exchange accepts (the app's and agent's TESTNET_KEEPER_KEY).
-/// Writes deployments/testnet.json. Add tickers later with AddStocks.s.sol.
+/// Add tickers later with AddStocks.s.sol.
 contract DeployTestnet is Script {
     string[18] internal tickers = [
         "NVDA",
@@ -52,8 +53,8 @@ contract DeployTestnet is Script {
 
     function run() external {
         address keeper = vm.envAddress("KEEPER");
+        MockUSDT usdt = MockUSDT(vm.parseJsonAddress(vm.readFile("deployments/testnet.json"), ".usdt"));
         vm.startBroadcast();
-        MockUSDT usdt = new MockUSDT();
         TestExchange exchange = new TestExchange(usdt, keeper, 10);
         string memory json = "deploy";
         vm.serializeAddress(json, "usdt", address(usdt));
@@ -69,7 +70,7 @@ contract DeployTestnet is Script {
         vm.stopBroadcast();
         out = vm.serializeString(json, "stocks", out);
         vm.writeJson(out, "deployments/testnet.json");
-        console.log("tUSDT:", address(usdt));
+        console.log("tUSDT (reused):", address(usdt));
         console.log("TestExchange:", address(exchange));
     }
 }

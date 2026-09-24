@@ -15,7 +15,8 @@
     "upgrade:testnet": "cd contracts && forge clean && PROXY=${PROXY:-0x28daDC35523CE792C7C09faf516763830C38f36b} forge script script/Upgrade.s.sol --account portir-deployer --password-file .keystore-password --broadcast --slow --rpc-url bsc_testnet",
   "verify:testnet": "contracts/script/verify.sh bsc_testnet 0x28daDC35523CE792C7C09faf516763830C38f36b",
     "dev:landing": "pnpm --filter landing dev",
-    "deploy:testnet:fixtures": "cd contracts && forge clean && KEEPER=${KEEPER:?signer address} forge script script/testnet/DeployTestnet.s.sol --account portir-deployer --password-file .keystore-password --broadcast --rpc-url bsc_testnet",
+    "deploy:testnet:usdt": "cd contracts && forge script script/testnet/DeployUSDT.s.sol --account portir-deployer --password-file .keystore-password --broadcast --rpc-url bsc_testnet",
+  "deploy:testnet:exchange": "cd contracts && KEEPER=${KEEPER:?signer address} forge script script/testnet/DeployTestnet.s.sol --account portir-deployer --password-file .keystore-password --broadcast --rpc-url bsc_testnet",
     "add:testnet:stocks": "cd contracts && forge script script/testnet/AddStocks.s.sol --account portir-deployer --password-file .keystore-password --broadcast --rpc-url bsc_testnet",
   "verify:testnet:fixtures": "contracts/script/testnet/verify.sh"
   }
