@@ -13,7 +13,7 @@ const TOOLS = ["search_stock", "get_fair_price", "market_window", "quote_best_is
 
 const SNIPPETS = {
   "Claude Code": `claude mcp add portir --transport http ${MCP}`,
-  "Claude Desktop / Cowork": JSON.stringify({ mcpServers: { portir: { type: "http", url: MCP } } }, null, 2),
+  "Desktop · Cowork": JSON.stringify({ mcpServers: { portir: { type: "http", url: MCP } } }, null, 2),
   Cursor: JSON.stringify({ mcpServers: { portir: { url: MCP } } }, null, 2),
 } as const;
 type Client = keyof typeof SNIPPETS;
@@ -97,9 +97,9 @@ function Addr({ value }: { value: string }) {
 function Copy({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="relative mt-3">
-      <pre className="overflow-x-auto rounded-2xl border border-line bg-[#04070d] p-3 pr-20 font-mono text-[11px] leading-relaxed text-white/85">{text}</pre>
-      <button onClick={() => navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1200); })} className="absolute right-2 top-2 rounded-full bg-white px-3 py-1 text-[11px] font-medium text-black">
+    <div className="mt-3 rounded-2xl border border-line bg-[#04070d]">
+      <pre className="overflow-x-auto p-3 font-mono text-[11px] leading-relaxed text-white/85">{text}</pre>
+      <button onClick={() => navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1200); })} className="m-2 mt-0 rounded-full bg-white px-3 py-1 text-[11px] font-medium text-black">
         {copied ? "Copied" : "Copy"}
       </button>
     </div>

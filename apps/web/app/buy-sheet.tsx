@@ -61,7 +61,8 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
   const usdtIn = Number(amount);
   // Every leg must be at least 1 USDT (the API minimum), so the smallest weight sets the basket minimum.
   const minOrder = Math.ceil(1 / Math.min(...legs.map((l) => l.weight)));
-  const valid = usdtIn >= minOrder && (repeat || have === null || usdtIn <= have);
+  // A one-time buy waits for the balance read; a plan spends later, so it does not need one now.
+  const valid = usdtIn >= minOrder && (repeat || (have !== null && usdtIn <= have));
   const basket = legs.length > 1;
   const target = basket ? `BASKET:${name}` : legs[0].ticker;
 
@@ -235,7 +236,7 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
                   <p className="mt-4 font-mono text-sm text-muted tabular-nums">≈ {usdtIn > 0 ? (usdtIn / legs[0].onchain).toFixed(4) : "0"} shares at {usd.format(legs[0].onchain)}{repeat && " today"}</p>
                 )}
                 <button disabled={!valid || step.at === "quoting"} onClick={repeat ? () => setStep({ at: "plan", once: false }) : getQuote} className="mt-5 w-full rounded-full bg-white py-3 font-medium text-black disabled:opacity-50">
-                  {step.at === "quoting" ? "Asking the Guard…" : usdtIn < minOrder ? `At least $${minOrder}` : repeat ? "Review plan" : have !== null && usdtIn > have ? "Not enough USDT" : "Check price"}
+                  {step.at === "quoting" ? "Asking the Guard…" : usdtIn < minOrder ? `At least $${minOrder}` : repeat ? "Review plan" : have === null ? "Reading balance…" : usdtIn > have ? "Not enough USDT" : "Check price"}
                 </button>
               </>
             ) : step.at === "confirm" || step.at === "signing" ? (
