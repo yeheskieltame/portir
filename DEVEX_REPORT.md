@@ -162,7 +162,7 @@ bStocks **+4.55 bps**, both through LiquidMesh. Corrections to the entry above, 
 
 ### 2026-09-23 (day 4, night): deployed to Vercel. The Trading API refuses every cloud region
 
-Landing and app are live (`portir-landing.vercel.app`, `portir-app.vercel.app`); the RWA Data API works from Vercel
+Landing and app are live (`portir.xyz`, `app.portir.xyz`; earlier `portir-landing.vercel.app`, `portir-app.vercel.app`); the RWA Data API works from Vercel
 without a VPN, so the catalog, charts and portfolio are live for anyone. The Trading API is not:
 
 - **`/api/buy` returned "no route" from Vercel while the same key and order worked from a laptop in Indonesia.** The
