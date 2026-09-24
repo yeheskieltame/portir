@@ -7,6 +7,7 @@ import { formatUnits, parseUnits, zeroAddress } from "viem";
 import { BasketCard, basketImage } from "@/app/basket-card";
 import { Logo } from "@/app/logo";
 import type { PlanProposal } from "@/app/api/agent/route";
+import { Activity } from "./activity";
 import { AgentChat } from "./agent-chat";
 import { usd } from "@/app/verdict";
 import {
@@ -208,6 +209,9 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
           );
         })}
       </ul>
+      {ids.data && plans.data && (
+        <Activity registry={registry} ids={ids.data} targets={Object.fromEntries(ids.data.map((id, i) => [String(id), decodeTarget(plans.data![i].target)]))} />
+      )}
       {ids.data && ids.data.length > 0 && executorAddress === zeroAddress && (
         <p className="mt-3 text-xs text-muted">Runs are recorded by the executor agent on BNB Agent Studio once it is live; until then plans are owner-run.</p>
       )}
