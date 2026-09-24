@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { executorAddress } from "@/lib/planRegistry";
 
-const AGENT = process.env.NEXT_PUBLIC_AGENT_URL ?? "http://localhost:9000";
-const MCP = `${AGENT}/mcp`;
+// Unset until the agent is published (bag deploy); locally `bag dev` serves it on :9000.
+const AGENT = process.env.NEXT_PUBLIC_AGENT_URL ?? (process.env.NODE_ENV === "development" ? "http://localhost:9000" : "");
+const MCP = AGENT ? `${AGENT}/mcp` : "";
 const U_TOKEN = "0xcE24439F2D9C6a2289F741120FE202248B666666"; // U on BSC mainnet, what Pieverse LLM credits are bought with
 const SWAP = `https://pancakeswap.finance/swap?outputCurrency=${U_TOKEN}&chain=bsc`;
 
@@ -26,12 +27,16 @@ export function ConnectClaude() {
       <p className="mt-1 text-sm text-muted">
         Use your own Claude (or any MCP client) as the brain. The Portir agent serves the market data, the Guard and ready-to-sign transactions as tools; nothing is signed on your behalf.
       </p>
+      {!MCP ? (
+        <p className="mt-4 rounded-2xl border border-dashed border-line px-3 py-2 text-xs text-muted">The agent is not published yet. Once it runs on BNB Agent Studio, its MCP address appears here.</p>
+      ) : (
       <div className="glass mt-4 grid grid-cols-3 rounded-full p-1 text-xs font-medium">
         {(Object.keys(SNIPPETS) as Client[]).map((c) => (
           <button key={c} onClick={() => setClient(c)} className={`truncate rounded-full px-2 py-1.5 ${c === client ? "bg-white text-black" : "text-muted"}`}>{c}</button>
         ))}
       </div>
       <Copy text={SNIPPETS[client]} />
+      )}
       <p className="mt-3 text-xs text-muted">Then ask: “Is now a good time to buy TSLA on-chain?” or “Set up $30 weekly NVDA, only when fair.”</p>
       <details className="mt-3 text-xs text-muted">
         <summary className="cursor-pointer">Tools ({TOOLS.length})</summary>
