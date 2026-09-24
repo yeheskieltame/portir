@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="logos/icon.svg">
 <meta name="theme-color" content="#04070d">
 <title>Portir — US stocks on BNB Chain, bought at a fair price</title>
 <meta name="description" content="Portir checks the US market session and the on-chain price against the exchange before every order. Stocks, not tokens. Weekly plans with smart timing.">
@@ -22,6 +23,7 @@ body{overflow-x:hidden}
 .shade{pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.25),transparent 25%,transparent 50%,rgba(2,5,12,.85));z-index:1}
 .header{position:fixed;z-index:50;top:0;left:0;width:100%;padding:20px 28px;display:flex;align-items:center;justify-content:space-between}
 .logo{color:#fff;text-decoration:none;font-size:22px;letter-spacing:-.02em}
+.logo img{height:22px;width:auto;margin-right:8px;vertical-align:-3px}
 .logo em{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;font-size:26px}
 .header-actions,.nav-pill{display:flex;align-items:center}
 .header-actions{gap:12px}
@@ -140,7 +142,7 @@ html,body,a,button{cursor:none!important}
 </head>
 <body>
 <header class="header">
-  <a class="logo" href="/">Port<em>ir</em></a>
+  <a class="logo" href="/"><img src="logos/mark.svg" alt="">Port<em>ir</em></a>
   <div class="header-actions">
     <nav class="nav-pill">
       <a class="active" href="#guard">How it works</a>
