@@ -7,6 +7,7 @@ import { usd } from "@/app/verdict";
 import { type Mode, NET } from "@/lib/mode";
 import { planRegistryAddress } from "@/lib/planRegistry";
 import { TESTNET, mockUsdtAbi } from "@/lib/testnet";
+import { AgentFuel, ConnectClaude } from "./agent";
 import { chain } from "@/lib/wagmi";
 
 export default function Profile() {
@@ -81,6 +82,11 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
+        <ConnectClaude />
+        <AgentFuel />
+      </div>
     </>
   );
 }
