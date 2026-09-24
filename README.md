@@ -33,7 +33,8 @@ bag dev                   # A2A + MCP + /x402 on :9000, executor loop on
 
 Env (in `.studio/.env.local`, set with `bag env set`): `PORTIR_REGISTRY` (PlanRegistry proxy), `PORTIR_REGISTRY_CHAIN`
 (`testnet` default), `PORTIR_SCAN_SECONDS` (900), `PORTIR_EXECUTION` (`off` | `testnet` | `agentic-wallet`),
-`PORTIR_MAINNET_ARMED=yes` (required, on top of `agentic-wallet`, before any mainnet spend), `PORTIR_TESTNET_KEEPER_KEY`
+`PORTIR_MAINNET_ARMED=yes` (required, on top of `agentic-wallet`, before any mainnet spend), `PORTIR_BRAIN=claude-cli` (local dev:
+the chat answers come from the operator's own Claude Code via `claude -p`, using this agent's MCP tools, instead of Pieverse), `PORTIR_TESTNET_KEEPER_KEY`
 (signs TestExchange quotes; same key as the app's `TESTNET_KEEPER_KEY`), `BAW_SESSION_B64` (Agentic Wallet session), `BINANCE_W3_API_KEY/SECRET`
 (executable quotes), `COINDESK_API_KEY` (optional news). The executor refuses a backend whose chain differs from the
 registry's chain.

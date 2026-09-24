@@ -44,6 +44,7 @@
  */
 
 import { createHash, randomUUID } from "node:crypto";
+import { claudeCliWork } from "./portir/brain.js";
 import { pathToFileURL } from "node:url";
 import {
   GetSecretValueCommand,
@@ -177,17 +178,8 @@ function defaultNetwork(): string {
 // recipe's PAID fetch tools — see the `tools:` note below — the LLM picks the
 // URL, but who gets paid and the per-call/daily caps stay locked in
 // studio.toml.)
-export function buildRunWork(): RunWork {
-  // The model is resolved LAZILY on first delivery, not at boot: a seller
-  // with no provider key yet must still serve negotiate (which never calls
-  // the LLM) — missing-key errors surface at notify_funded delivery time.
-  let model: ReturnType<typeof buildModel> | undefined;
-  return async (prompt, { abortSignal }) => {
-    model ??= buildModel(); // managed model with the auto-renew hook (delivery only)
-    const result = await generateText({
-      model,
-      system:
-        "You are Portir, a market-aware assistant for buying US tokenized stocks on BNB Chain. " +
+const PORTIR_SYSTEM =
+  "You are Portir, a market-aware assistant for buying US tokenized stocks on BNB Chain. " +
         "The runtime has already authorized this task; complete it now without asking for payment. " +
         "Use the Portir tools: get_fair_price / market_window for whether a price is fair and the market is open, " +
         "get_news for context, quote_best_issuer for executable quotes, get_portfolio and list_plans for a wallet. " +
@@ -198,7 +190,22 @@ export function buildRunWork(): RunWork {
         'PLAN {"target":"NVDA","usdt":50,"intervalDays":7,"smartTiming":true,"once":false} ' +
         "(target = a ticker, or \"BASKET:<basket name>\" for AI & Semis, Big Tech, Dividend Blue-chips, US Broad Market; " +
         "intervalDays = 7 weekly, 14 every two weeks, 30 monthly; smartTiming true unless they say to buy at the scheduled time regardless of price; once = true when they want a single buy as soon as the price is fair rather than a recurring plan). " +
-        "The app shows that line as a plan the user confirms in their wallet.",
+        "The app shows that line as a plan the user confirms in their wallet.";
+
+export function buildRunWork(): RunWork {
+  // Local-development brain: the operator's Claude Code answers, with this agent's MCP tools.
+  if (process.env.PORTIR_BRAIN === "claude-cli") {
+    return async (prompt, { abortSignal }) => cleanAnswer(await claudeCliWork(prompt, PORTIR_SYSTEM, abortSignal));
+  }
+  // The model is resolved LAZILY on first delivery, not at boot: a seller
+  // with no provider key yet must still serve negotiate (which never calls
+  // the LLM) — missing-key errors surface at notify_funded delivery time.
+  let model: ReturnType<typeof buildModel> | undefined;
+  return async (prompt, { abortSignal }) => {
+    model ??= buildModel(); // managed model with the auto-renew hook (delivery only)
+    const result = await generateText({
+      model,
+      system: PORTIR_SYSTEM,
       prompt,
       // LLM_READ_TOOLS = read-only chain tools (wallet, balances,
       // ERC-8004/8183 queries). Edit `tools.ts` to add/remove. These are
