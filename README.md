@@ -8,7 +8,7 @@ the on-chain vs exchange price before every order.
 | Path | What | Status |
 | --- | --- | --- |
 | `packages/core` | `@portir/core`: the Guard (pure verdict logic), the Binance RWA Data client (catalog, quotes, fundamentals, K-lines, logos) and the Trading client (official SDK). | quote + build verified live on mainnet; `simulate` blocked by an SDK bug (see DevEx report) |
-| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | 13 tests, verified on BSC testnet |
+| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | 15 tests, verified on BSC testnet, upgraded once in place (v2: `updatePlan`, `resumePlan`) |
 | `apps/landing` | Static landing page (one HTML file, no build). Its own Vercel project on the root domain; the app lives on `app.<domain>`. | `pnpm dev:landing` → :3001 |
 | `apps/portiragent` | The Portir agent on **BNB Agent Studio** (`bag` workspace, not part of the pnpm root workspace). One AgentCore runtime with three faces: **MCP** (`/mcp`, ten Portir tools for Claude or any client), **x402** (`/x402`, free passthrough answering with the same tools), **A2A**. Runs the **DCA executor**: scans `PlanRegistry` every 15 min, applies the Guard, records `Waited / Skipped / Executed` with a one-sentence reason. | runs locally (`cd apps/portiragent && bag dev`); trial deploy next; execution backend off until the Agentic Wallet test |
 | `apps/web` | Next.js app, mobile-first. Markets (510 US stocks/ETFs on BSC, search, filter, pages), stock detail (chart, Guard, providers, fundamentals), baskets, one-tap buy with the Guard, portfolio (live balances, history, dividends), plans, profile. | live; buying signs real BSC mainnet transactions |
@@ -59,7 +59,7 @@ are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
   fewer calls, and its issuer list is the source of truth for what can be traded. Take the exchange price from
   `getRwaUnderlyingMarketData`, never from `getRwaTokenPrice.referencePrice` (see DEVEX_REPORT).
 - `simulate` (PRD Guard step 4): call the REST endpoint with our own request signing; until then the swap's `minTokensOut` (0.5%) is the guard.
-- `PlanRegistry` on mainnet with a multisig `OWNER`; `updatePlan` so a plan can change amount or cadence without cancel + recreate.
+- `PlanRegistry` on mainnet with a multisig `OWNER`.
 - Cost basis lives in `localStorage` (purchases made in the app on that device) until there is an indexer.
 
 ## Deployments
@@ -72,7 +72,7 @@ are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
 
 | Network | PlanRegistry (proxy) | Implementation | Verified |
 | --- | --- | --- | --- |
-| BSC testnet (97) | `0x28daDC35523CE792C7C09faf516763830C38f36b` | `0xD408f733B94Bee65714C0fE99212F47cD55A315C` | [BscScan](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code) (proxy linked) + Sourcify |
+| BSC testnet (97) | `0x28daDC35523CE792C7C09faf516763830C38f36b` | `0xEb624926068cd0673a4c07419824EeC42c5ed172` (v2; v1 `0xD408…315C`) | [BscScan](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code) (proxy linked) + Sourcify |
 
 Testnet fixtures (`contracts/src/testnet/`, non-upgradeable test doubles, all verified; addresses in
 `contracts/deployments/testnet.json`): `MockUSDT` with a 1,000/day faucet
@@ -113,6 +113,7 @@ gitignored `contracts/.keystore-password`. Fund the address (`cast wallet addres
 proxy address in `apps/web/.env.local` with `NEXT_PUBLIC_CHAIN=testnet`.
 `OWNER=<addr>` sets the upgrade admin (default: the deployer); use a multisig for anything real.
 
-Upgrades: write `PlanRegistryV2` annotated `/// @custom:oz-upgrades-from PlanRegistry`, only append fields to
-`PlanRegistryStorage`, then `Upgrades.upgradeProxy(proxy, "PlanRegistryV2.sol", "")`. The OZ plugin checks the
-storage layout (needs Node, `ffi = true`).
+Upgrades: edit `PlanRegistry.sol` (only append fields to `PlanRegistryStorage`, never reorder), then
+`PROXY=<proxy> pnpm upgrade:testnet` (`script/Upgrade.s.sol`, owner keystore) and `pnpm verify:testnet`. The contract keeps
+its name, so the OZ plugin cannot diff the layout against a reference build; the script skips that one check and the
+layout rule is enforced by review (`contracts/AUDIT.md`). Everything else the plugin validates still runs.

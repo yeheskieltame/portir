@@ -192,7 +192,13 @@ export function buildRunWork(): RunWork {
         "Use the Portir tools: get_fair_price / market_window for whether a price is fair and the market is open, " +
         "get_news for context, quote_best_issuer for executable quotes, get_portfolio and list_plans for a wallet. " +
         "Explain in one or two plain sentences; say stocks, not tokens; never invent prices. " +
-        "You cannot sign or spend: prepare_* tools return calldata for the user's own wallet.",
+        "You cannot sign or spend: prepare_* tools return calldata for the user's own wallet. " +
+        "When the user asks to set up, start or schedule a recurring investment (DCA plan), check the price with get_fair_price, " +
+        "answer in one or two sentences, then end your reply with exactly one final line in this form and nothing after it: " +
+        'PLAN {"target":"NVDA","usdt":50,"intervalDays":7,"smartTiming":true} ' +
+        "(target = a ticker, or \"BASKET:<basket name>\" for AI & Semis, Big Tech, Dividend Blue-chips, US Broad Market; " +
+        "intervalDays = 7 weekly, 14 every two weeks, 30 monthly; smartTiming true unless they say to buy at the scheduled time regardless of price). " +
+        "The app shows that line as a plan the user confirms in their wallet.",
       prompt,
       // LLM_READ_TOOLS = read-only chain tools (wallet, balances,
       // ERC-8004/8183 queries). Edit `tools.ts` to add/remove. These are

@@ -164,6 +164,57 @@ contract PlanRegistryTest is Test {
         registry.cancelPlan(id);
     }
 
+    function test_UpdatePlan_OwnerChangesTermsKeepsSchedule() public {
+        uint40 firstRunAt = uint40(block.timestamp + 1 days);
+        uint256 id = _create(firstRunAt);
+
+        vm.prank(agent);
+        vm.expectRevert(PlanRegistry.NotPlanOwner.selector);
+        registry.updatePlan(id, 20e18, 14 days, false);
+
+        vm.startPrank(rio);
+        vm.expectRevert(PlanRegistry.ZeroAmount.selector);
+        registry.updatePlan(id, 0, 14 days, false);
+        vm.expectRevert(PlanRegistry.IntervalTooShort.selector);
+        registry.updatePlan(id, 20e18, 1 hours, false);
+
+        vm.expectEmit();
+        emit PlanRegistry.PlanUpdated(id, 20e18, 14 days, false);
+        registry.updatePlan(id, 20e18, 14 days, false);
+        vm.stopPrank();
+
+        PlanRegistry.Plan memory plan = registry.getPlan(id);
+        assertEq(plan.amount, 20e18);
+        assertEq(plan.interval, 14 days);
+        assertFalse(plan.smartTiming);
+        assertEq(plan.nextRunAt, firstRunAt);
+    }
+
+    function test_ResumePlan_ReactivatesAndMovesPastRunToNow() public {
+        uint256 id = _create(0);
+        vm.prank(rio);
+        registry.cancelPlan(id);
+
+        vm.prank(rio);
+        vm.expectRevert(PlanRegistry.PlanInactive.selector);
+        registry.updatePlan(id, 20e18, WEEK, true);
+
+        vm.warp(block.timestamp + 3 days);
+        vm.prank(stranger);
+        vm.expectRevert(PlanRegistry.NotPlanOwner.selector);
+        registry.resumePlan(id);
+
+        vm.prank(rio);
+        registry.resumePlan(id);
+        PlanRegistry.Plan memory plan = registry.getPlan(id);
+        assertTrue(plan.active);
+        assertEq(plan.nextRunAt, block.timestamp);
+
+        vm.prank(rio);
+        vm.expectRevert(PlanRegistry.PlanActive.selector);
+        registry.resumePlan(id);
+    }
+
     function test_Initialize_OnlyOnceAndImplementationLocked() public {
         assertEq(registry.owner(), admin);
         vm.expectRevert(Initializable.InvalidInitialization.selector);

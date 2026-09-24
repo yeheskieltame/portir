@@ -49,7 +49,9 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     uint256 public constant MAX_REASON_LENGTH = 200;
 
     event PlanCreated(uint256 indexed planId, address indexed owner, bytes32 target, uint128 amount);
+    event PlanUpdated(uint256 indexed planId, uint128 amount, uint32 interval, bool smartTiming);
     event PlanCancelled(uint256 indexed planId);
+    event PlanResumed(uint256 indexed planId, uint40 nextRunAt);
     event PlanRun(uint256 indexed planId, Outcome outcome, int32 spreadBps, bytes32 txHash, string reason);
 
     error ZeroAmount();
@@ -58,6 +60,7 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     error NotPlanOwner();
     error NotAuthorized();
     error PlanInactive();
+    error PlanActive();
     error NotDue(uint40 nextRunAt);
     error ReasonTooLong();
 
@@ -90,12 +93,36 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         emit PlanCreated(planId, msg.sender, target, amount);
     }
 
+    /// @notice Change amount, cadence or smart timing; the next run date is kept.
+    function updatePlan(uint256 planId, uint128 amount, uint32 interval, bool smartTiming) external {
+        Plan storage plan = _storage().plans[planId];
+        if (msg.sender != plan.owner) revert NotPlanOwner();
+        if (!plan.active) revert PlanInactive();
+        if (amount == 0) revert ZeroAmount();
+        if (interval < MIN_INTERVAL) revert IntervalTooShort();
+        plan.amount = amount;
+        plan.interval = interval;
+        plan.smartTiming = smartTiming;
+        emit PlanUpdated(planId, amount, interval, smartTiming);
+    }
+
+    /// @notice Pause: the executor stops until `resumePlan`.
     function cancelPlan(uint256 planId) external {
         Plan storage plan = _storage().plans[planId];
         if (msg.sender != plan.owner) revert NotPlanOwner();
         if (!plan.active) revert PlanInactive();
         plan.active = false;
         emit PlanCancelled(planId);
+    }
+
+    /// @notice Resume a paused plan; a run date that passed while paused moves to now.
+    function resumePlan(uint256 planId) external {
+        Plan storage plan = _storage().plans[planId];
+        if (msg.sender != plan.owner) revert NotPlanOwner();
+        if (plan.active) revert PlanActive();
+        plan.active = true;
+        if (plan.nextRunAt < block.timestamp) plan.nextRunAt = uint40(block.timestamp);
+        emit PlanResumed(planId, plan.nextRunAt);
     }
 
     function recordRun(

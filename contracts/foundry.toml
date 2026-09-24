@@ -13,7 +13,7 @@ ast = true
 build_info = true
 extra_output = ["storageLayout"]
 # DeployTestnet writes deployments/testnet.json
-fs_permissions = [{ access = "read-write", path = "./deployments" }]
+fs_permissions = [{ access = "read-write", path = "./deployments" }, { access = "read", path = "./out" }]
 
 [profile.ci]
 fuzz = { runs = 5000 }

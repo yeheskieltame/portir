@@ -2,10 +2,12 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useEffect, useSyncExternalStore } from "react";
-import { formatUnits, zeroAddress } from "viem";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { formatUnits, parseUnits, zeroAddress } from "viem";
 import { BasketCard, basketImage } from "@/app/basket-card";
 import { Logo } from "@/app/logo";
+import type { PlanProposal } from "@/app/api/agent/route";
+import { AgentChat } from "./agent-chat";
 import { usd } from "@/app/verdict";
 import {
   useConnection,
@@ -21,6 +23,7 @@ import {
   OUTCOMES,
   USDT_DECIMALS,
   decodeTarget,
+  encodeTarget,
   executorAddress,
   planRegistryAbi,
   planRegistryAddress,
@@ -80,6 +83,10 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
 
   const busy = write.isPending || receipt.isLoading;
   const error = write.error ?? receipt.error;
+  const [editing, setEditing] = useState<bigint | null>(null);
+  const call = (functionName: "cancelPlan" | "resumePlan", id: bigint) => void onRegistry(() => write.mutate({ ...contract, functionName, args: [id] }));
+  const startPlan = (p: PlanProposal) =>
+    void onRegistry(() => write.mutate({ ...contract, functionName: "createPlan", args: [encodeTarget(p.target), parseUnits(String(p.usdt), USDT_DECIMALS), p.intervalDays * DAY, 0, p.smartTiming, executorAddress] }));
   const planTickers = (plans.data ?? []).map((p) => decodeTarget(p.target)).filter((t) => !t.startsWith("BASKET:"));
   const iconTickers = [...new Set([...BASKETS.flatMap((b) => b.legs.map((l) => l.ticker)), ...Object.keys(STOCK_NAMES), ...planTickers])].sort();
   const icons = useQuery({
@@ -99,7 +106,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
         <p className="mt-2 text-sm text-muted">Pick what to buy. Amount and cadence come next, on the same screen.</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           {BASKETS.map((b) => (
-            <BasketCard key={b.slug} basket={b} icons={icons} href={`/basket/${b.slug}?plan`} />
+            <BasketCard key={b.slug} basket={b} icons={icons} href={`/basket/${b.slug}?plan`} aspect="aspect-[4/3]" />
           ))}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -111,6 +118,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
           ))}
           <Link href="/" className="rounded-full px-3 py-1.5 text-xs text-muted underline">all stocks</Link>
         </div>
+        <AgentChat wallet={owner} onStart={startPlan} busy={busy} />
       </section>
 
       <div className="lg:mt-6">
@@ -141,7 +149,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
           const label = basket ? target.slice(7) : (STOCK_NAMES[target] ?? target);
           const due = plan.nextRunAt * 1000 <= now;
           const status = !plan.active
-            ? { label: "Cancelled", cls: "text-muted border-line" }
+            ? { label: "Paused", cls: "text-muted border-line" }
             : due
               ? { label: plan.smartTiming ? "Due · waiting for a fair window" : "Due", cls: "text-warn border-warn/40 bg-warn/10" }
               : { label: `Next in ${untilText(plan.nextRunAt, now)}`, cls: "text-go border-go/40 bg-go/10" };
@@ -165,11 +173,16 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
                     {plan.smartTiming && " · smart timing"}
                   </p>
                 </div>
-                {plan.active && (
-                  <button disabled={busy} className="text-xs text-block disabled:opacity-60" onClick={() => void onRegistry(() => write.mutate({ ...contract, functionName: "cancelPlan", args: [id] }))}>
-                    Cancel
-                  </button>
-                )}
+                <span className="flex shrink-0 gap-1">
+                  {plan.active ? (
+                    <>
+                      <button disabled={busy} onClick={() => setEditing(editing === id ? null : id)} className="glass rounded-full px-3 py-1 text-xs disabled:opacity-60">{editing === id ? "Close" : "Edit"}</button>
+                      <button disabled={busy} onClick={() => call("cancelPlan", id)} className="rounded-full px-3 py-1 text-xs text-warn disabled:opacity-60">Pause</button>
+                    </>
+                  ) : (
+                    <button disabled={busy} onClick={() => call("resumePlan", id)} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black disabled:opacity-60">Resume</button>
+                  )}
+                </span>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${status.cls}`}>{status.label}</span>
@@ -177,6 +190,13 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
               </div>
               {plan.active && plan.smartTiming && (
                 <p className="mt-2 text-xs text-muted">The agent waits up to 48h after the due time for the market to open and the price to be fair, then buys and writes its reason here.</p>
+              )}
+              {editing === id && (
+                <PlanEditor
+                  plan={plan}
+                  busy={busy}
+                  onSave={(amount, days, smart) => { setEditing(null); void onRegistry(() => write.mutate({ ...contract, functionName: "updatePlan", args: [id, parseUnits(amount, USDT_DECIMALS), days * DAY, smart] })); }}
+                />
               )}
               <Runs registry={registry} planId={id} />
             </li>
@@ -189,6 +209,37 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
       </div>
       </div>
     </>
+  );
+}
+
+/** Change amount, cadence or smart timing in place; the next run date stays. */
+function PlanEditor({ plan, busy, onSave }: { plan: { amount: bigint; interval: number; smartTiming: boolean }; busy: boolean; onSave: (amount: string, days: number, smart: boolean) => void }) {
+  const [amount, setAmount] = useState(formatUnits(plan.amount, USDT_DECIMALS));
+  const [days, setDays] = useState(plan.interval / DAY);
+  const [smart, setSmart] = useState(plan.smartTiming);
+  const valid = Number(amount) >= 1;
+  return (
+    <div className="animate-rise mt-3 rounded-2xl border border-line p-3">
+      <label className="block text-xs text-muted">
+        Amount each time (USDT)
+        <span className="mt-1 flex items-baseline gap-1 border-b border-line pb-1 font-mono text-2xl text-white">
+          <span className="text-muted">$</span>
+          <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} className="w-full bg-transparent outline-none" />
+        </span>
+      </label>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {Object.entries(CADENCES).map(([label, d]) => (
+          <button key={label} onClick={() => setDays(d)} className={`rounded-full px-3 py-1.5 text-xs font-medium ${d === days ? "bg-white text-black" : "glass"}`}>{label}</button>
+        ))}
+      </div>
+      <label className="mt-3 flex items-center gap-2 text-xs">
+        <input type="checkbox" checked={smart} onChange={(e) => setSmart(e.target.checked)} className="accent-brand" />
+        Smart timing · wait up to 48h for the market to open and a fair price
+      </label>
+      <button disabled={!valid || busy} onClick={() => onSave(amount, days, smart)} className="mt-3 w-full rounded-full bg-white py-2 text-xs font-medium text-black disabled:opacity-50">
+        {busy ? "Confirming…" : "Save changes"}
+      </button>
+    </div>
   );
 }
 

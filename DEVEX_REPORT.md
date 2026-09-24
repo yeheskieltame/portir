@@ -284,3 +284,21 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
 | 09-23 | Trading `aggregator/quote` | Call from Vercel (6 regions) | `40304 compliance restriction` for every cloud IP; fine from a home IP | Document it; allow per-key server IP allowlists |
 | 09-23 | Trading `aggregator/quote` | Buy NVDAon with USDC | `40368` "can only pair with allowed stablecoin(s)"; list unpublished | Publish the allowed stables per issuer; include them in the error |
 | 09-23 | Agentic Wallet `auth signin` | Scan QR from the app | Code expired twice in well under 5 min | Longer TTL or resumable verify |
+
+### 2026-09-24 (day 6): the agent inside the app, and `updatePlan` by upgrade
+
+- **"Ask the agent" in the app.** The Plans page now talks to the agent's free `/x402` face through one Next route
+  (`/api/agent`); the same LLM + Portir tools that serve MCP answer "is now a good time to buy TSLA?" and turn "invest $50
+  in AI & Semis every Monday, only when fair" into a plan the user signs. Structured output over x402 is text-only, so the
+  agent ends a plan suggestion with a single `PLAN {...}` line the app parses and validates (tickers, basket names,
+  cadence) before it shows a confirm button. Works, with one DevEx note below.
+- **Pieverse free model rate limit.** A handful of requests in a row returned `AI_APICallError: Too Many Requests`
+  after the SDK's three retries (the runtime logs `[x402] free work failed`, the caller gets `{"error":"work failed"}`,
+  HTTP 500). Nothing in the response says *why*. **Ask: surface the provider status (429, retry-after) in the x402
+  error body, and document the free model's limits** so a demo can pace itself or budget a paid model.
+- **Node `localhost` → `::1`.** The app's server-side fetch to `localhost:9000` failed while `curl` succeeded: the runtime
+  binds `127.0.0.1` and Node resolved `localhost` to IPv6. `PORTIR_AGENT_URL` defaults to `http://127.0.0.1:9000` now.
+  Ask (Studio): bind both, or print the exact URL to use from other processes.
+- **PlanRegistry v2 in place.** `updatePlan` and `resumePlan` (pause/resume, edit amount, cadence, smart timing) shipped
+  as a UUPS upgrade of the testnet proxy (`script/Upgrade.s.sol`, `pnpm upgrade:testnet`), storage untouched; details in
+  `contracts/AUDIT.md`. `fs_permissions` needed `./out` read access for the OZ plugin's validation (not documented).
