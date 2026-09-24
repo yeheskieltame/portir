@@ -2,9 +2,9 @@ import { type Address, hexToString, isAddress, parseAbi, stringToHex, zeroAddres
 
 // Mirrors contracts/src/PlanRegistry.sol. Keep in sync by hand; it is five functions.
 export const planRegistryAbi = parseAbi([
-  "struct Plan { address owner; address executor; bytes32 target; uint128 amount; uint32 interval; uint40 nextRunAt; bool smartTiming; bool active; }",
+  "struct Plan { address owner; address executor; bytes32 target; uint128 amount; uint32 interval; uint40 nextRunAt; bool smartTiming; bool active; bool once; }",
   "struct Run { uint40 at; uint8 outcome; int32 spreadBps; bytes32 txHash; string reason; }",
-  "function createPlan(bytes32 target, uint128 amount, uint32 interval, uint40 firstRunAt, bool smartTiming, address executor) returns (uint256 planId)",
+  "function createPlan(bytes32 target, uint128 amount, uint32 interval, uint40 firstRunAt, bool smartTiming, bool once, address executor) returns (uint256 planId)",
   "function updatePlan(uint256 planId, uint128 amount, uint32 interval, bool smartTiming)",
   "function cancelPlan(uint256 planId)",
   "function resumePlan(uint256 planId)",

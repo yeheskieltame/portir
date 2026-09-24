@@ -9,6 +9,8 @@ export interface PlanProposal {
   usdt: number;
   intervalDays: (typeof CADENCES)[keyof typeof CADENCES];
   smartTiming: boolean;
+  /** Buy one time when the Guard says GO, then stop. */
+  once: boolean;
 }
 export interface AgentReply {
   text: string;
@@ -61,7 +63,7 @@ function parseReply(raw: string): AgentReply {
     const usdt = Number(p.usdt);
     const days = Object.values(CADENCES).find((d) => d === Number(p.intervalDays));
     if (!target || !(usdt >= 1) || !days) return { text };
-    return { text, plan: { target, usdt, intervalDays: days, smartTiming: p.smartTiming !== false } };
+    return { text, plan: { target, usdt, intervalDays: days, smartTiming: p.smartTiming !== false || p.once === true, once: p.once === true } };
   } catch {
     return { text };
   }

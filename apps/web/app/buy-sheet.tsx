@@ -36,9 +36,9 @@ type Step =
   | { at: "confirm"; legs: Quoted[] }
   | { at: "signing"; legs: Quoted[]; note: string }
   | { at: "done"; legs: Quoted[]; txs: string[] }
-  | { at: "plan" }
-  | { at: "planning"; note: string }
-  | { at: "planned"; hash: string }
+  | { at: "plan"; once: boolean }
+  | { at: "planning"; note: string; once: boolean }
+  | { at: "planned"; hash: string; once: boolean }
   | { at: "error"; message: string };
 
 /** Buy now or on a schedule, in one sheet: the amount typed for one carries into the other. */
@@ -112,22 +112,22 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
     }
   }
 
-  async function startPlan() {
+  async function startPlan(once: boolean) {
     try {
-      setStep({ at: "planning", note: `Switching to ${registryChain.name}…` });
+      setStep({ at: "planning", note: `Switching to ${registryChain.name}…`, once });
       await switchChain(config, { chainId: registryChain.id });
-      setStep({ at: "planning", note: "Confirm the plan in your wallet…" });
+      setStep({ at: "planning", note: "Confirm the plan in your wallet…", once });
       const hash = await writeContract(config, {
         chainId: registryChain.id,
         address: planRegistryAddress!,
         abi: planRegistryAbi,
         functionName: "createPlan",
-        args: [encodeTarget(target), parseUnits(usdtIn.toFixed(6), USDT_DECIMALS), CADENCES[cadence] * 86_400, 0, smart, executorAddress],
+        args: [encodeTarget(target), parseUnits(usdtIn.toFixed(6), USDT_DECIMALS), CADENCES[cadence] * 86_400, 0, once || smart, once, executorAddress],
       });
-      setStep({ at: "planning", note: "Waiting for BNB Chain…" });
+      setStep({ at: "planning", note: "Waiting for BNB Chain…", once });
       const receipt = await waitForTransactionReceipt(config, { chainId: registryChain.id, hash });
       if (receipt.status !== "success") throw new Error("The transaction reverted. Nothing was spent except gas.");
-      setStep({ at: "planned", hash });
+      setStep({ at: "planned", hash, once });
     } catch (e) {
       setStep({ at: "error", message: errText(e) });
     }
@@ -207,23 +207,23 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
                 ) : (
                   <p className="mt-4 font-mono text-sm text-muted tabular-nums">≈ {usdtIn > 0 ? (usdtIn / legs[0].onchain).toFixed(4) : "0"} shares at {usd.format(legs[0].onchain)}{repeat && " today"}</p>
                 )}
-                <button disabled={!valid || step.at === "quoting"} onClick={repeat ? () => setStep({ at: "plan" }) : getQuote} className="mt-5 w-full rounded-full bg-white py-3 font-medium text-black disabled:opacity-50">
+                <button disabled={!valid || step.at === "quoting"} onClick={repeat ? () => setStep({ at: "plan", once: false }) : getQuote} className="mt-5 w-full rounded-full bg-white py-3 font-medium text-black disabled:opacity-50">
                   {step.at === "quoting" ? "Asking the Guard…" : usdtIn < minOrder ? `At least $${minOrder}` : repeat ? "Review plan" : have !== null && usdtIn > have ? "Not enough USDT" : "Check price"}
                 </button>
               </>
             ) : step.at === "confirm" || step.at === "signing" ? (
-              <Confirm legs={step.legs} note={step.at === "signing" ? step.note : null} onSign={() => sign(step.legs)} onBack={() => setStep({ at: "amount" })} onPlan={() => { setRepeat(true); setSmart(true); setStep({ at: "amount" }); }} />
+              <Confirm legs={step.legs} note={step.at === "signing" ? step.note : null} onSign={() => sign(step.legs)} onBack={() => setStep({ at: "amount" })} onPlan={() => setStep({ at: "plan", once: true })} />
             ) : step.at === "plan" || step.at === "planning" ? (
               <>
-                <h2 className="text-xl">{usd.format(usdtIn)} of {name}, every {every}</h2>
-                <p className="mt-2 text-sm text-muted">The first buy happens {firstBuy}. Each run is checked by the Guard and its reason is written on-chain.</p>
+                <h2 className="text-xl">{step.once ? `Buy ${usd.format(usdtIn)} of ${name} when it's fair` : `${usd.format(usdtIn)} of ${name}, every ${every}`}</h2>
+                <p className="mt-2 text-sm text-muted">{step.once ? "The agent checks every 15 minutes for up to 7 days. The first time the market is open and the price is fair it buys once, writes its reason on-chain, and stops." : `The first buy happens ${firstBuy}. Each run is checked by the Guard and its reason is written on-chain.`}</p>
                 {!planRegistryAddress ? (
                   <p className="mt-4 text-sm text-block">The plan registry is not deployed yet.</p>
                 ) : (
                   <dl className="glass mt-4 divide-y divide-line rounded-2xl text-sm">
-                    <Row k="Each time" v={`${usd.format(usdtIn)} USDT`} />
-                    <Row k="Every" v={cadence} />
-                    <Row k="Smart timing" v={smart ? "On · 48h window" : "Off"} />
+                    <Row k={step.once ? "Amount" : "Each time"} v={`${usd.format(usdtIn)} USDT`} />
+                    {step.once ? <Row k="Buys" v="Once, then done" /> : <Row k="Every" v={cadence} />}
+                    <Row k="Smart timing" v={step.once ? "On · up to 7 days" : smart ? "On · 48h window" : "Off"} />
                     <Row k="Executor" v="Portir agent" />
                     <Row k="Plan lives on" v={registryChain.name} />
                   </dl>
@@ -233,15 +233,15 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
                 ) : (
                   <div className="mt-5 grid grid-cols-2 gap-2">
                     <button onClick={() => setStep({ at: "amount" })} className="glass rounded-full py-3 text-sm font-medium">Back</button>
-                    <button disabled={!planRegistryAddress} onClick={startPlan} className="rounded-full bg-white py-3 text-sm font-medium text-black disabled:opacity-50">Start plan</button>
+                    <button disabled={!planRegistryAddress} onClick={() => startPlan(step.once)} className="rounded-full bg-white py-3 text-sm font-medium text-black disabled:opacity-50">{step.once ? "Start watching" : "Start plan"}</button>
                   </div>
                 )}
               </>
             ) : step.at === "planned" ? (
               <>
-                <p className="text-go">✓ Plan started</p>
-                <h2 className="mt-1 text-xl">{usd.format(usdtIn)} of {name}, every {every}</h2>
-                <p className="mt-2 text-sm text-muted">Keep USDT in your wallet. The agent buys {firstBuy}, then every {every}, and writes its reason next to each run.</p>
+                <p className="text-go">✓ {step.once ? "The agent is watching" : "Plan started"}</p>
+                <h2 className="mt-1 text-xl">{step.once ? `${usd.format(usdtIn)} of ${name}, once it's fair` : `${usd.format(usdtIn)} of ${name}, every ${every}`}</h2>
+                <p className="mt-2 text-sm text-muted">Keep USDT in your wallet. {step.once ? "The agent buys the first time the market is open and the price is fair, then stops." : `The agent buys ${firstBuy}, then every ${every}, and writes its reason next to each run.`}</p>
                 <dl className="glass mt-4 divide-y divide-line rounded-2xl text-sm">
                   <Row k="Transaction" v={`${step.hash.slice(0, 10)}…`} href={`${registryChain.blockExplorers?.default.url}/tx/${step.hash}`} />
                 </dl>

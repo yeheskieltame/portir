@@ -116,10 +116,10 @@ export function AgentChat({ wallet, onStart, busy }: { wallet: `0x${string}`; on
                     {m.plan && (
                       <div className="mt-3 rounded-xl border border-line bg-[#04070d]/70 p-3">
                         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">Proposed plan</p>
-                        <p className="mt-1 text-base font-medium">{usd.format(m.plan.usdt)} of {name(m.plan.target)}, {cadence(m.plan.intervalDays)}</p>
-                        <p className="mt-0.5 text-xs text-muted">{m.plan.smartTiming ? "Smart timing · waits for the market to open and a fair price" : "Buys at the scheduled time"}</p>
+                        <p className="mt-1 text-base font-medium">{usd.format(m.plan.usdt)} of {name(m.plan.target)}, {m.plan.once ? "once, when the price is fair" : cadence(m.plan.intervalDays)}</p>
+                        <p className="mt-0.5 text-xs text-muted">{m.plan.once ? "Watches up to 7 days, buys one time, then stops" : m.plan.smartTiming ? "Smart timing · waits for the market to open and a fair price" : "Buys at the scheduled time"}</p>
                         <button type="button" disabled={busy} onClick={() => onStart(m.plan!)} className="mt-3 w-full rounded-full py-2 text-xs font-medium text-black disabled:opacity-50" style={{ background: GRADIENT }}>
-                          {busy ? "Confirming in your wallet…" : "Start this plan"}
+                          {busy ? "Confirming in your wallet…" : m.plan.once ? "Start watching" : "Start this plan"}
                         </button>
                       </div>
                     )}

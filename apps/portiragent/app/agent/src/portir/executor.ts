@@ -21,6 +21,7 @@ import { assess } from "./market.js";
 import { OUTCOME, type Plan, decodeTarget, getPlan, planCount, recordRun, runsOf } from "./registry.js";
 
 const SMART_WINDOW = 48 * 3600;
+const ONCE_WINDOW = 7 * 24 * 3600; // a one-time "buy when fair" order waits up to a week
 const WAIT_LOG_HOURS = Number(process.env.PORTIR_WAIT_LOG_HOURS ?? 6);
 const log = (msg: string) => console.log(`[portir.executor] ${msg}`);
 
@@ -117,7 +118,7 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
   // Smart timing wants the exchange open AND a green price; the plain schedule only refuses a BLOCK.
   const open = a.view.session === "open";
   const fairEnough = plan.smartTiming ? verdict === "GO" && open : verdict !== "BLOCK";
-  const windowOver = overdue > SMART_WINDOW;
+  const windowOver = overdue > (plan.once ? ONCE_WINDOW : SMART_WINDOW);
 
   if (fairEnough || (plan.smartTiming && windowOver && verdict === "WARN")) {
     if (!executionEnabled()) {
@@ -133,7 +134,7 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
     return;
   }
   if (windowOver) {
-    await record(id, "Skipped", spread, `No fair moment in 48 hours. ${a.reason}`, last);
+    await record(id, "Skipped", spread, `No fair moment in ${plan.once ? "7 days" : "48 hours"}. ${a.reason}`, last);
     return;
   }
   const SESSION: Record<string, string> = { pre: "in pre-market", after: "in after-hours", closed: "closed" };

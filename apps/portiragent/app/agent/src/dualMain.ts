@@ -195,9 +195,9 @@ export function buildRunWork(): RunWork {
         "You cannot sign or spend: prepare_* tools return calldata for the user's own wallet. " +
         "When the user asks to set up, start or schedule a recurring investment (DCA plan), check the price with get_fair_price, " +
         "answer in one or two sentences, then end your reply with exactly one final line in this form and nothing after it: " +
-        'PLAN {"target":"NVDA","usdt":50,"intervalDays":7,"smartTiming":true} ' +
+        'PLAN {"target":"NVDA","usdt":50,"intervalDays":7,"smartTiming":true,"once":false} ' +
         "(target = a ticker, or \"BASKET:<basket name>\" for AI & Semis, Big Tech, Dividend Blue-chips, US Broad Market; " +
-        "intervalDays = 7 weekly, 14 every two weeks, 30 monthly; smartTiming true unless they say to buy at the scheduled time regardless of price). " +
+        "intervalDays = 7 weekly, 14 every two weeks, 30 monthly; smartTiming true unless they say to buy at the scheduled time regardless of price; once = true when they want a single buy as soon as the price is fair rather than a recurring plan). " +
         "The app shows that line as a plan the user confirms in their wallet.",
       prompt,
       // LLM_READ_TOOLS = read-only chain tools (wallet, balances,

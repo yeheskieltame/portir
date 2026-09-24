@@ -9,9 +9,9 @@ import { bsc, bscTestnet } from "viem/chains";
 
 // Mirrors contracts/src/PlanRegistry.sol (same ABI as apps/web/lib/planRegistry.ts).
 export const planRegistryAbi = parseAbi([
-  "struct Plan { address owner; address executor; bytes32 target; uint128 amount; uint32 interval; uint40 nextRunAt; bool smartTiming; bool active; }",
+  "struct Plan { address owner; address executor; bytes32 target; uint128 amount; uint32 interval; uint40 nextRunAt; bool smartTiming; bool active; bool once; }",
   "struct Run { uint40 at; uint8 outcome; int32 spreadBps; bytes32 txHash; string reason; }",
-  "function createPlan(bytes32 target, uint128 amount, uint32 interval, uint40 firstRunAt, bool smartTiming, address executor) returns (uint256 planId)",
+  "function createPlan(bytes32 target, uint128 amount, uint32 interval, uint40 firstRunAt, bool smartTiming, bool once, address executor) returns (uint256 planId)",
   "function cancelPlan(uint256 planId)",
   "function recordRun(uint256 planId, uint8 outcome, int32 spreadBps, bytes32 txHash, string reason)",
   "function planCount() view returns (uint256)",
@@ -36,7 +36,7 @@ export const registryAddress = (): Address => {
 
 export const client = () => createPublicClient({ chain: chain(), transport: http(process.env.PORTIR_REGISTRY_RPC) });
 
-export type Plan = { owner: Address; executor: Address; target: Hex; amount: bigint; interval: number; nextRunAt: number; smartTiming: boolean; active: boolean };
+export type Plan = { owner: Address; executor: Address; target: Hex; amount: bigint; interval: number; nextRunAt: number; smartTiming: boolean; active: boolean; once: boolean };
 export type Run = { at: number; outcome: number; spreadBps: number; txHash: Hex; reason: string };
 
 export async function planCount(): Promise<number> {
@@ -75,11 +75,11 @@ export function recordRun(planId: bigint, outcome: Outcome, spreadBps: number, t
 }
 
 /** Calldata for a user's wallet to create a plan bound to this agent as executor. */
-export function prepareCreatePlan(input: { target: string; usdt: number; intervalDays: number; smartTiming: boolean }) {
+export function prepareCreatePlan(input: { target: string; usdt: number; intervalDays: number; smartTiming: boolean; once?: boolean }) {
   const data = encodeFunctionData({
     abi: planRegistryAbi,
     functionName: "createPlan",
-    args: [encodeTarget(input.target), BigInt(Math.round(input.usdt * 1e6)) * 10n ** 12n, input.intervalDays * 86_400, 0, input.smartTiming, getWallet().address as Address],
+    args: [encodeTarget(input.target), BigInt(Math.round(input.usdt * 1e6)) * 10n ** 12n, input.intervalDays * 86_400, 0, input.smartTiming, input.once ?? false, getWallet().address as Address],
   });
   return { chainId: chain().id, to: registryAddress(), data, value: "0" };
 }

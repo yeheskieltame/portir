@@ -86,7 +86,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
   const [editing, setEditing] = useState<bigint | null>(null);
   const call = (functionName: "cancelPlan" | "resumePlan", id: bigint) => void onRegistry(() => write.mutate({ ...contract, functionName, args: [id] }));
   const startPlan = (p: PlanProposal) =>
-    void onRegistry(() => write.mutate({ ...contract, functionName: "createPlan", args: [encodeTarget(p.target), parseUnits(String(p.usdt), USDT_DECIMALS), p.intervalDays * DAY, 0, p.smartTiming, executorAddress] }));
+    void onRegistry(() => write.mutate({ ...contract, functionName: "createPlan", args: [encodeTarget(p.target), parseUnits(String(p.usdt), USDT_DECIMALS), p.intervalDays * DAY, 0, p.smartTiming, p.once, executorAddress] }));
   const planTickers = (plans.data ?? []).map((p) => decodeTarget(p.target)).filter((t) => !t.startsWith("BASKET:"));
   const iconTickers = [...new Set([...BASKETS.flatMap((b) => b.legs.map((l) => l.ticker)), ...Object.keys(STOCK_NAMES), ...planTickers])].sort();
   const icons = useQuery({
@@ -149,10 +149,12 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
           const label = basket ? target.slice(7) : (STOCK_NAMES[target] ?? target);
           const due = plan.nextRunAt * 1000 <= now;
           const status = !plan.active
-            ? { label: "Paused", cls: "text-muted border-line" }
-            : due
-              ? { label: plan.smartTiming ? "Due · waiting for a fair window" : "Due", cls: "text-warn border-warn/40 bg-warn/10" }
-              : { label: `Next in ${untilText(plan.nextRunAt, now)}`, cls: "text-go border-go/40 bg-go/10" };
+            ? { label: plan.once ? "Done" : "Paused", cls: "text-muted border-line" }
+            : plan.once
+              ? { label: "Watching · buys once the price is fair", cls: "text-warn border-warn/40 bg-warn/10" }
+              : due
+                ? { label: plan.smartTiming ? "Due · waiting for a fair window" : "Due", cls: "text-warn border-warn/40 bg-warn/10" }
+                : { label: `Next in ${untilText(plan.nextRunAt, now)}`, cls: "text-go border-go/40 bg-go/10" };
           const cadence = Object.entries(CADENCES).find(([, d]) => d * DAY === plan.interval)?.[0] ?? `Every ${plan.interval / DAY} days`;
           return (
             <li key={id} className={`glass rounded-3xl p-4 text-sm ${plan.active ? "" : "opacity-60"}`}>
@@ -169,26 +171,29 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
                     {basket && <span className="ml-2 rounded border border-line px-1 align-middle text-[10px] uppercase text-muted">Basket</span>}
                   </p>
                   <p className="mt-0.5 font-mono text-xs text-muted tabular-nums">
-                    {usd.format(Number(formatUnits(plan.amount, USDT_DECIMALS)))} · {cadence}
-                    {plan.smartTiming && " · smart timing"}
+                    {usd.format(Number(formatUnits(plan.amount, USDT_DECIMALS)))} · {plan.once ? "one time, when fair" : cadence}
+                    {plan.smartTiming && !plan.once && " · smart timing"}
                   </p>
                 </div>
                 <span className="flex shrink-0 gap-1">
                   {plan.active ? (
                     <>
-                      <button disabled={busy} onClick={() => setEditing(editing === id ? null : id)} className="glass rounded-full px-3 py-1 text-xs disabled:opacity-60">{editing === id ? "Close" : "Edit"}</button>
-                      <button disabled={busy} onClick={() => call("cancelPlan", id)} className="rounded-full px-3 py-1 text-xs text-warn disabled:opacity-60">Pause</button>
+                      {!plan.once && <button disabled={busy} onClick={() => setEditing(editing === id ? null : id)} className="glass rounded-full px-3 py-1 text-xs disabled:opacity-60">{editing === id ? "Close" : "Edit"}</button>}
+                      <button disabled={busy} onClick={() => call("cancelPlan", id)} className="rounded-full px-3 py-1 text-xs text-warn disabled:opacity-60">{plan.once ? "Cancel" : "Pause"}</button>
                     </>
-                  ) : (
+                  ) : plan.once ? null : (
                     <button disabled={busy} onClick={() => call("resumePlan", id)} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black disabled:opacity-60">Resume</button>
                   )}
                 </span>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${status.cls}`}>{status.label}</span>
-                {plan.active && <span className="font-mono text-xs text-muted">{when(plan.nextRunAt)}</span>}
+                {plan.active && !plan.once && <span className="font-mono text-xs text-muted">{when(plan.nextRunAt)}</span>}
               </div>
-              {plan.active && plan.smartTiming && (
+              {plan.active && plan.once && (
+                <p className="mt-2 text-xs text-muted">The agent checks every 15 minutes for up to 7 days. The first time the market is open and the price is fair it buys, writes its reason here, and the order is done.</p>
+              )}
+              {plan.active && plan.smartTiming && !plan.once && (
                 <p className="mt-2 text-xs text-muted">The agent waits up to 48h after the due time for the market to open and the price to be fair, then buys and writes its reason here.</p>
               )}
               {editing === id && (

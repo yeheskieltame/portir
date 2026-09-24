@@ -30,12 +30,14 @@ export function ConnectClaude() {
       {!MCP ? (
         <p className="mt-4 rounded-2xl border border-dashed border-line px-3 py-2 text-xs text-muted">The agent is not published yet. Once it runs on BNB Agent Studio, its MCP address appears here.</p>
       ) : (
+      <>
       <div className="glass mt-4 grid grid-cols-3 rounded-full p-1 text-xs font-medium">
         {(Object.keys(SNIPPETS) as Client[]).map((c) => (
           <button key={c} onClick={() => setClient(c)} className={`truncate rounded-full px-2 py-1.5 ${c === client ? "bg-white text-black" : "text-muted"}`}>{c}</button>
         ))}
       </div>
       <Copy text={SNIPPETS[client]} />
+      </>
       )}
       <p className="mt-3 text-xs text-muted">Then ask: “Is now a good time to buy TSLA on-chain?” or “Set up $30 weekly NVDA, only when fair.”</p>
       <details className="mt-3 text-xs text-muted">

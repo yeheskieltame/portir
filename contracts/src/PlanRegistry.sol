@@ -24,6 +24,7 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         uint40 nextRunAt;
         bool smartTiming;
         bool active;
+        bool once; // v3: buy one time when the Guard says GO, then complete
     }
 
     struct Run {
@@ -52,6 +53,7 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     event PlanUpdated(uint256 indexed planId, uint128 amount, uint32 interval, bool smartTiming);
     event PlanCancelled(uint256 indexed planId);
     event PlanResumed(uint256 indexed planId, uint40 nextRunAt);
+    event PlanCompleted(uint256 indexed planId);
     event PlanRun(uint256 indexed planId, Outcome outcome, int32 spreadBps, bytes32 txHash, string reason);
 
     error ZeroAmount();
@@ -79,6 +81,7 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         uint32 interval,
         uint40 firstRunAt,
         bool smartTiming,
+        bool once,
         address executor
     ) external returns (uint256 planId) {
         if (target == bytes32(0)) revert EmptyTarget();
@@ -88,7 +91,8 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         PlanRegistryStorage storage $ = _storage();
         planId = $.plans.length;
         if (firstRunAt < block.timestamp) firstRunAt = uint40(block.timestamp);
-        $.plans.push(Plan(msg.sender, executor, target, amount, interval, firstRunAt, smartTiming, true));
+        $.plans
+            .push(Plan(msg.sender, executor, target, amount, interval, firstRunAt, smartTiming, true, once));
         $.planIdsOf[msg.sender].push(planId);
         emit PlanCreated(planId, msg.sender, target, amount);
     }
@@ -151,6 +155,10 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
 
         $.runs[planId].push(Run(uint40(block.timestamp), outcome, spreadBps, txHash, reason));
         emit PlanRun(planId, outcome, spreadBps, txHash, reason);
+        if (plan.once && outcome != Outcome.Waited) {
+            plan.active = false;
+            emit PlanCompleted(planId);
+        }
     }
 
     function planCount() external view returns (uint256) {

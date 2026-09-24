@@ -35,7 +35,7 @@ contract PlanRegistryTest is Test {
 
     function _create(uint40 firstRunAt) internal returns (uint256) {
         vm.prank(rio);
-        return registry.createPlan(NVDA, AMOUNT, WEEK, firstRunAt, true, agent);
+        return registry.createPlan(NVDA, AMOUNT, WEEK, firstRunAt, true, false, agent);
     }
 
     function test_CreatePlan_StoresPlanAndIndexesByOwner() public {
@@ -68,11 +68,11 @@ contract PlanRegistryTest is Test {
     function test_CreatePlan_RevertsOnBadInput() public {
         vm.startPrank(rio);
         vm.expectRevert(PlanRegistry.EmptyTarget.selector);
-        registry.createPlan(bytes32(0), AMOUNT, WEEK, 0, true, agent);
+        registry.createPlan(bytes32(0), AMOUNT, WEEK, 0, true, false, agent);
         vm.expectRevert(PlanRegistry.ZeroAmount.selector);
-        registry.createPlan(NVDA, 0, WEEK, 0, true, agent);
+        registry.createPlan(NVDA, 0, WEEK, 0, true, false, agent);
         vm.expectRevert(PlanRegistry.IntervalTooShort.selector);
-        registry.createPlan(NVDA, AMOUNT, 1 days - 1, 0, true, agent);
+        registry.createPlan(NVDA, AMOUNT, 1 days - 1, 0, true, false, agent);
     }
 
     function test_RecordRun_ExecutedAdvancesSchedule() public {
@@ -215,6 +215,26 @@ contract PlanRegistryTest is Test {
         registry.resumePlan(id);
     }
 
+    function test_OncePlan_CompletesAfterOneExecutedRun() public {
+        vm.prank(rio);
+        uint256 id = registry.createPlan(NVDA, AMOUNT, WEEK, 0, true, true, agent);
+        assertTrue(registry.getPlan(id).once);
+
+        vm.prank(agent);
+        registry.recordRun(id, PlanRegistry.Outcome.Waited, 120, 0, "market closed");
+        assertTrue(registry.getPlan(id).active);
+
+        vm.prank(agent);
+        vm.expectEmit();
+        emit PlanRegistry.PlanCompleted(id);
+        registry.recordRun(id, PlanRegistry.Outcome.Executed, 5, bytes32(uint256(1)), "bought");
+        assertFalse(registry.getPlan(id).active);
+
+        vm.prank(agent);
+        vm.expectRevert(PlanRegistry.PlanInactive.selector);
+        registry.recordRun(id, PlanRegistry.Outcome.Executed, 5, bytes32(uint256(2)), "again");
+    }
+
     function test_Initialize_OnlyOnceAndImplementationLocked() public {
         assertEq(registry.owner(), admin);
         vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -248,7 +268,7 @@ contract PlanRegistryTest is Test {
     function testFuzz_RecordRun_NextRunAlwaysInFuture(uint32 interval, uint32 delay, bool skipped) public {
         interval = uint32(bound(interval, registry.MIN_INTERVAL(), 365 days));
         vm.prank(rio);
-        uint256 id = registry.createPlan(NVDA, AMOUNT, interval, 0, true, agent);
+        uint256 id = registry.createPlan(NVDA, AMOUNT, interval, 0, true, false, agent);
 
         vm.warp(block.timestamp + delay);
         vm.prank(agent);

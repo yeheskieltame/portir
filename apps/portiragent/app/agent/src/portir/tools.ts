@@ -129,8 +129,8 @@ export const PORTIR_TOOLS = [
   def({
     name: "prepare_dca_plan",
     description: "Unsigned createPlan calldata for PlanRegistry, with this agent as executor. The user's wallet signs it. target = ticker or 'BASKET:<name>'.",
-    input: { target: z.string().min(1), usdt: z.number().min(1), intervalDays: z.union([z.literal(7), z.literal(14), z.literal(30)]), smartTiming: z.boolean().optional() },
-    run: async ({ target, usdt: amount, intervalDays, smartTiming }) => prepareCreatePlan({ target, usdt: amount, intervalDays, smartTiming: smartTiming ?? true }),
+    input: { target: z.string().min(1), usdt: z.number().min(1), intervalDays: z.union([z.literal(7), z.literal(14), z.literal(30)]), smartTiming: z.boolean().optional(), once: z.boolean().optional().describe("true = buy one time when the Guard says GO, then stop (no repeat)") },
+    run: async ({ target, usdt: amount, intervalDays, smartTiming, once }) => prepareCreatePlan({ target, usdt: amount, intervalDays, smartTiming: smartTiming ?? true, once: once ?? false }),
   }),
 ];
 
