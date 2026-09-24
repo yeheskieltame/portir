@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
 import { formatUnits, zeroAddress } from "viem";
@@ -80,6 +80,13 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
 
   const busy = write.isPending || receipt.isLoading;
   const error = write.error ?? receipt.error;
+  const planTickers = (plans.data ?? []).map((p) => decodeTarget(p.target)).filter((t) => !t.startsWith("BASKET:"));
+  const iconTickers = [...new Set([...BASKETS.flatMap((b) => b.legs.map((l) => l.ticker)), ...Object.keys(STOCK_NAMES), ...planTickers])].sort();
+  const icons = useQuery({
+    queryKey: ["icons", iconTickers],
+    queryFn: () => fetch(`/api/icons?tickers=${iconTickers.join(",")}`).then((r) => r.json() as Promise<Record<string, string | null>>),
+    staleTime: 3_600_000,
+  }).data;
   const active = (plans.data ?? []).filter((p) => p.active);
   const perMonth = active.reduce((n, p) => n + (Number(formatUnits(p.amount, USDT_DECIMALS)) * 30) / (p.interval / DAY), 0);
   const nextRun = active.map((p) => p.nextRunAt).filter((t) => t * 1000 > now).sort((a, b) => a - b)[0];
@@ -92,12 +99,15 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
         <p className="mt-2 text-sm text-muted">Pick what to buy. Amount and cadence come next, on the same screen.</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           {BASKETS.map((b) => (
-            <BasketCard key={b.slug} basket={b} href={`/basket/${b.slug}?plan`} />
+            <BasketCard key={b.slug} basket={b} icons={icons} href={`/basket/${b.slug}?plan`} />
           ))}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {Object.keys(STOCK_NAMES).map((t) => (
-            <Link key={t} href={`/stock/${t}?plan`} className="glass rounded-full px-3 py-1.5 font-mono text-xs active:bg-white/5">{t}</Link>
+            <Link key={t} href={`/stock/${t}?plan`} className="glass flex items-center gap-2 rounded-full py-1 pl-1 pr-3 font-mono text-xs active:bg-white/5">
+              <Logo src={icons?.[t] ?? null} name={t} size={22} />
+              {t}
+            </Link>
           ))}
           <Link href="/" className="rounded-full px-3 py-1.5 text-xs text-muted underline">all stocks</Link>
         </div>
@@ -143,7 +153,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={basketImage(BASKETS.find((b) => b.name === label)!.slug)} alt="" className="size-11 shrink-0 rounded-2xl object-cover" />
                 ) : (
-                  <Logo src={null} name={label} size={44} />
+                  <Logo src={icons?.[target] ?? null} name={label} size={44} />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-lg font-medium leading-tight">
