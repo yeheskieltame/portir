@@ -10,7 +10,7 @@ the on-chain vs exchange price before every order.
 | `packages/core` | `@portir/core`: the Guard (pure verdict logic), the Binance RWA Data client (catalog, quotes, fundamentals, K-lines, logos) and the Trading client (official SDK). | quote + build verified live on mainnet; `simulate` blocked by an SDK bug (see DevEx report) |
 | `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | 15 tests, verified on BSC testnet, upgraded in place twice (v2: `updatePlan`, `resumePlan`; v3: one-time "buy when fair" plans) |
 | `apps/landing` | Static landing page (one HTML file, no build). Its own Vercel project on the root domain; the app lives on `app.<domain>`. | `pnpm dev:landing` → :3001 |
-| `apps/portiragent` | The Portir agent on **BNB Agent Studio** (`bag` workspace, not part of the pnpm root workspace). One AgentCore runtime with three faces: **MCP** (`/mcp`, ten Portir tools for Claude or any client), **x402** (`/x402`, free passthrough answering with the same tools), **A2A**. Runs the **DCA executor**: scans `PlanRegistry` every 15 min, applies the Guard, records `Waited / Skipped / Executed` with a one-sentence reason. | runs locally (`cd apps/portiragent && bag dev`); trial deploy next; execution backend off until the Agentic Wallet test |
+| `apps/portiragent` | The Portir agent on **BNB Agent Studio** (`bag` workspace, not part of the pnpm root workspace). One AgentCore runtime with three faces: **MCP** (`/mcp`, ten Portir tools for Claude or any client), **x402** (`/x402`, free passthrough answering with the same tools), **A2A**. Runs the **DCA executor**: scans `PlanRegistry` every 15 min, applies the Guard to single stocks and baskets (worst holding decides), buys on testnet, records `Waited / Skipped / Executed` with a one-sentence reason; one-time "buy when fair" orders complete after their first buy. | runs locally (`cd apps/portiragent && bag dev`); trial deploy next; execution backend off until the Agentic Wallet test |
 | `apps/web` | Next.js app, mobile-first. Markets (510 US stocks/ETFs on BSC, search, filter, pages), stock detail (chart, Guard, providers, fundamentals), baskets, one-tap buy with the Guard, portfolio (live balances, history, dividends), plans, profile. | live; buying signs real BSC mainnet transactions |
 
 **No backend.** The PRD's Postgres plan store is replaced by `PlanRegistry`: the app writes plans to it,
@@ -19,9 +19,9 @@ The contract holds no funds. Two Next.js route handlers exist because `binance.c
 browsers here and the Trading API needs a server-side key: `/api/quote` (prices + history for the portfolio)
 and `/api/buy` (Guard verdict + approval and swap calldata; the wallet signs, nothing is sent from the server).
 
-Not here yet, on purpose: the Agentic Wallet session as the executor's signer (the executor decides and records, but
-does not buy yet), basket plans in the executor, the basket router contract (a basket buy is one guarded swap per
-holding, signed in sequence). The MCP server is the agent's `/mcp` face rather than a separate npm package.
+Not here yet, on purpose: mainnet execution through the Agentic Wallet session (the backend exists but stays armed off
+until the checklist in `contracts/AUDIT.md`), the basket router contract (a basket buy is one guarded swap per holding,
+signed in sequence), notifications. The MCP server is the agent's `/mcp` face rather than a separate npm package.
 
 ### The agent (`apps/portiragent`)
 

@@ -2,7 +2,7 @@
 
 import { useReadContracts } from "wagmi";
 import { STOCK_NAMES } from "@/lib/catalog";
-import { OUTCOMES, decodeTarget, planRegistryAbi } from "@/lib/planRegistry";
+import { OUTCOMES, planRegistryAbi } from "@/lib/planRegistry";
 import { chain } from "@/lib/wagmi";
 
 const ZERO_HASH = `0x${"0".repeat(64)}`;
