@@ -100,10 +100,11 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
 
   return (
     <>
-      <div className="lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-8">
-      <section className="mt-6 lg:sticky lg:top-6">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">New plan</h2>
-        <p className="mt-2 text-sm text-muted">Pick what to buy. Amount and cadence come next, on the same screen.</p>
+      <AgentChat wallet={owner} onStart={startPlan} busy={busy} />
+      <div className="mt-8 lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-8">
+      <section className="lg:sticky lg:top-6">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">Or pick what to buy</h2>
+        <p className="mt-2 text-sm text-muted">Amount and cadence come next, on the same screen.</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           {BASKETS.map((b) => (
             <BasketCard key={b.slug} basket={b} icons={icons} href={`/basket/${b.slug}?plan`} aspect="aspect-[4/3]" />
@@ -118,7 +119,6 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
           ))}
           <Link href="/" className="rounded-full px-3 py-1.5 text-xs text-muted underline">all stocks</Link>
         </div>
-        <AgentChat wallet={owner} onStart={startPlan} busy={busy} />
       </section>
 
       <div className="lg:mt-6">
