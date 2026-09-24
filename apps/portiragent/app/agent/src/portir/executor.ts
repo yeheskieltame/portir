@@ -89,16 +89,19 @@ const executionEnabled = () => backend() !== "off";
 export async function scanOnce(): Promise<void> {
   const n = await planCount();
   const now = Math.floor(Date.now() / 1000);
+  const due: number[] = [];
   for (let i = 0; i < n; i++) {
     const id = BigInt(i);
     try {
       const plan = await getPlan(id);
       if (!plan.active || plan.nextRunAt > now) continue;
+      due.push(i);
       await runPlan(id, plan, now);
     } catch (e) {
       log(`plan ${i}: ${e instanceof Error ? e.message : e}`);
     }
   }
+  log(`scan: ${n} plans, ${due.length ? `due ${due.map((i) => `#${i}`).join(" ")}` : "none due"}`);
 }
 
 async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
@@ -169,7 +172,10 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
 
 async function record(id: bigint, outcome: keyof typeof OUTCOME, spread: number, reason: string, last: { at: number; outcome: number } | undefined, txHash?: Hex) {
   // A Waited entry costs gas and does not advance the schedule: log it sparingly.
-  if (outcome === "Waited" && last?.outcome === OUTCOME.Waited && Date.now() / 1000 - last.at < WAIT_LOG_HOURS * 3600) return;
+  if (outcome === "Waited" && last?.outcome === OUTCOME.Waited && Date.now() / 1000 - last.at < WAIT_LOG_HOURS * 3600) {
+    log(`plan ${id} still waiting (logged on-chain at most every ${WAIT_LOG_HOURS}h): ${reason}`);
+    return;
+  }
   const hash = await recordRun(id, outcome, spread, txHash ?? (`0x${"0".repeat(64)}` as Hex), reason);
   log(`plan ${id} ${outcome} (${spread} bps): ${reason} [${hash}]`);
 }

@@ -32,6 +32,7 @@ import {
 import { chain } from "@/lib/wagmi";
 
 const DAY = 86_400;
+const POLL = 30_000;
 const when = (seconds: number) =>
   new Date(seconds * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
@@ -71,10 +72,12 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
   const onRegistry = (fn: () => void) => switchChainAsync({ chainId: chain.id }).then(fn).catch(() => {});
   const receipt = useWaitForTransactionReceipt({ hash: write.data });
 
-  const ids = useReadContract({ ...contract, functionName: "planIdsOf", args: [owner] });
+  // The executor writes runs while the page is open: poll so status and history follow it.
+  const ids = useReadContract({ ...contract, functionName: "planIdsOf", args: [owner], query: { refetchInterval: POLL } });
   const plans = useReadContracts({
     contracts: (ids.data ?? []).map((id) => ({ ...contract, functionName: "getPlan", args: [id] }) as const),
     allowFailure: false,
+    query: { refetchInterval: POLL },
   });
 
   // A confirmed create/cancel changes what the reads return.
@@ -268,6 +271,8 @@ function Runs({ registry, planId }: { registry: `0x${string}`; planId: bigint })
     abi: planRegistryAbi,
     functionName: "runsOf",
     args: [planId],
+    chainId: chain.id,
+    query: { refetchInterval: POLL },
   });
   if (!runs.data?.length) return null;
   const latest = runs.data[runs.data.length - 1];

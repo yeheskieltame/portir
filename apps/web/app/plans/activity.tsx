@@ -14,7 +14,7 @@ export function Activity({ registry, ids, targets, limit = 8 }: { registry: `0x$
   const runs = useReadContracts({
     contracts: ids.map((id) => ({ address: registry, abi: planRegistryAbi, functionName: "runsOf" as const, args: [id] as const, chainId: chain.id })),
     allowFailure: true,
-    query: { enabled: ids.length > 0, refetchInterval: 60_000 },
+    query: { enabled: ids.length > 0, refetchInterval: 30_000 },
   });
   const items = (runs.data ?? [])
     .flatMap((r, i) => (r.status === "success" ? r.result.map((run) => ({ ...run, id: ids[i] })) : []))
