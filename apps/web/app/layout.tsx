@@ -5,6 +5,9 @@ import { cookies } from "next/headers";
 import { MODE_COOKIE, asMode } from "@/lib/mode";
 import { ConnectButton } from "./connect-button";
 import { Mark } from "./logo";
+
+// The wordmark leaves the app for the landing page.
+const LANDING = process.env.NEXT_PUBLIC_LANDING_URL ?? "https://portir.xyz";
 import { ModeProvider } from "./mode";
 import { Nav } from "./nav";
 import { Providers } from "./providers";
@@ -31,9 +34,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           {/* Phone: one column with a tab bar. Desktop: sidebar + a wide content area. */}
           <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pb-32 lg:ml-60 lg:max-w-none lg:px-10 lg:pb-16 xl:px-16">
             <header className="flex items-center justify-between py-4 lg:py-6">
-              <Link href="/" className="text-2xl tracking-tight lg:invisible">
+              <a href={LANDING} className="text-2xl tracking-tight lg:invisible">
                 <Mark size={22} className="mr-2 inline-block align-[-2px]" />Port<span className="serif-italic text-[1.2em]">ir</span>
-              </Link>
+              </a>
               <div className="flex items-center gap-2">
                 {mode === "testnet" && <Link href="/profile" className="rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-warn">Testnet</Link>}
                 <ConnectButton />

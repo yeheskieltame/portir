@@ -4,6 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Mark } from "./logo";
 
+// The wordmark leaves the app for the landing page.
+const LANDING = process.env.NEXT_PUBLIC_LANDING_URL ?? "https://portir.xyz";
+
 const TABS = [
   { href: "/portfolio", label: "Portfolio", d: "M5 20V10M12 20V4M19 20v-7" },
   { href: "/", label: "Markets", d: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm3.5-12.5-2 5-5 2 2-5 5-2Z" },
@@ -36,9 +39,9 @@ export function Nav() {
       </nav>
 
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col border-r border-line bg-paper/60 px-4 py-6 backdrop-blur-xl lg:flex">
-        <Link href="/" className="px-3 text-2xl tracking-tight">
+        <a href={LANDING} className="px-3 text-2xl tracking-tight">
           <Mark size={22} className="mr-2 inline-block align-[-2px]" />Port<span className="serif-italic text-[1.2em]">ir</span>
-        </Link>
+        </a>
         <nav className="relative mt-8 flex flex-col gap-1">
           {index >= 0 && (
             <span aria-hidden className="absolute left-0 right-0 h-11 rounded-2xl bg-white/[0.1] shadow-[inset_0_1px_0_rgba(255,255,255,.14),0_0_24px_rgba(97,166,246,.2)] transition-[top] duration-500 ease-[cubic-bezier(.22,1,.36,1)]" style={{ top: `calc(${index} * (2.75rem + 0.25rem))` }} />
