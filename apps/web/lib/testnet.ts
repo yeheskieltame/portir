@@ -14,6 +14,7 @@ export const QUOTE_TYPES = { Quote: [{ name: "stock", type: "address" }, { name:
 
 export const testExchangeAbi = [
   { type: "function", name: "buy", stateMutability: "nonpayable", inputs: [{ name: "stock", type: "address" }, { name: "usdtIn", type: "uint256" }, { name: "minSharesOut", type: "uint256" }, { name: "price", type: "uint128" }, { name: "deadline", type: "uint40" }, { name: "sig", type: "bytes" }], outputs: [{ name: "sharesOut", type: "uint256" }] },
+  { type: "function", name: "buyBatch", stateMutability: "nonpayable", inputs: [{ name: "stocks", type: "address[]" }, { name: "usdtIn", type: "uint256[]" }, { name: "minSharesOut", type: "uint256[]" }, { name: "prices", type: "uint128[]" }, { name: "deadlines", type: "uint40[]" }, { name: "sigs", type: "bytes[]" }], outputs: [{ name: "sharesOut", type: "uint256[]" }] },
   { type: "function", name: "feeBps", stateMutability: "view", inputs: [], outputs: [{ type: "uint16" }] },
 ] as const;
 

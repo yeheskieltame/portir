@@ -40,6 +40,7 @@ contract TestExchange is Ownable, EIP712 {
     error ZeroAmount();
     error Slippage(uint256 out, uint256 min);
     error FeeTooHigh();
+    error LengthMismatch();
     error InsufficientLiquidity();
 
     constructor(IERC20 usdt_, address keeper_, uint16 feeBps_)
@@ -81,6 +82,37 @@ contract TestExchange is Ownable, EIP712 {
         uint40 deadline,
         bytes calldata sig
     ) external returns (uint256 sharesOut) {
+        return _buy(stock, usdtIn, minSharesOut, price, deadline, sig);
+    }
+
+    /// @notice A basket in one transaction: one quoted buy per holding, all or nothing.
+    function buyBatch(
+        address[] calldata stocks_,
+        uint256[] calldata usdtIn,
+        uint256[] calldata minSharesOut,
+        uint128[] calldata prices,
+        uint40[] calldata deadlines,
+        bytes[] calldata sigs
+    ) external returns (uint256[] memory sharesOut) {
+        uint256 n = stocks_.length;
+        if (
+            usdtIn.length != n || minSharesOut.length != n || prices.length != n || deadlines.length != n
+                || sigs.length != n
+        ) revert LengthMismatch();
+        sharesOut = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            sharesOut[i] = _buy(stocks_[i], usdtIn[i], minSharesOut[i], prices[i], deadlines[i], sigs[i]);
+        }
+    }
+
+    function _buy(
+        address stock,
+        uint256 usdtIn,
+        uint256 minSharesOut,
+        uint128 price,
+        uint40 deadline,
+        bytes calldata sig
+    ) private returns (uint256 sharesOut) {
         if (usdtIn == 0) revert ZeroAmount();
         _verify(stock, price, deadline, sig);
         sharesOut = usdtIn * (10_000 - feeBps) * 1e18 / (10_000 * uint256(price));

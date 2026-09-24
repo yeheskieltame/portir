@@ -76,9 +76,9 @@ are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
 
 Testnet fixtures (`contracts/src/testnet/`, non-upgradeable test doubles, all verified; addresses in
 `contracts/deployments/testnet.json`): `MockUSDT` with a 1,000/day faucet
-([`0xa3Ce…73e3`](https://testnet.bscscan.com/address/0xa3CeC722a4FBDD4901Ab6d19281A2646786773e3#code)), `TestExchange`
-that sells and buys back shares at an EIP-712 quote signed by the keeper key
-([`0x9cc2…37DF`](https://testnet.bscscan.com/address/0x9cc2e2A087084243D909C6b4Cc681C0734bc37DF#code)), and one `MockStock`
+([`0x6550…AE02`](https://testnet.bscscan.com/address/0x6550E8e24d17ee952D378F4FA61574636D92AE02#code)), `TestExchange`
+that sells and buys back shares at an EIP-712 quote signed by the keeper key, one holding or a whole basket per transaction (`buyBatch`)
+([`0x3525…A46b`](https://testnet.bscscan.com/address/0x3525EB9a9875451b631eFF23357EC87B63A7A46b#code)), and one `MockStock`
 for every featured and basket ticker (18). `/api/buy` (and the agent) sign the live mainnet price into each quote, valid 10
 minutes, so nothing on testnet can go stale and the Guard sees exactly what mainnet would. `KEEPER=<signer> pnpm
 deploy:testnet:fixtures` / `pnpm add:testnet:stocks` (idempotent, add tickers to the list in `AddStocks.s.sol`) /

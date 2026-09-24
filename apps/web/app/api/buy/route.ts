@@ -30,6 +30,8 @@ export interface BuyResponse {
   /** Send in order: approvals first (USDT.approve(spender)), skippable when the allowance already covers `usdt`, then the swap. */
   approvals?: { to: string; data: string; spender: string }[];
   tx?: { to: string; data: string; value: string };
+  /** Testnet only: the signed quote behind `tx`, so a basket can be settled in one `buyBatch` call. */
+  quote?: { stock: string; usdtIn: string; minShares: string; price: string; deadline: number; sig: string };
 }
 
 // POST /api/buy { ticker, usdt, wallet, mode } → Guard verdict + a ready-to-sign route. Nothing is sent from here: the wallet signs.
@@ -141,5 +143,6 @@ async function testnetRoute(ticker: string, amount: number, wallet: string, sess
     minShares,
     approvals: [{ to: TESTNET.usdt, data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [TESTNET.exchange, usdtIn] }), spender: TESTNET.exchange }],
     tx: { to: TESTNET.exchange, data: encodeFunctionData({ abi: testExchangeAbi, functionName: "buy", args: [stock, usdtIn, parseUnits(minShares.toFixed(18), 18), price, deadline, sig] }), value: "0" },
+    quote: { stock, usdtIn: String(usdtIn), minShares: String(parseUnits(minShares.toFixed(18), 18)), price: String(price), deadline, sig },
   };
 }

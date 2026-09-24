@@ -302,3 +302,9 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
 - **PlanRegistry v2 in place.** `updatePlan` and `resumePlan` (pause/resume, edit amount, cadence, smart timing) shipped
   as a UUPS upgrade of the testnet proxy (`script/Upgrade.s.sol`, `pnpm upgrade:testnet`), storage untouched; details in
   `contracts/AUDIT.md`. `fs_permissions` needed `./out` read access for the OZ plugin's validation (not documented).
+- **Basket UX: signatures, not speed, is the cost.** A five-holding basket took ten wallet prompts (approve + swap per
+  leg). Fixed on our side: one approval per spender for the whole order, and on testnet a `buyBatch` on our exchange so
+  the basket is one transaction. On mainnet the Trading API builds one swap per token against LiquidMesh/PancakeSwap,
+  so a basket is still N swaps. **Ask: a multi-order build (or a router that accepts several RFQ quotes in one call)**
+  would make baskets a single signature on mainnet too.
+

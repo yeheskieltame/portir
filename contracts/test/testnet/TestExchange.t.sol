@@ -89,6 +89,46 @@ contract TestExchangeTest is Test {
         vm.stopPrank();
     }
 
+    function test_BuyBatch_OneTxManyStocks_AllOrNothing() public {
+        address tsla = ex.addStock("Tesla (test)", "TSLAt", "TSLA");
+        uint40 deadline = uint40(block.timestamp + 10 minutes);
+        address[] memory stocks = new address[](2);
+        stocks[0] = nvda;
+        stocks[1] = tsla;
+        uint256[] memory usdtIn = new uint256[](2);
+        usdtIn[0] = 100e18;
+        usdtIn[1] = 50e18;
+        uint256[] memory minOut = new uint256[](2);
+        uint128[] memory prices = new uint128[](2);
+        prices[0] = 200e18;
+        prices[1] = 400e18;
+        uint40[] memory deadlines = new uint40[](2);
+        deadlines[0] = deadline;
+        deadlines[1] = deadline;
+        bytes[] memory sigs = new bytes[](2);
+        sigs[0] = _quote(nvda, 200e18, deadline, keeperPk);
+        sigs[1] = _quote(tsla, 400e18, deadline, keeperPk);
+
+        vm.prank(alice);
+        uint256[] memory out = ex.buyBatch(stocks, usdtIn, minOut, prices, deadlines, sigs);
+        assertEq(out[0], 0.4995e18);
+        assertEq(out[1], 0.124875e18);
+        assertEq(MockStock(tsla).balanceOf(alice), 0.124875e18);
+        assertEq(usdt.balanceOf(address(ex)), 150e18);
+
+        // one bad leg reverts the whole basket
+        sigs[1] = _quote(tsla, 400e18, deadline, 0xBAD);
+        vm.prank(alice);
+        vm.expectRevert(TestExchange.BadQuote.selector);
+        ex.buyBatch(stocks, usdtIn, minOut, prices, deadlines, sigs);
+        assertEq(usdt.balanceOf(address(ex)), 150e18);
+
+        uint256[] memory short = new uint256[](1);
+        vm.prank(alice);
+        vm.expectRevert(TestExchange.LengthMismatch.selector);
+        ex.buyBatch(stocks, short, minOut, prices, deadlines, sigs);
+    }
+
     function test_Sell_BurnsAndPaysFromLiquidity() public {
         bytes memory sig = _quote(200e18);
         vm.startPrank(alice);

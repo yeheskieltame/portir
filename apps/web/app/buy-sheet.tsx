@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { erc20Abi, formatUnits, parseUnits } from "viem";
+import { encodeFunctionData, erc20Abi, formatUnits, parseUnits } from "viem";
 import { useConnect, useConnection, useConnectors, useReadContract } from "wagmi";
 import { getBalance, readContract, sendTransaction, switchChain, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { NoWallet } from "@/app/connect-button";
 import { useMode } from "@/app/mode";
 import { NET } from "@/lib/mode";
+import { TESTNET, testExchangeAbi } from "@/lib/testnet";
 import type { BuyResponse } from "@/app/api/buy/route";
 import { TONE, pct, usd } from "@/app/verdict";
 import { recordBuy } from "@/lib/buys";
@@ -86,17 +87,40 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
       await switchChain(config, { chainId: net.chain.id });
       const gas = await getBalance(config, { address: address!, chainId: net.chain.id });
       if (gas.value < MIN_GAS_BNB) throw new Error(`You need a little BNB on ${net.chain.name} for gas (about $0.05 covers a purchase). Top up BNB, then try again.`);
+      // One approval per spender for the whole order, not one per holding.
+      const bySpender = new Map<string, bigint>();
+      for (const leg of quoted) for (const a of leg.q.approvals ?? []) bySpender.set(a.spender, (bySpender.get(a.spender) ?? 0n) + parseUnits(leg.usdt.toFixed(6), 18));
+      for (const [spender, need] of bySpender) {
+        const allowance = await readContract(config, { address: USDT, abi: erc20Abi, functionName: "allowance", args: [address!, spender as `0x${string}`], chainId: net.chain.id });
+        if (allowance >= need) continue;
+        setStep({ at: "signing", legs: quoted, note: "Approve USDT in your wallet (once for the whole order)…" });
+        const hash = await sendTransaction(config, { chainId: net.chain.id, to: USDT, data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [spender as `0x${string}`, need] }) });
+        await waitForTransactionReceipt(config, { chainId: net.chain.id, hash });
+      }
+
+      // Testnet basket: every holding settles in one buyBatch transaction (all or nothing).
+      if (basket && quoted.every((l) => l.q.quote)) {
+        const qs = quoted.map((l) => l.q.quote!);
+        setStep({ at: "signing", legs: quoted, note: `confirm ${quoted.length} holdings in one transaction…` });
+        const hash = await sendTransaction(config, {
+          chainId: net.chain.id,
+          to: TESTNET.exchange,
+          data: encodeFunctionData({ abi: testExchangeAbi, functionName: "buyBatch", args: [qs.map((q) => q.stock as `0x${string}`), qs.map((q) => BigInt(q.usdtIn)), qs.map((q) => BigInt(q.minShares)), qs.map((q) => BigInt(q.price)), qs.map((q) => q.deadline), qs.map((q) => q.sig as `0x${string}`)] }),
+        });
+        setStep({ at: "signing", legs: quoted, note: "waiting for BNB Chain…" });
+        const receipt = await waitForTransactionReceipt(config, { chainId: net.chain.id, hash });
+        if (receipt.status !== "success") throw new Error("The transaction reverted. Nothing was spent except gas.");
+        for (const leg of quoted) {
+          recordBuy({ ticker: leg.ticker, shares: leg.q.shares!, usdt: leg.usdt, pricePerShare: leg.q.pricePerShare!, issuer: leg.q.issuer!, tx: hash, at: Date.now() });
+          txs.push(hash);
+        }
+        balance.refetch();
+        setStep({ at: "done", legs: quoted, txs });
+        return;
+      }
+
       for (const leg of quoted) {
         const who = basket ? `${leg.ticker}: ` : "";
-        const wei = parseUnits(leg.usdt.toFixed(6), 18);
-        for (const a of leg.q.approvals ?? []) {
-          // The API always includes an approval; skip it when the allowance already covers this order.
-          const allowance = await readContract(config, { address: USDT, abi: erc20Abi, functionName: "allowance", args: [address!, a.spender as `0x${string}`], chainId: net.chain.id });
-          if (allowance >= wei) continue;
-          setStep({ at: "signing", legs: quoted, note: `${who}approve USDT in your wallet…` });
-          const hash = await sendTransaction(config, { chainId: net.chain.id, to: a.to as `0x${string}`, data: a.data as `0x${string}` });
-          await waitForTransactionReceipt(config, { chainId: net.chain.id, hash });
-        }
         setStep({ at: "signing", legs: quoted, note: `${who}confirm the purchase in your wallet…` });
         const hash = await sendTransaction(config, { chainId: net.chain.id, to: leg.q.tx!.to as `0x${string}`, data: leg.q.tx!.data as `0x${string}`, value: BigInt(leg.q.tx!.value || "0") });
         setStep({ at: "signing", legs: quoted, note: `${who}waiting for BNB Chain…` });
