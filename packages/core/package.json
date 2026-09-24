@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./binance": "./src/binance.ts",
-    "./trading": "./src/trading.ts"
+    "./trading": "./src/trading.ts",
+    "./catalog": "./src/catalog.ts"
   },
   "scripts": {
     "test": "node --test src/*.test.ts",
