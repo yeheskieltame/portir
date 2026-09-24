@@ -52,7 +52,8 @@ export async function POST(req: Request) {
     const reference = view.reference;
     if (mode === "testnet") {
       const offer = view.offers.find((o) => !o.halted && !(o.spreadBps !== null && isSuspectDiscount(o.spreadBps)));
-      return Response.json(await testnetRoute(ticker, amount, body.wallet, session, reference, offer));
+      const out = await testnetRoute(ticker, amount, body.wallet, session, reference, offer);
+      return Response.json(out, { status: "error" in out ? 400 : 200 });
     }
     if (reference === null) return Response.json({ verdict: "BLOCK", reason: NA_REASON, spreadBps: null, reference, chainId: 56 } satisfies BuyResponse);
 
@@ -76,7 +77,9 @@ export async function POST(req: Request) {
         ? `Trading is paused for this stock (${halted}).`
         : String(raw.code) === "40304"
           ? "Binance's trading service refuses requests from this server's network (compliance restriction). Prices are live, but orders must be quoted from an allowed network."
-          : "No provider can fill this order right now.";
+          : String(raw.code) === "40374"
+            ? "This amount is below what the providers will quote. Try $10 or more."
+            : "No provider can fill this order right now.";
       return Response.json({ verdict: "BLOCK", reason, spreadBps: null, reference, chainId: 56, detail } satisfies BuyResponse & { detail: string });
     }
     routed.sort((a, b) => a.quote.pricePerShare - b.quote.pricePerShare);

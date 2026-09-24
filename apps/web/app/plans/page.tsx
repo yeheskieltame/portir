@@ -96,7 +96,8 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
     staleTime: 3_600_000,
   }).data;
   const active = (plans.data ?? []).filter((p) => p.active);
-  const perMonth = active.reduce((n, p) => n + (Number(formatUnits(p.amount, USDT_DECIMALS)) * 30) / (p.interval / DAY), 0);
+  // One-time orders are not a monthly commitment.
+  const perMonth = active.filter((p) => !p.once).reduce((n, p) => n + (Number(formatUnits(p.amount, USDT_DECIMALS)) * 30) / (p.interval / DAY), 0);
   const nextRun = active.map((p) => p.nextRunAt).filter((t) => t * 1000 > now).sort((a, b) => a - b)[0];
 
   return (
@@ -150,7 +151,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
           const label = basket ? target.slice(7) : (STOCK_NAMES[target] ?? target);
           const due = plan.nextRunAt * 1000 <= now;
           const status = !plan.active
-            ? { label: plan.once ? "Done" : "Paused", cls: "text-muted border-line" }
+            ? { label: plan.once ? "Ended" : "Paused", cls: "text-muted border-line" }
             : plan.once
               ? { label: "Watching · buys once the price is fair", cls: "text-warn border-warn/40 bg-warn/10" }
               : due

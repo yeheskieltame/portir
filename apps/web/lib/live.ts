@@ -56,7 +56,8 @@ async function loadMany(tickers: string[], tokens: StockToken[]): Promise<Stock[
   const results = await Promise.allSettled(tickers.map((t) => loadOne(t, tokens)));
   return results.flatMap((r, i) => {
     if (r.status === "fulfilled") return [r.value];
-    console.error(`quote ${tickers[i]}:`, r.reason);
+    // Expected data gaps (an issuer with a null price) are not errors worth a dev overlay.
+    console.warn(`quote ${tickers[i]}:`, r.reason instanceof Error ? r.reason.message : r.reason);
     return [];
   });
 }
@@ -113,12 +114,30 @@ export async function loadMarket({ q = "", kind, page = 1 }: MarketQuery): Promi
 }
 
 export type Range = "1D" | "1W" | "1M" | "1Y";
-export const RANGES: Record<Range, { interval: KlineInterval; limit: number }> = {
-  "1D": { interval: "15m", limit: 96 },
-  "1W": { interval: "1h", limit: 168 },
-  "1M": { interval: "4h", limit: 180 },
-  "1Y": { interval: "1d", limit: 300 },
+const DAY_MS = 86_400_000;
+export const RANGES: Record<Range, { interval: KlineInterval; limit: number; ms: number }> = {
+  "1D": { interval: "15m", limit: 400, ms: DAY_MS },
+  "1W": { interval: "1h", limit: 500, ms: 7 * DAY_MS },
+  "1M": { interval: "4h", limit: 400, ms: 30 * DAY_MS },
+  "1Y": { interval: "1d", limit: 500, ms: 366 * DAY_MS },
 };
+
+/** History comes from the most-traded issuer (Ondo), not the cheapest one: a thin token has hours without a candle. */
+const chartOffer = <T extends { issuer: string }>(offers: T[]) => offers.find((o) => o.issuer === "ondo") ?? offers[0];
+
+/**
+ * On-chain klines only exist while the token trades, so N candles can span far more than the range,
+ * and a stray tick (a pre-split token price, a thin-liquidity print) can be 10x the rest. Keep the
+ * range's time window and drop closes more than 2.5x away from the median.
+ */
+function sane<T extends { t: number; c: number }>(candles: T[], range: Range): T[] {
+  const since = Date.now() - RANGES[range].ms;
+  const inWindow = candles.filter((k) => k.t >= since);
+  const kept = inWindow.length >= 2 ? inWindow : candles;
+  const sorted = kept.map((k) => k.c).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+  return median > 0 ? kept.filter((k) => k.c / median < 2.5 && k.c / median > 0.4) : kept;
+}
 
 const perShare = (c: Candle, m: number): Candle => ({ ...c, o: c.o / m, h: c.h / m, l: c.l / m, c: c.c / m });
 
@@ -136,9 +155,9 @@ export async function loadStock(ticker: string, range: Range): Promise<StockDeta
     if (!tokens.some((t) => t.ticker === ticker)) return null;
     const stock = await loadOne(ticker, tokens);
     const best = stock.offers![0];
-    const token = { chainId: "56", contractAddress: best.contractAddress };
-    const [m, c] = await Promise.allSettled([meta(token), klines(token, RANGES[range].interval, RANGES[range].limit)]);
-    return { stock, meta: m.status === "fulfilled" ? m.value : null, candles: c.status === "fulfilled" ? c.value.map((k) => perShare(k, best.multiplier)) : [], sample: false };
+    const chart = chartOffer(stock.offers!);
+    const [m, c] = await Promise.allSettled([meta({ chainId: "56", contractAddress: best.contractAddress }), klines({ chainId: "56", contractAddress: chart.contractAddress }, RANGES[range].interval, RANGES[range].limit)]);
+    return { stock, meta: m.status === "fulfilled" ? m.value : null, candles: c.status === "fulfilled" ? sane(c.value.map((k) => perShare(k, chart.multiplier)), range) : [], sample: false };
   } catch (e) {
     console.error(`live ${ticker} unavailable:`, e);
     const stock = SAMPLE_STOCKS.find((s) => s.ticker === ticker);
@@ -181,13 +200,14 @@ export async function quoteMany(tickers: string[], range: Range): Promise<Record
   await Promise.all(
     stocks.map(async (s) => {
       const best = s.offers![0];
-      const c = await klines({ chainId: "56", contractAddress: best.contractAddress }, RANGES[range].interval, RANGES[range].limit).catch(() => []);
+      const chart = chartOffer(s.offers!);
+      const c = await klines({ chainId: "56", contractAddress: chart.contractAddress }, RANGES[range].interval, RANGES[range].limit).catch(() => []);
       out[s.ticker] = {
         name: s.name,
         icon: s.icon,
         onchain: s.onchain,
         change24hPct: s.change24hPct,
-        series: c.map((k) => [k.t, k.c / best.multiplier]),
+        series: sane(c.map((k) => ({ t: k.t, c: k.c / chart.multiplier })), range).map((k) => [k.t, k.c]),
         multipliers: Object.fromEntries(s.offers!.map((o) => [o.contractAddress.toLowerCase(), o.multiplier])),
         multiplier: best.multiplier,
         dividendYield: s.stats?.dividendYield ?? null,

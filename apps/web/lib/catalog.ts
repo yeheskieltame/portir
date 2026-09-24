@@ -27,17 +27,7 @@ export interface Stock {
   offers?: Offer[];
 }
 
-// Featured tickers, listed first. Names are ours: principle 1, "stocks, not tokens". Everything else is named from the issuer's token name.
-export const STOCK_NAMES: Record<string, string> = {
-  NVDA: "NVIDIA",
-  TSLA: "Tesla",
-  AAPL: "Apple",
-  MSFT: "Microsoft",
-  GOOGL: "Alphabet (Google)",
-  AMZN: "Amazon",
-  QQQ: "Nasdaq 100 ETF",
-  SPY: "S&P 500 ETF",
-};
+export { STOCK_NAMES } from "@portir/core/catalog";
 
 export { BASKETS, targetLegs, type Basket } from "@portir/core/catalog";
 

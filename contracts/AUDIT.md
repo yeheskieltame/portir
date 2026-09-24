@@ -21,6 +21,7 @@ Upgrades plugin validation that runs on every deploy/upgrade. The testnet fixtur
 | Storage | ERC-7201 namespace `portir.storage.PlanRegistry`; slot constant verified; no state outside the struct |
 | Upgrade path | `test_Upgrade_OnlyOwnerAndKeepsState` upgrades to a V2 and reads back plans; plugin validates layout |
 | Admin | testnet owner = deployer EOA. **Mainnet: deploy with `OWNER=<multisig>`** (script supports it) |
+| v4 upgrade (2026-09-25) | `resumePlan` reverts `PlanDone` for a once plan whose last run was not Waited (found in the 2026-09-25 review); storage unchanged. Testnet impl `0xe01E…2379` |
 | v3 upgrade (2026-09-24) | `Plan.once` appended (packs into the struct's last slot: 27 → 28 bytes, still 4 slots, array layout unchanged); `createPlan` gains a `once` argument; a once plan completes (`active=false`, `PlanCompleted`) after its first non-Waited run. Testnet impl `0x07E0…b6D9` |
 | v2 upgrade (2026-09-24) | `updatePlan` / `resumePlan` added; `PlanRegistryStorage`, `Plan` and `Run` unchanged (reviewed by hand: no field added, removed or reordered). `script/Upgrade.s.sol` sets `unsafeSkipStorageCheck` only because the contract keeps its name and the plugin has no reference build; all other plugin checks ran. Testnet impl `0xEb62…d172` |
 
@@ -53,3 +54,19 @@ Upgrades plugin validation that runs on every deploy/upgrade. The testnet fixtur
 - [ ] `pnpm deploy:mainnet` → verify on BscScan (implementation + proxy, `script/verify.sh bsc <proxy>`).
 - [ ] App `NEXT_PUBLIC_CHAIN=mainnet`, `NEXT_PUBLIC_PLAN_REGISTRY=<proxy>`, executor address set in every plan.
 - [ ] Executor dry run against the mainnet registry with `PORTIR_EXECUTION=off` for one scan before enabling execution.
+
+## Review 2026-09-25 (adversarial pass, 3,000 fuzz runs, `forge lint` clean)
+
+| # | Finding | Severity | Status |
+| --- | --- | --- | --- |
+| 1 | `resumePlan` could reactivate a **completed** once plan (bought or given up): the UI showed "Done" while the executor would buy again. | Medium | **Fixed** in `PlanRegistry.resumePlan` (`PlanDone` when the last run of a once plan is not Waited); test `test_ResumePlan_PausedOncePlanResumes_CompletedOnceDoesNot`. Needs a UUPS **upgrade** (v4, no storage change) — not deployed by this review. |
+| 2 | TestExchange quote binds `(stock, price, deadline)` only: anyone may reuse a quote for any amount, buy or sell, until the deadline (10 min). | Low (testnet fixture) | **Accepted**, documented by `test_Quote_IsReusableUntilDeadline_Documented`. A real venue must bind buyer, side and amount. |
+| 3 | `buyBatch` is all-or-nothing and unbounded in `n`; gas grows with legs. | Info | Accepted (baskets have ≤ 6 legs). |
+| 4 | TestExchange uses single-step `Ownable`; `setKeeper(0)` effectively pauses trading (every recover mismatches). | Info | Accepted for testnet; PlanRegistry keeps `Ownable2Step`. |
+| 5 | `recordRun` may be called by the plan owner (owner-run fallback), so an owner can log a fake Executed for their own plan. | Info | By design; only affects the owner's own history. |
+| 6 | Fee math rounds shares down; `usdtIn * (10000 − fee) * 1e18` overflows only above 1e52 wei. | Info | Accepted. |
+| 7 | MockUSDT faucet: first call allowed (`last == 0`), exactly at `nextAt` allowed, one second before reverts; unlimited across addresses. | Info | Accepted (testnet). |
+| 8 | Once plan finished by `Skipped` (window over) shows as `active=false`; the app labels every inactive once plan "Done" even when nothing was bought. | UX | Out of scope here; the app should read the last run's outcome. |
+
+No change to `TestExchange`, `MockUSDT` or `MockStock` sources: **no redeploy needed**. Only `PlanRegistry` changed (finding 1) and needs an in-place upgrade when the operator chooses to ship it.
+

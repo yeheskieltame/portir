@@ -8,7 +8,7 @@ the on-chain vs exchange price before every order.
 | Path | What | Status |
 | --- | --- | --- |
 | `packages/core` | `@portir/core`: the Guard (pure verdict logic), the Binance RWA Data client (catalog, quotes, fundamentals, K-lines, logos) and the Trading client (official SDK). | quote + build verified live on mainnet; `simulate` blocked by an SDK bug (see DevEx report) |
-| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | 15 tests, verified on BSC testnet, upgraded in place twice (v2: `updatePlan`, `resumePlan`; v3: one-time "buy when fair" plans) |
+| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | 15 tests, verified on BSC testnet, upgraded in place three times (v2: `updatePlan`, `resumePlan`; v3: one-time "buy when fair" plans; v4: a completed once plan cannot be resumed) |
 | `apps/landing` | Static landing page (one HTML file, no build). Its own Vercel project on the root domain; the app lives on `app.<domain>`. | `pnpm dev:landing` → :3001 |
 | `apps/portiragent` | The Portir agent on **BNB Agent Studio** (`bag` workspace, not part of the pnpm root workspace). One AgentCore runtime with three faces: **MCP** (`/mcp`, ten Portir tools for Claude or any client), **x402** (`/x402`, free passthrough answering with the same tools), **A2A**. Runs the **DCA executor**: scans `PlanRegistry` every 15 min, applies the Guard to single stocks and baskets (worst holding decides), buys on testnet, records `Waited / Skipped / Executed` with a one-sentence reason; one-time "buy when fair" orders complete after their first buy. | runs locally (`cd apps/portiragent && bag dev`); trial deploy next; execution backend off until the Agentic Wallet test |
 | `apps/web` | Next.js app, mobile-first. Markets (510 US stocks/ETFs on BSC, search, filter, pages), stock detail (chart, Guard, providers, fundamentals), baskets, one-tap buy with the Guard, portfolio (live balances, history, dividends), plans, profile. | live; buying signs real BSC mainnet transactions |
@@ -73,7 +73,7 @@ are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
 
 | Network | PlanRegistry (proxy) | Implementation | Verified |
 | --- | --- | --- | --- |
-| BSC testnet (97) | `0x28daDC35523CE792C7C09faf516763830C38f36b` | `0x07E084554719BDECbdDEC0EabaD592cD40A7b6D9` (v3; v2 `0xEb62…d172`, v1 `0xD408…315C`) | [BscScan](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code) (proxy linked) + Sourcify |
+| BSC testnet (97) | `0x28daDC35523CE792C7C09faf516763830C38f36b` | `0xe01E477AE7954E177993d221c0FD7b30dF722379` (v4; v3 `0x07E0…b6D9`, v2 `0xEb62…d172`, v1 `0xD408…315C`) | [BscScan](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code) (proxy linked) + Sourcify |
 
 Testnet fixtures (`contracts/src/testnet/`, non-upgradeable test doubles, all verified; addresses in
 `contracts/deployments/testnet.json`): `MockUSDT` with a 1,000/day faucet

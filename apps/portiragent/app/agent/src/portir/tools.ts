@@ -11,6 +11,7 @@ import { type Address, createPublicClient, erc20Abi, formatUnits, http } from "v
 import { bsc } from "viem/chains";
 import { z } from "zod";
 import { USDT, createTrader, usdt } from "@portir/core/trading";
+import { targetLegs } from "@portir/core/catalog";
 import { assess, bestRoute, history, marketWindow, searchStock, tokenList } from "./market.js";
 import { news } from "./news.js";
 import { decodeTarget, getPlan, planIdsOf, prepareCreatePlan, runsOf } from "./registry.js";
@@ -121,7 +122,8 @@ export const PORTIR_TOOLS = [
       return Promise.all(
         ids.map(async (id) => {
           const [p, runs] = await Promise.all([getPlan(id), runsOf(id)]);
-          return { planId: Number(id), target: decodeTarget(p.target), usdt: Number(formatUnits(p.amount, 18)), intervalDays: p.interval / 86_400, nextRunAt: p.nextRunAt, smartTiming: p.smartTiming, active: p.active, runs: runs.map((r) => ({ at: r.at, outcome: ["Executed", "Waited", "Skipped"][r.outcome], spreadBps: r.spreadBps, reason: r.reason, txHash: r.txHash })) };
+          const status = p.active ? (p.once ? "watching" : "active") : p.once ? "completed" : "paused";
+          return { planId: Number(id), target: decodeTarget(p.target), usdt: Number(formatUnits(p.amount, 18)), intervalDays: p.interval / 86_400, once: p.once, status, nextRunAt: p.nextRunAt, smartTiming: p.smartTiming, active: p.active, runs: runs.map((r) => ({ at: r.at, outcome: ["Executed", "Waited", "Skipped"][r.outcome], spreadBps: r.spreadBps, reason: r.reason, txHash: r.txHash })) };
         }),
       );
     },
@@ -130,7 +132,15 @@ export const PORTIR_TOOLS = [
     name: "prepare_dca_plan",
     description: "Unsigned createPlan calldata for PlanRegistry, with this agent as executor. The user's wallet signs it. target = ticker or 'BASKET:<name>'.",
     input: { target: z.string().min(1), usdt: z.number().min(1), intervalDays: z.union([z.literal(7), z.literal(14), z.literal(30)]), smartTiming: z.boolean().optional(), once: z.boolean().optional().describe("true = buy one time when the Guard says GO, then stop (no repeat)") },
-    run: async ({ target, usdt: amount, intervalDays, smartTiming, once }) => prepareCreatePlan({ target, usdt: amount, intervalDays, smartTiming: smartTiming ?? true, once: once ?? false }),
+    run: async ({ target, usdt: amount, intervalDays, smartTiming, once }) => {
+      const t = target.startsWith("BASKET:") ? target : target.toUpperCase();
+      const legs = targetLegs(t);
+      if (!legs) throw new Error(`Unknown basket "${t.slice(7)}"`);
+      const tokens = await tokenList();
+      const missing = legs.filter((l) => !tokens.some((k) => k.ticker === l.ticker)).map((l) => l.ticker);
+      if (missing.length) throw new Error(`${missing.join(", ")} is not listed on BSC`);
+      return prepareCreatePlan({ target: t, usdt: amount, intervalDays, smartTiming: smartTiming ?? true, once: once ?? false });
+    },
   }),
 ];
 

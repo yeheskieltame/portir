@@ -71,7 +71,16 @@ export async function sendTx(to: Address, data: Hex): Promise<Hex> {
 
 /** `recordRun` with the agent wallet. Returns the tx hash. */
 export function recordRun(planId: bigint, outcome: Outcome, spreadBps: number, txHash: Hex, reason: string): Promise<Hex> {
-  return sendTx(registryAddress(), encodeFunctionData({ abi: planRegistryAbi, functionName: "recordRun", args: [planId, OUTCOME[outcome], Math.round(spreadBps), txHash, reason.slice(0, 200)] }));
+  return sendTx(registryAddress(), encodeFunctionData({ abi: planRegistryAbi, functionName: "recordRun", args: [planId, OUTCOME[outcome], Math.round(spreadBps), txHash, clampBytes(reason, 200)] }));
+}
+
+/** The contract limits `reason` to 200 UTF-8 bytes; "≈" alone is three. */
+function clampBytes(s: string, max: number): string {
+  const enc = new TextEncoder();
+  if (enc.encode(s).length <= max) return s;
+  let out = s;
+  while (enc.encode(`${out}…`).length > max) out = out.slice(0, -1);
+  return `${out}…`;
 }
 
 /** Calldata for a user's wallet to create a plan bound to this agent as executor. */

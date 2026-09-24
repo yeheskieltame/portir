@@ -138,8 +138,13 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
     let txHash: Hex | undefined;
     // One guarded swap per leg, in sequence. A failed leg is reported, not retried next tick (that would double-buy the others).
     for (const l of legs) {
+      const slice = Math.floor(total * l.weight * 100) / 100;
+      if (slice < 1) {
+        failed.push(`${l.ticker}: slice below $1`);
+        continue;
+      }
       try {
-        const r = await execute(Math.floor(total * l.weight * 100) / 100, l.ticker);
+        const r = await execute(slice, l.ticker);
         txHash ??= r.txHash;
         bought.push(basket ? `${l.ticker} ${r.note}` : r.note);
       } catch (e) {

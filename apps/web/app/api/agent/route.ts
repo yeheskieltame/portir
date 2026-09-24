@@ -35,8 +35,8 @@ export async function POST(req: Request) {
     });
     if (!res.ok) {
       console.error("agent api: agent answered", res.status, await res.text().catch(() => ""));
-      // The agent runs on Pieverse's free model, which rate-limits bursts; the agent itself is fine.
-      return Response.json({ error: "The agent is busy right now (its model rate-limited the request). Give it a minute and ask again." }, { status: 503 });
+      // The agent is up but its model did not answer (rate limit on Pieverse's free tier, or the local brain failed).
+      return Response.json({ error: "The agent could not answer right now. Give it a minute and ask again." }, { status: 503 });
     }
     const { result } = (await res.json()) as { result?: string };
     return Response.json(parseReply(String(result ?? "")));

@@ -63,6 +63,7 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     error NotAuthorized();
     error PlanInactive();
     error PlanActive();
+    error PlanDone();
     error NotDue(uint40 nextRunAt);
     error ReasonTooLong();
 
@@ -121,9 +122,15 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
 
     /// @notice Resume a paused plan; a run date that passed while paused moves to now.
     function resumePlan(uint256 planId) external {
-        Plan storage plan = _storage().plans[planId];
+        PlanRegistryStorage storage $ = _storage();
+        Plan storage plan = $.plans[planId];
         if (msg.sender != plan.owner) revert NotPlanOwner();
         if (plan.active) revert PlanActive();
+        // A once plan that already ran (bought or gave up) is finished, not paused.
+        Run[] storage runs = $.runs[planId];
+        if (plan.once && runs.length != 0 && runs[runs.length - 1].outcome != Outcome.Waited) {
+            revert PlanDone();
+        }
         plan.active = true;
         if (plan.nextRunAt < block.timestamp) plan.nextRunAt = uint40(block.timestamp);
         emit PlanResumed(planId, plan.nextRunAt);

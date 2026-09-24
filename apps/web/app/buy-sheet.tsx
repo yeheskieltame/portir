@@ -59,7 +59,8 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
   const balance = useReadContract({ address: USDT, abi: erc20Abi, functionName: "balanceOf", args: [address!], chainId: net.chain.id, query: { enabled: !!address } });
   const have = balance.data === undefined ? null : Number(formatUnits(balance.data, 18));
   const usdtIn = Number(amount);
-  const minOrder = legs.length; // each leg needs at least 1 USDT
+  // Every leg must be at least 1 USDT (the API minimum), so the smallest weight sets the basket minimum.
+  const minOrder = Math.ceil(1 / Math.min(...legs.map((l) => l.weight)));
   const valid = usdtIn >= minOrder && (repeat || have === null || usdtIn <= have);
   const basket = legs.length > 1;
   const target = basket ? `BASKET:${name}` : legs[0].ticker;
@@ -101,6 +102,8 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
       // Testnet basket: every holding settles in one buyBatch transaction (all or nothing).
       if (basket && quoted.every((l) => l.q.quote)) {
         const qs = quoted.map((l) => l.q.quote!);
+        // A testnet quote is signed for ten minutes; a stale one would only revert inside the wallet.
+        if (qs.some((q) => q.deadline * 1000 < Date.now() + 30_000)) throw new Error("The price quote expired while waiting. Go back and check the price again.");
         setStep({ at: "signing", legs: quoted, note: `confirm ${quoted.length} holdings in one transaction…` });
         const hash = await sendTransaction(config, {
           chainId: net.chain.id,
@@ -174,7 +177,7 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
 
             {!address ? (
               <>
-                <h2 className="text-xl">Connect to buy {name}</h2>
+                <h2 className="text-xl">Connect to {repeat ? "invest in" : "buy"} {name}</h2>
                 <p className="mt-2 text-sm text-muted">Your wallet signs every transaction. Portir never holds funds.</p>
                 <button className="mt-5 w-full rounded-full bg-white py-3 font-medium text-black" disabled={connect.isPending} onClick={() => connect.mutate({ connector })}>
                   {connect.isPending ? "Connecting…" : "Connect wallet"}

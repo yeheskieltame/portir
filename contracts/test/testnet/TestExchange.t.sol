@@ -129,6 +129,25 @@ contract TestExchangeTest is Test {
         ex.buyBatch(stocks, short, minOut, prices, deadlines, sigs);
     }
 
+    /// Accepted for a testnet fixture: a quote binds (stock, price, deadline) only, so anyone may reuse it
+    /// for any amount, buy or sell, until the deadline. A real venue would bind buyer, side and amount.
+    function test_Quote_IsReusableUntilDeadline_Documented() public {
+        address bob = makeAddr("bob");
+        vm.startPrank(bob);
+        usdt.faucet();
+        usdt.approve(address(ex), type(uint256).max);
+        vm.stopPrank();
+        uint40 deadline = uint40(block.timestamp + 10 minutes);
+        bytes memory sig = _quote(nvda, 200e18, deadline, keeperPk);
+        vm.prank(alice);
+        ex.buy(nvda, 100e18, 0, 200e18, deadline, sig);
+        vm.prank(bob);
+        ex.buy(nvda, 1e18, 0, 200e18, deadline, sig);
+        vm.prank(bob);
+        ex.sell(nvda, 0.001e18, 0, 200e18, deadline, sig);
+        assertGt(MockStock(nvda).balanceOf(bob), 0);
+    }
+
     function test_Sell_BurnsAndPaysFromLiquidity() public {
         bytes memory sig = _quote(200e18);
         vm.startPrank(alice);

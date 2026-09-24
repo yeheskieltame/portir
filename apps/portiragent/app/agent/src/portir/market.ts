@@ -5,6 +5,7 @@
 import { type Decision, THRESHOLDS, guard, isSuspectDiscount, spreadBps } from "@portir/core";
 import { type StockToken, type StockView, klines, listStocks, meta, quoteStock } from "@portir/core/binance";
 import { type BuyQuote, createTrader, usdt } from "@portir/core/trading";
+import { STOCK_NAMES } from "@portir/core/catalog";
 
 let cached: { at: number; tokens: Promise<StockToken[]> } | undefined;
 export function tokenList(): Promise<StockToken[]> {
@@ -19,7 +20,9 @@ export function tokenList(): Promise<StockToken[]> {
 export async function searchStock(query: string) {
   const q = query.trim().toUpperCase();
   const tokens = await tokenList();
-  const tickers = [...new Set(tokens.map((t) => t.ticker))].filter((t) => t.includes(q)).slice(0, 10);
+  // Ticker fragment first; then a company name ("nvidia" → NVDA), which the API does not expose.
+  const byName = Object.entries(STOCK_NAMES).filter(([, n]) => n.toUpperCase().includes(q)).map(([t]) => t);
+  const tickers = [...new Set([...tokens.map((t) => t.ticker).filter((t) => t.includes(q)), ...byName])].filter((t) => tokens.some((k) => k.ticker === t)).slice(0, 10);
   return Promise.all(
     tickers.map(async (ticker) => {
       const own = tokens.filter((t) => t.ticker === ticker);

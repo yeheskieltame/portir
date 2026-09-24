@@ -235,6 +235,37 @@ contract PlanRegistryTest is Test {
         registry.recordRun(id, PlanRegistry.Outcome.Executed, 5, bytes32(uint256(2)), "again");
     }
 
+    function test_ResumePlan_PausedOncePlanResumes_CompletedOnceDoesNot() public {
+        vm.prank(rio);
+        uint256 id = registry.createPlan(NVDA, AMOUNT, WEEK, 0, true, true, agent);
+
+        // paused before any buy: resumable
+        vm.prank(agent);
+        registry.recordRun(id, PlanRegistry.Outcome.Waited, 120, 0, "closed");
+        vm.prank(rio);
+        registry.cancelPlan(id);
+        vm.prank(rio);
+        registry.resumePlan(id);
+        assertTrue(registry.getPlan(id).active);
+
+        // bought once: finished for good
+        vm.prank(agent);
+        registry.recordRun(id, PlanRegistry.Outcome.Executed, 5, bytes32(uint256(1)), "bought");
+        assertFalse(registry.getPlan(id).active);
+        vm.prank(rio);
+        vm.expectRevert(PlanRegistry.PlanDone.selector);
+        registry.resumePlan(id);
+
+        // gave up (Skipped) also finishes a once plan
+        vm.prank(rio);
+        uint256 id2 = registry.createPlan(NVDA, AMOUNT, WEEK, 0, true, true, agent);
+        vm.prank(agent);
+        registry.recordRun(id2, PlanRegistry.Outcome.Skipped, 0, 0, "no fair moment");
+        vm.prank(rio);
+        vm.expectRevert(PlanRegistry.PlanDone.selector);
+        registry.resumePlan(id2);
+    }
+
     function test_Initialize_OnlyOnceAndImplementationLocked() public {
         assertEq(registry.owner(), admin);
         vm.expectRevert(Initializable.InvalidInitialization.selector);
