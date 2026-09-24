@@ -307,4 +307,11 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
   the basket is one transaction. On mainnet the Trading API builds one swap per token against LiquidMesh/PancakeSwap,
   so a basket is still N swaps. **Ask: a multi-order build (or a router that accepts several RFQ quotes in one call)**
   would make baskets a single signature on mainnet too.
+- **Who pays for a DCA run.** First version: the executor bought with its own testnet balance, so a user's plans never
+  showed up in their portfolio. Allowance to the agent's EOA would have fixed that but makes a leaked agent key worth the
+  whole allowance. PlanRegistry v5 holds the allowance instead and releases at most the plan amount per due run to the
+  plan's executor (`pullFunds` / `returnFunds`); shares are forwarded to the owner. An upgrade, no redeploy.
+- **Stale reads right after a write.** The first live run bought the shares but forwarded zero of them: the balance diff
+  was read from a load-balanced BSC testnet RPC node one block behind the receipt. Read results from the receipt's own
+  event logs, never from state immediately after a write.
 

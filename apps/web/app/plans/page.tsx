@@ -8,6 +8,7 @@ import { BasketCard, basketImage } from "@/app/basket-card";
 import { Logo } from "@/app/logo";
 import type { PlanProposal } from "@/app/api/agent/route";
 import { Activity } from "./activity";
+import { Funding } from "./funding";
 import { AgentChat } from "./agent-chat";
 import { usd } from "@/app/verdict";
 import {
@@ -128,6 +129,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
 
       <div className="lg:mt-6">
       <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-muted lg:mt-0">Your plans</h2>
+      {active.length > 0 && <Funding owner={owner} registry={registry} perRun={active.reduce((n, p) => n + p.amount, 0n)} />}
       {active.length > 0 && (
         <dl className="glass mt-3 grid grid-cols-3 divide-x divide-line rounded-3xl text-sm">
           <Stat label="Active" value={String(active.length)} />

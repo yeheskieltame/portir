@@ -6,9 +6,14 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 import {
     Ownable2StepUpgradeable
 } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-/// @notice DCA plans and their run history. Holds no funds.
+/// @notice DCA plans and their run history. Holds no funds: owners approve this contract, and a plan's
+/// executor can move at most `amount` per scheduled run from the owner, only while that run is due.
 contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable {
+    using SafeERC20 for IERC20;
+
     enum Outcome {
         Executed,
         Waited,
@@ -27,6 +32,11 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         bool once; // v3: buy one time when the Guard says GO, then complete
     }
 
+    struct Funding {
+        uint40 run; // the nextRunAt this amount was pulled for
+        uint128 pulled;
+    }
+
     struct Run {
         uint40 at;
         Outcome outcome;
@@ -40,6 +50,8 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         Plan[] plans;
         mapping(uint256 planId => Run[]) runs;
         mapping(address owner => uint256[]) planIdsOf;
+        IERC20 fundingToken; // v5
+        mapping(uint256 planId => Funding) funding; // v5
     }
 
     // keccak256(abi.encode(uint256(keccak256("portir.storage.PlanRegistry")) - 1)) & ~bytes32(uint256(0xff))
@@ -54,6 +66,9 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     event PlanCancelled(uint256 indexed planId);
     event PlanResumed(uint256 indexed planId, uint40 nextRunAt);
     event PlanCompleted(uint256 indexed planId);
+    event FundingTokenSet(address token);
+    event FundsPulled(uint256 indexed planId, uint40 run, uint128 amount);
+    event FundsReturned(uint256 indexed planId, uint40 run, uint128 amount);
     event PlanRun(uint256 indexed planId, Outcome outcome, int32 spreadBps, bytes32 txHash, string reason);
 
     error ZeroAmount();
@@ -66,6 +81,8 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     error PlanDone();
     error NotDue(uint40 nextRunAt);
     error ReasonTooLong();
+    error NoFundingToken();
+    error OverBudget(uint128 available);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -168,6 +185,46 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         }
     }
 
+    function setFundingToken(IERC20 token) external onlyOwner {
+        _storage().fundingToken = token;
+        emit FundingTokenSet(address(token));
+    }
+
+    /// @notice Executor pulls part of this run's budget from the owner, only while the run is due.
+    function pullFunds(uint256 planId, uint128 amount) external {
+        PlanRegistryStorage storage $ = _storage();
+        Plan storage plan = $.plans[planId];
+        Funding storage f = _dueFunding($, plan, planId);
+        if (amount == 0) revert ZeroAmount();
+        if (f.pulled + amount > plan.amount) revert OverBudget(plan.amount - f.pulled);
+        f.pulled += amount;
+        $.fundingToken.safeTransferFrom(plan.owner, plan.executor, amount);
+        emit FundsPulled(planId, f.run, amount);
+    }
+
+    /// @notice Executor sends back what it did not spend; the run's budget is freed again.
+    function returnFunds(uint256 planId, uint128 amount) external {
+        PlanRegistryStorage storage $ = _storage();
+        Plan storage plan = $.plans[planId];
+        Funding storage f = _dueFunding($, plan, planId);
+        if (amount == 0) revert ZeroAmount();
+        if (amount > f.pulled) revert OverBudget(f.pulled);
+        f.pulled -= amount;
+        $.fundingToken.safeTransferFrom(plan.executor, plan.owner, amount);
+        emit FundsReturned(planId, f.run, amount);
+    }
+
+    function fundingToken() external view returns (IERC20) {
+        return _storage().fundingToken;
+    }
+
+    /// @notice Budget already pulled for the plan's current scheduled run.
+    function pulledFor(uint256 planId) external view returns (uint128) {
+        PlanRegistryStorage storage $ = _storage();
+        Funding storage f = $.funding[planId];
+        return f.run == $.plans[planId].nextRunAt ? f.pulled : 0;
+    }
+
     function planCount() external view returns (uint256) {
         return _storage().plans.length;
     }
@@ -185,6 +242,21 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    function _dueFunding(PlanRegistryStorage storage $, Plan storage plan, uint256 planId)
+        private
+        returns (Funding storage f)
+    {
+        if (msg.sender != plan.executor) revert NotAuthorized();
+        if (!plan.active) revert PlanInactive();
+        if (block.timestamp < plan.nextRunAt) revert NotDue(plan.nextRunAt);
+        if (address($.fundingToken) == address(0)) revert NoFundingToken();
+        f = $.funding[planId];
+        if (f.run != plan.nextRunAt) {
+            f.run = plan.nextRunAt;
+            f.pulled = 0;
+        }
+    }
 
     function _storage() private pure returns (PlanRegistryStorage storage $) {
         assembly {

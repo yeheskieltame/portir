@@ -18,6 +18,8 @@ export const planRegistryAbi = parseAbi([
   "function getPlan(uint256 planId) view returns (Plan)",
   "function planIdsOf(address owner) view returns (uint256[])",
   "function runsOf(uint256 planId) view returns (Run[])",
+  "function pullFunds(uint256 planId, uint128 amount)",
+  "function returnFunds(uint256 planId, uint128 amount)",
 ]);
 
 export const OUTCOME = { Executed: 0, Waited: 1, Skipped: 2 } as const;

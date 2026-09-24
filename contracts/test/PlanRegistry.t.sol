@@ -6,6 +6,8 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PlanRegistry} from "../src/PlanRegistry.sol";
+import {MockUSDT} from "../src/testnet/MockUSDT.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @custom:oz-upgrades-from PlanRegistry
 contract PlanRegistryV2 is PlanRegistry {
@@ -264,6 +266,71 @@ contract PlanRegistryTest is Test {
         vm.prank(rio);
         vm.expectRevert(PlanRegistry.PlanDone.selector);
         registry.resumePlan(id2);
+    }
+
+    function _funded() internal returns (MockUSDT usdt, uint256 id) {
+        usdt = new MockUSDT();
+        vm.prank(admin);
+        registry.setFundingToken(IERC20(address(usdt)));
+        vm.startPrank(rio);
+        usdt.faucet();
+        usdt.approve(address(registry), type(uint256).max);
+        vm.stopPrank();
+        vm.prank(agent);
+        usdt.approve(address(registry), type(uint256).max);
+        id = _create(0);
+    }
+
+    function test_PullFunds_CappedPerScheduledRun() public {
+        (MockUSDT usdt, uint256 id) = _funded();
+
+        vm.prank(agent);
+        registry.pullFunds(id, 30e18);
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(PlanRegistry.OverBudget.selector, uint128(20e18)));
+        registry.pullFunds(id, 21e18);
+        vm.prank(agent);
+        registry.pullFunds(id, 20e18);
+        assertEq(usdt.balanceOf(agent), AMOUNT);
+        assertEq(registry.pulledFor(id), AMOUNT);
+
+        // unspent money goes back and frees the budget for a retry in the same run
+        vm.prank(agent);
+        registry.returnFunds(id, 10e18);
+        assertEq(usdt.balanceOf(rio), 1_000e18 - 40e18);
+        assertEq(registry.pulledFor(id), 40e18);
+
+        vm.prank(agent);
+        registry.recordRun(id, PlanRegistry.Outcome.Executed, 0, 0, "bought");
+        assertEq(registry.pulledFor(id), 0);
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(PlanRegistry.NotDue.selector, uint40(block.timestamp + WEEK)));
+        registry.pullFunds(id, 1e18);
+
+        vm.warp(block.timestamp + WEEK);
+        vm.prank(agent);
+        registry.pullFunds(id, AMOUNT); // a new run has a fresh budget
+    }
+
+    function test_PullFunds_OnlyExecutorWhileActiveWithToken() public {
+        uint256 bare = _create(0);
+        vm.prank(agent);
+        vm.expectRevert(PlanRegistry.NoFundingToken.selector);
+        registry.pullFunds(bare, 1e18);
+
+        (, uint256 id) = _funded();
+        vm.prank(rio);
+        vm.expectRevert(PlanRegistry.NotAuthorized.selector);
+        registry.pullFunds(id, 1e18);
+        vm.prank(stranger);
+        vm.expectRevert();
+        registry.setFundingToken(IERC20(address(0)));
+
+        vm.prank(rio);
+        registry.cancelPlan(id);
+        vm.prank(agent);
+        vm.expectRevert(PlanRegistry.PlanInactive.selector);
+        registry.pullFunds(id, 1e18);
     }
 
     function test_Initialize_OnlyOnceAndImplementationLocked() public {

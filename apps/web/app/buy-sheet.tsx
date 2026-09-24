@@ -12,7 +12,7 @@ import { TESTNET, testExchangeAbi } from "@/lib/testnet";
 import type { BuyResponse } from "@/app/api/buy/route";
 import { TONE, pct, usd } from "@/app/verdict";
 import { recordBuy } from "@/lib/buys";
-import { CADENCES, USDT_DECIMALS, encodeTarget, executorAddress, planRegistryAbi, planRegistryAddress } from "@/lib/planRegistry";
+import { BUDGET_RUNS, CADENCES, USDT_DECIMALS, encodeTarget, executorAddress, planRegistryAbi, planRegistryAddress } from "@/lib/planRegistry";
 import { chain as registryChain, config } from "@/lib/wagmi";
 
 const QUICK = [10, 25, 50, 100];
@@ -144,6 +144,18 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
     try {
       setStep({ at: "planning", note: `Switching to ${registryChain.name}…`, once });
       await switchChain(config, { chainId: registryChain.id });
+      // The agent is paid through PlanRegistry: allow it to move this plan's budget (never the agent directly).
+      const token = await readContract(config, { chainId: registryChain.id, address: planRegistryAddress!, abi: planRegistryAbi, functionName: "fundingToken" });
+      if (token !== "0x0000000000000000000000000000000000000000") {
+        const perRun = parseUnits(usdtIn.toFixed(6), USDT_DECIMALS);
+        const have = await readContract(config, { chainId: registryChain.id, address: token, abi: erc20Abi, functionName: "allowance", args: [address!, planRegistryAddress!] });
+        const need = perRun * BigInt(once ? 1 : BUDGET_RUNS);
+        if (have < need) {
+          setStep({ at: "planning", note: `Allow Plans to use up to ${usd.format(Number(formatUnits(have + need, USDT_DECIMALS)))} of your USDT…`, once });
+          const hash = await writeContract(config, { chainId: registryChain.id, address: token, abi: erc20Abi, functionName: "approve", args: [planRegistryAddress!, have + need] });
+          await waitForTransactionReceipt(config, { chainId: registryChain.id, hash });
+        }
+      }
       setStep({ at: "planning", note: "Confirm the plan in your wallet…", once });
       const hash = await writeContract(config, {
         chainId: registryChain.id,
@@ -253,6 +265,7 @@ export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; i
                     {step.once ? <Row k="Buys" v="Once, then done" /> : <Row k="Every" v={cadence} />}
                     <Row k="Smart timing" v={step.once ? "On · up to 7 days" : smart ? "On · 48h window" : "Off"} />
                     <Row k="Executor" v="Portir agent" />
+                    <Row k="Pays from" v={`Your wallet, via PlanRegistry · max ${usd.format(usdtIn)} per run`} />
                     <Row k="Plan lives on" v={registryChain.name} />
                   </dl>
                 )}

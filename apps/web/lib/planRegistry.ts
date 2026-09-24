@@ -11,7 +11,11 @@ export const planRegistryAbi = parseAbi([
   "function getPlan(uint256 planId) view returns (Plan)",
   "function planIdsOf(address owner) view returns (uint256[])",
   "function runsOf(uint256 planId) view returns (Run[])",
+  "function fundingToken() view returns (address)",
 ]);
+
+/** Runs of budget a new plan asks the owner to allow: the registry's allowance is spent run by run. */
+export const BUDGET_RUNS = 12;
 
 const env = (v: string | undefined): Address | undefined => (v && isAddress(v) ? v : undefined);
 

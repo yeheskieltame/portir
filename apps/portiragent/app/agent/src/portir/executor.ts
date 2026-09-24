@@ -14,7 +14,7 @@
  * Decisions are deterministic (@portir/core thresholds). The LLM is not in
  * this loop. Signing is fixed code in registry.ts.
  */
-import { formatUnits, type Hex } from "viem";
+import { type Address, formatUnits, type Hex } from "viem";
 import { guard, isSuspectDiscount } from "@portir/core";
 import { targetLegs } from "@portir/core/catalog";
 import * as aw from "./agenticWallet.js";
@@ -31,14 +31,14 @@ const log = (msg: string) => console.log(`[portir.executor] ${msg}`);
  * the plan is Skipped with an honest reason so the user knows. Other backends
  * (Agentic Wallet session, Trading API + agent wallet) plug in here.
  */
-type Execute = (amount: number, ticker: string) => Promise<{ txHash: Hex; note: string }>;
+type Execute = (amount: number, ticker: string, owner: Address) => Promise<{ txHash: Hex; note: string }>;
 
 /**
  * `agentic-wallet`: quote through the user's Binance Agentic Wallet, re-run the
  * Guard on the executable price, then swap and wait for the order to finish.
  * The wallet's own daily limit and token scope bound what this can do.
  */
-const viaAgenticWallet: Execute = async (amount, ticker) => {
+const viaAgenticWallet: Execute = async (amount, ticker, _owner) => {
   const a = await assess(ticker);
   const offer = a.view.offers.find((o) => !o.halted && !(o.spreadBps !== null && isSuspectDiscount(o.spreadBps)));
   if (!offer) throw new Error("no tradable issuer");
@@ -52,8 +52,8 @@ const viaAgenticWallet: Execute = async (amount, ticker) => {
   return { txHash: (txHash || `0x${"0".repeat(64)}`) as Hex, note: `Bought ≈${(q.tokensOut * offer.multiplier).toFixed(4)} shares from ${offer.issuer} at $${pricePerShare.toFixed(2)} via Agentic Wallet.` };
 };
 
-/** `testnet`: same live price and Guard as mainnet; settlement on the TestExchange with the agent's own tUSDT. */
-const viaTestnet: Execute = async (amount, ticker) => {
+/** `testnet`: same live price and Guard as mainnet; the owner's tUSDT buys on the TestExchange and the shares go to the owner. */
+const viaTestnet: Execute = async (amount, ticker, owner) => {
   const { testnetFeeBps, buyOnTestnet } = await import("./testnet.js");
   const a = await assess(ticker);
   const offer = a.view.offers.find((o) => !o.halted && !(o.spreadBps !== null && isSuspectDiscount(o.spreadBps)));
@@ -61,8 +61,8 @@ const viaTestnet: Execute = async (amount, ticker) => {
   const price = offer.onchain;
   const feeBps = await testnetFeeBps();
   const shares = (amount * (10_000 - feeBps)) / 10_000 / price;
-  const txHash = await buyOnTestnet(ticker, amount, price, shares * 0.995);
-  return { txHash, note: `Bought ≈${shares.toFixed(4)} shares at $${price.toFixed(2)} (${offer.issuer} price), settled on BSC testnet.` };
+  const { txHash, shares: got } = await buyOnTestnet(owner, ticker, amount, price, shares * 0.995);
+  return { txHash, note: `Bought ${got.toFixed(4)} shares at $${price.toFixed(2)} (${offer.issuer} price) into your wallet.` };
 };
 
 /**
@@ -78,10 +78,10 @@ function backend(): "off" | "testnet" | "agentic-wallet" {
   if (mode !== "off") log(`execution "${mode}" refused: registry is on ${registryChain}${registryChain === "mainnet" && process.env.PORTIR_MAINNET_ARMED !== "yes" ? " and PORTIR_MAINNET_ARMED is not set" : ""}`);
   return "off";
 }
-const execute: Execute = async (amount, ticker) => {
+const execute: Execute = async (amount, ticker, owner) => {
   const mode = backend();
-  if (mode === "agentic-wallet") return viaAgenticWallet(amount, ticker);
-  if (mode === "testnet") return viaTestnet(amount, ticker);
+  if (mode === "agentic-wallet") return viaAgenticWallet(amount, ticker, owner);
+  if (mode === "testnet") return viaTestnet(amount, ticker, owner);
   throw new Error("execution is not enabled on this agent (PORTIR_EXECUTION=off)");
 };
 const executionEnabled = () => backend() !== "off";
@@ -139,6 +139,18 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
     const bought: string[] = [];
     const failed: string[] = [];
     let txHash: Hex | undefined;
+    // Testnet: the owner's money moves through PlanRegistry, which caps it at the plan amount for this run.
+    const tn = backend() === "testnet" ? await import("./testnet.js") : null;
+    let unspent = 0;
+    if (tn) {
+      const problem = await tn.fundingProblem(plan.owner, total);
+      if (problem) {
+        await record(id, "Waited", spread, `Ready to buy, but: ${problem}`, last);
+        return;
+      }
+      await tn.pullFunds(id, total);
+      unspent = total;
+    }
     // One guarded swap per leg, in sequence. A failed leg is reported, not retried next tick (that would double-buy the others).
     for (const l of legs) {
       const slice = Math.floor(total * l.weight * 100) / 100;
@@ -147,11 +159,19 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
         continue;
       }
       try {
-        const r = await execute(slice, l.ticker);
+        const r = await execute(slice, l.ticker, plan.owner);
         txHash ??= r.txHash;
+        unspent -= slice;
         bought.push(basket ? `${l.ticker} ${r.note}` : r.note);
       } catch (e) {
         failed.push(`${l.ticker}: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+    if (tn && unspent >= 0.01) {
+      try {
+        await tn.returnFunds(id, Math.floor(unspent * 100) / 100);
+      } catch (e) {
+        log(`plan ${id}: could not return $${unspent.toFixed(2)} unspent: ${e instanceof Error ? e.message : e}`);
       }
     }
     if (bought.length === 0) {
