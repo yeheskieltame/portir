@@ -72,57 +72,17 @@ body{overflow-x:hidden}
 .guard-heading h2{margin-bottom:0}
 .guard-heading>p{margin:0;color:var(--muted);font-size:clamp(16px,1.25vw,19px);line-height:1.6}
 .gcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,2vw,22px)}
-.gcard{position:relative;display:grid;grid-template-rows:auto 1fr;min-height:480px;overflow:hidden;border:1px solid var(--line);border-radius:28px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 30px 80px rgba(0,0,0,.35)}
-.gcard::before{content:"";position:absolute;inset:auto -20% -40% -20%;height:70%;border-radius:50%;filter:blur(60px);opacity:.35;pointer-events:none}
-.g1::before{background:var(--accent)}.g2::before{background:#7ef0b0}.g3::before{background:var(--warn)}
-.gcopy{position:relative;padding:26px 26px 0}
-.gstep{display:inline-block;margin-bottom:14px;font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;color:rgba(255,255,255,.45)}
-.gcard h3{margin:0 0 8px;font-size:19px;font-weight:500;line-height:1.2;letter-spacing:-.01em}
-.gcard p{max-width:340px;margin:0;color:rgba(255,255,255,.58);font-size:15px;line-height:1.4}
-.widget{position:relative;align-self:end;margin:22px 18px 18px;padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:20px;background:rgba(4,7,13,.72);display:grid;gap:14px}
-.mono,.prices strong,.ticks,.marker b,.num b,.num small,.issuer small,.fstep small{font-family:"Geist Mono",ui-monospace,Menlo,monospace}
-.wrow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid rgba(255,255,255,.14);border-radius:99px;font-size:12px;color:rgba(255,255,255,.8)}
-.pill i{width:7px;height:7px;border-radius:50%;background:var(--warn);box-shadow:0 0 10px var(--warn)}
-.ticker{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:rgba(255,255,255,.5)}
-.prices{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.prices div{padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.05)}
-.prices small{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.45)}
-.prices strong{display:block;margin-top:4px;font-size:22px;font-weight:500;letter-spacing:-.02em}
-.meter{position:relative;padding:14px 0 18px}
-.zones{display:flex;height:6px;border-radius:99px;overflow:hidden}
-.zones i{display:block;height:100%}.z-go{flex:1;background:#7ef0b0}.z-warn{flex:1;background:var(--warn)}.z-block{flex:2;background:#ff6b6b}
-.zones i{opacity:.55}
-.marker{position:absolute;left:var(--x);top:6px;transform:translateX(-50%);display:grid;justify-items:center;gap:6px}
-.marker::after{content:"";width:2px;height:22px;background:#fff;border-radius:2px;box-shadow:0 0 10px #fff}
-.marker b{order:-1;padding:3px 8px;border-radius:99px;background:#fff;color:#04070d;font-size:11px;font-weight:600;white-space:nowrap}
-.meter{padding-top:38px}
-.ticks{display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:rgba(255,255,255,.4)}
-.verdict{display:inline-flex;align-items:center;padding:6px 12px;border-radius:99px;font-size:13px;font-weight:500}
-.verdict.block{color:#ff8a8a;border:1px solid rgba(255,107,107,.45);background:rgba(255,107,107,.1)}
-.hint{font-size:12px;color:rgba(255,255,255,.5)}
-.issuer{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:10px 12px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(255,255,255,.03)}
-.issuer.on{border-color:rgba(126,240,176,.45);background:rgba(126,240,176,.07)}
-.issuer.off{opacity:.55}
-.issuer img{width:36px;height:36px;border-radius:10px;object-fit:cover;background:rgba(255,255,255,.09)}
-.issuer img.wide{width:auto;max-width:86px;object-fit:contain;padding:8px 10px}
-.issuer>span b{display:block;font-size:14px;font-weight:500}
-.issuer>span small{display:block;font-size:11px;color:rgba(255,255,255,.45)}
-.issuer .num{text-align:right}.num b{font-size:14px;font-weight:500}.num small{font-size:11px;color:rgba(255,255,255,.5)}
-.tag{font-style:normal;padding:4px 9px;border-radius:99px;border:1px solid rgba(255,255,255,.14);font-size:11px;color:rgba(255,255,255,.65)}
-.tag.go{color:#7ef0b0;border-color:rgba(126,240,176,.5);background:rgba(126,240,176,.1)}
-.wnote{margin:2px 2px 0!important;font-size:12px!important;color:rgba(255,255,255,.45)!important}
-.flow{gap:0;padding:6px 14px}
-.fstep{position:relative;display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 0}
-.fstep+.fstep{border-top:1px solid rgba(255,255,255,.08)}
-.fstep i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.2);font-style:normal;font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;color:rgba(255,255,255,.8)}
-.fstep b{display:block;font-size:14px;font-weight:500}
-.fstep small{display:block;font-size:11px;color:rgba(255,255,255,.45);line-height:1.35}
-.logos{display:flex;align-items:center;gap:6px}
-.logos img{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.09);object-fit:cover}
-.logos img.wide{width:auto;max-width:96px;object-fit:contain;padding:6px 9px}
-.logos img.onlight{background:#fff;padding:3px;object-fit:contain}
-.sigs{display:flex;gap:6px}.sigs em{font-style:normal;padding:4px 8px;border-radius:99px;font-size:11px;color:#7ef0b0;border:1px solid rgba(126,240,176,.4);background:rgba(126,240,176,.08)}
+.gcard{display:grid;gap:0;align-content:start}
+.gfig{position:relative;margin:0;overflow:hidden;border-radius:28px;aspect-ratio:4/5;background:#0b111c}
+.gfig img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.22,1,.36,1)}
+.gcard:hover .gfig img{transform:scale(1.03)}
+.gfig::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,7,13,0) 45%,rgba(4,7,13,.82) 100%)}
+.gpill{position:absolute;z-index:2;left:18px;top:18px;padding:8px 12px;border-radius:99px;background:#fff;color:#04070d;font-size:12px;font-weight:500;letter-spacing:.01em;white-space:nowrap}
+.gfig figcaption{position:absolute;z-index:2;left:22px;right:22px;bottom:22px}
+.gfig strong{display:block;font-size:clamp(40px,3.6vw,54px);font-weight:500;letter-spacing:-.03em;line-height:1}
+.gfig figcaption span{display:block;margin-top:8px;max-width:26ch;color:rgba(255,255,255,.78);font-size:14px;line-height:1.4}
+.gcard h3{margin:22px 4px 6px;font-size:19px;font-weight:500;line-height:1.2;letter-spacing:-.01em}
+.gcard p{max-width:360px;margin:0 4px;color:rgba(255,255,255,.55);font-size:15px;line-height:1.45}
 #stack{padding-bottom:0}
 .ring-scene{position:relative;height:420px;overflow:hidden;perspective:1400px;cursor:grab;user-select:none;touch-action:pan-y}
 .ring-scene:active{cursor:grabbing}
@@ -170,10 +130,10 @@ html,body,a,button{cursor:none!important}
 .glass-card{width:min(330px,calc(100vw - 36px));padding:20px 20px 24px}
 .glass-card.left{left:18px;top:14%}.glass-card.right{right:18px;top:38%}
 .section{padding:80px 18px}.section h2{font-size:clamp(36px,9vw,48px)}
-.guard-heading,.gcards{grid-template-columns:minmax(0,1fr)}.gcard{min-height:0}.ring-scene{height:300px}.tile{--w:150px;border-radius:22px;gap:12px}.tile img,.tile i{width:40px;height:40px}.tile img.wide{width:auto;max-width:100px;height:auto;max-height:40px}.tile i{font-size:24px}.tile span{font-size:13px}
+.guard-heading,.gcards{grid-template-columns:minmax(0,1fr)}.gfig{aspect-ratio:4/3}.ring-scene{height:300px}.tile{--w:150px;border-radius:22px;gap:12px}.tile img,.tile i{width:40px;height:40px}.tile img.wide{width:auto;max-width:100px;height:auto;max-height:40px}.tile i{font-size:24px}.tile span{font-size:13px}
 .footer{padding:48px 18px 24px}.footer-top{flex-direction:column;align-items:flex-start}.footer-cols{grid-template-columns:1fr 1fr}.giant{margin:0 -18px -6px}
 }
-@media(max-width:560px){.footer-cols{grid-template-columns:1fr}.gcopy{padding:18px 18px 0}.gcard p{max-width:none}.widget{margin:18px 12px 12px;padding:14px}.prices strong{font-size:19px}.issuer{gap:8px;padding:8px 10px}.issuer img.wide{max-width:64px;padding:6px 7px}.num b{font-size:13px}.tag{padding:3px 7px}.fstep small{font-size:10px}.play{width:64px;height:64px;font-size:20px}}
+@media(max-width:560px){.footer-cols{grid-template-columns:1fr}.gcopy{padding:18px 18px 0}.gcard p{max-width:none}.play{width:64px;height:64px;font-size:20px}}
 @media(max-width:560px){.content-state h1{font-size:clamp(40px,12vw,56px)}.copy,.glass-card p{font-size:16px}.glass-card h2{font-size:24px}}
 @media(prefers-reduced-motion:reduce){.header,.word,.copy{animation-duration:.01ms!important;animation-delay:0s!important}}
 </style>
@@ -226,41 +186,32 @@ html,body,a,button{cursor:none!important}
       <p>Rio taps Buy on NVIDIA at midnight. This is what happens between his tap and the transaction. The same rules run in the app, in Claude, and inside the agent.</p>
     </div>
     <div class="gcards">
-      <article class="gcard g1">
-        <div class="gcopy"><span class="gstep">01</span><h3>Market window and fair price</h3><p>Reads the US session and any halt from the Binance RWA Data API, then compares the on-chain price with the exchange reference.</p></div>
-        <div class="widget" aria-hidden="true">
-          <div class="wrow"><span class="pill warn"><i></i>NYSE closed · opens in 5h 12m</span><span class="ticker">NVDA</span></div>
-          <div class="prices">
-            <div><small>Exchange</small><strong>$191.05</strong></div>
-            <div><small>On-chain</small><strong>$193.72</strong></div>
-          </div>
-          <div class="meter">
-            <div class="zones"><i class="z-go"></i><i class="z-warn"></i><i class="z-block"></i></div>
-            <span class="marker" style="--x:70%"><b>+1.40%</b></span>
-            <div class="ticks"><span>0</span><span>0.5%</span><span>1.0%</span><span>2%</span></div>
-          </div>
-          <div class="wrow"><span class="verdict block">Better to wait</span><span class="hint">1.40% above the exchange · the agent waits for the open</span></div>
-        </div>
+      <article class="gcard">
+        <figure class="gfig">
+          <img src="img/guard-1.jpg" style="object-position:72% 50%" alt="An empty exchange trading hall at night, one wall clock lit">
+          <span class="gpill">NYSE closed · opens in 5h 12m</span>
+          <figcaption><strong>+1.40%</strong><span>On-chain above the exchange. The Guard waits.</span></figcaption>
+        </figure>
+        <h3>Market window and fair price</h3>
+        <p>Reads the US session and any halt from the Binance RWA Data API, then compares the on-chain price with the exchange reference.</p>
       </article>
-
-      <article class="gcard g2">
-        <div class="gcopy"><span class="gstep">02</span><h3>Best issuer</h3><p>The same stock exists from Ondo, bStocks and xStocks with different multipliers, halts and sessions. Portir picks the cheapest tradable one and shows what it compared.</p></div>
-        <div class="widget" aria-hidden="true">
-          <div class="issuer on"><img src="logos/ondo.png" alt=""><span><b>Ondo</b><small>NVDAon · ×1.00</small></span><span class="num"><b>$191.20</b><small>+0.08%</small></span><em class="tag go">Routed</em></div>
-          <div class="issuer"><img class="wide" src="logos/bstocks.svg" alt=""><span><b>bStocks</b><small>NVDAB · ×1.00</small></span><span class="num"><b>$191.64</b><small>+0.31%</small></span><em class="tag">Fair</em></div>
-          <div class="issuer off"><img class="wide" src="logos/xstocks.png" alt=""><span><b>xStocks</b><small>NVDAx · ×1.0009</small></span><span class="num"><b>$188.10</b><small>−1.55%</small></span><em class="tag">Stale</em></div>
-          <p class="wnote">A discount past −1% is an out-of-date price, not a bargain. Ranked last.</p>
-        </div>
+      <article class="gcard">
+        <figure class="gfig">
+          <img src="img/guard-2.jpg" alt="Three identical glass bottles, one in the light">
+          <span class="gpill">Same stock, three issuers</span>
+          <figcaption><strong>$191.20</strong><span>Ondo, the cheapest fair price. xStocks skipped: stale.</span></figcaption>
+        </figure>
+        <h3>Best issuer</h3>
+        <p>Ondo, bStocks and xStocks list the same stock with different multipliers, halts and sessions. Portir picks the cheapest tradable one and shows what it compared.</p>
       </article>
-
-      <article class="gcard g3">
-        <div class="gcopy"><span class="gstep">03</span><h3>Route and sign</h3><p>The Binance Trading API quotes and builds the swap over PancakeSwap liquidity. Your wallet signs one approval and one trade.</p></div>
-        <div class="widget flow" aria-hidden="true">
-          <div class="fstep"><i>1</i><span><b>Quote</b><small>Binance Trading API · firm price, 0.5% minimum output</small></span></div>
-          <div class="fstep"><i>2</i><span><b>Route</b><small>LiquidMesh over PancakeSwap</small></span><span class="logos"><img class="wide" src="logos/liquidmesh.svg" alt=""><img src="logos/pancakeswap.png" alt=""></span></div>
-          <div class="fstep"><i>3</i><span><b>Sign</b><small>Approve USDT, then the swap. Your keys, your wallet.</small></span><span class="sigs"><em>✓ approve</em><em>✓ swap</em></span></div>
-          <div class="fstep"><i>4</i><span><b>Record</b><small>Shares, price and reason on BSC</small></span><span class="logos"><img class="onlight" src="logos/bscscan.png" alt=""></span></div>
-        </div>
+      <article class="gcard">
+        <figure class="gfig">
+          <img src="img/guard-3.jpg" alt="A hand about to sign a single line with a fountain pen">
+          <span class="gpill">One approval · one trade</span>
+          <figcaption><strong>0.5%</strong><span>Minimum output, or the swap reverts. Your wallet signs.</span></figcaption>
+        </figure>
+        <h3>Route and sign</h3>
+        <p>The Binance Trading API quotes and builds the swap over PancakeSwap liquidity. Nothing is sent from a server; the record lands on BSC.</p>
       </article>
     </div>
   </section>
