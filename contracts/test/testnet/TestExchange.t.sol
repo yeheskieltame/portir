@@ -43,17 +43,15 @@ contract TestExchangeTest is Test {
         return ex.buy(nvda, usdtIn, minShares, price, uint40(block.timestamp + 10 minutes), sig);
     }
 
-    function test_Faucet_OncePerDay() public {
-        assertEq(usdt.balanceOf(alice), 1_000e18);
-        vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(MockUSDT.FaucetCooldown.selector, uint40(block.timestamp + 1 days))
-        );
-        usdt.faucet();
-        vm.warp(block.timestamp + 1 days);
+    function test_Faucet_NoCooldown_MintCapped() public {
+        assertEq(usdt.balanceOf(alice), 10_000e18);
         vm.prank(alice);
         usdt.faucet();
-        assertEq(usdt.balanceOf(alice), 2_000e18);
+        assertEq(usdt.balanceOf(alice), 20_000e18);
+        usdt.mint(alice, 5_000e18);
+        assertEq(usdt.balanceOf(alice), 25_000e18);
+        vm.expectRevert(abi.encodeWithSelector(MockUSDT.MintTooLarge.selector, 1_000_000e18));
+        usdt.mint(alice, 1_000_001e18);
     }
 
     function test_Buy_MintsSharesAtQuotedPriceMinusFee() public {
@@ -179,7 +177,7 @@ contract TestExchangeTest is Test {
     }
 
     function testFuzz_BuyThenSellNeverPaysOutMoreThanPaidIn(uint96 usdtIn, uint96 price) public {
-        usdtIn = uint96(bound(usdtIn, 1e12, 1_000e18));
+        usdtIn = uint96(bound(usdtIn, 1e12, 10_000e18));
         price = uint96(bound(price, 1e15, 100_000e18));
         bytes memory sig = _quote(price);
         vm.startPrank(alice);

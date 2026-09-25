@@ -297,7 +297,7 @@ contract PlanRegistryTest is Test {
         // unspent money goes back and frees the budget for a retry in the same run
         vm.prank(agent);
         registry.returnFunds(id, 10e18);
-        assertEq(usdt.balanceOf(rio), 1_000e18 - 40e18);
+        assertEq(usdt.balanceOf(rio), 10_000e18 - 40e18);
         assertEq(registry.pulledFor(id), 40e18);
 
         vm.prank(agent);

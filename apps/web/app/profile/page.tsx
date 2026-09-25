@@ -91,7 +91,7 @@ export default function Profile() {
   );
 }
 
-/** MockUSDT.faucet(): 1,000 tUSDT a day, signed by the user's wallet on BSC testnet. The contract enforces the cooldown. */
+/** MockUSDT.faucet(): 10,000 tUSDT per claim, no cooldown, signed by the user's wallet on BSC testnet. */
 function Faucet({ onDone }: { address: `0x${string}`; onDone: () => void }) {
   const write = useWriteContract();
   const { switchChainAsync, isPending: switching } = useSwitchChain();
@@ -112,9 +112,9 @@ function Faucet({ onDone }: { address: `0x${string}`; onDone: () => void }) {
           onClick={() => void claim().catch(() => {})}
           className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black disabled:opacity-50"
         >
-          {busy ? "Sending…" : receipt.isSuccess ? "Sent · again tomorrow" : "Get 1,000 tUSDT"}
+          {busy ? "Sending…" : receipt.isSuccess ? "Sent · get more" : "Get 10,000 tUSDT"}
         </button>
-        {error && <p className="mt-1 max-w-[12rem] text-[11px] text-block">{/FaucetCooldown/.test(error.message) ? "Once a day per wallet. Come back tomorrow." : "shortMessage" in error ? error.shortMessage : error.message}</p>}
+        {error && <p className="mt-1 max-w-[12rem] text-[11px] text-block">{"shortMessage" in error ? error.shortMessage : error.message}</p>}
       </dd>
     </div>
   );

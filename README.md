@@ -76,12 +76,12 @@ are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
 | BSC testnet (97) | `0x28daDC35523CE792C7C09faf516763830C38f36b` | `0x3913373DD9aB1318cA77cf133894042139b8Af44` (v5; v4 `0xe01E…2379`, v3 `0x07E0…b6D9`, v2 `0xEb62…d172`, v1 `0xD408…315C`) | [BscScan](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code) (proxy linked) + Sourcify |
 
 Testnet fixtures (`contracts/src/testnet/`, non-upgradeable test doubles, all verified; addresses in
-`contracts/deployments/testnet.json`): `MockUSDT` with a 1,000/day faucet
-([`0x6550…AE02`](https://testnet.bscscan.com/address/0x6550E8e24d17ee952D378F4FA61574636D92AE02#code)), `TestExchange`
+`contracts/deployments/testnet.json`): `MockUSDT`, freely mintable (10,000 per faucet claim, `mint(to, amount)` up to 1M, no cooldown)
+([`0xA240…2aA2`](https://testnet.bscscan.com/address/0xA2408d502b0Cd09FA5fBAdFC3A6F6CB3F49D2aA2#code)), `TestExchange`
 that sells and buys back shares at an EIP-712 quote signed by the keeper key, one holding or a whole basket per transaction (`buyBatch`)
-([`0x3525…A46b`](https://testnet.bscscan.com/address/0x3525EB9a9875451b631eFF23357EC87B63A7A46b#code)), and one `MockStock`
+([`0xF191…6Bad8`](https://testnet.bscscan.com/address/0xF191283aEa66De969a2D26BB0aF52629D3c6Bad8#code)), and one `MockStock`
 for every featured and basket ticker (18). `/api/buy` (and the agent) sign the live mainnet price into each quote, valid 10
-minutes, so nothing on testnet can go stale and the Guard sees exactly what mainnet would. `pnpm deploy:testnet:usdt` (once) / `KEEPER=<signer> pnpm
+minutes, so nothing on testnet can go stale and the Guard sees exactly what mainnet would. `pnpm deploy:testnet:usdt` (once; `REPLACE=1` swaps it, which needs a new exchange too) / `KEEPER=<signer> pnpm
 deploy:testnet:exchange` (exchange + stocks, reuses tUSDT) / `pnpm add:testnet:stocks` (idempotent, add tickers to the list in `AddStocks.s.sol`) /
 `pnpm verify:testnet:fixtures`. Security review of `PlanRegistry`: `contracts/AUDIT.md`.
 

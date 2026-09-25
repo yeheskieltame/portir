@@ -20,5 +20,5 @@ export const testExchangeAbi = [
 
 export const mockUsdtAbi = [
   { type: "function", name: "faucet", stateMutability: "nonpayable", inputs: [], outputs: [] },
-  { type: "function", name: "lastFaucetAt", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint40" }] },
+  { type: "function", name: "mint", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [] },
 ] as const;
