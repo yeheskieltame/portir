@@ -5,6 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IComptroller, LoanGuard} from "../src/LoanGuard.sol";
+import {IVenusFaucetToken, IVTokenMintBehalf, VenusStarter} from "../src/testnet/VenusStarter.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Token is ERC20 {
     constructor() ERC20("USDT", "USDT") {}
@@ -245,4 +247,37 @@ contract LoanGuardForkTest is Test {
         assertEq(IERC20Faucet(USDT).balanceOf(rio), buffer - repay);
         assertApproxEqAbs(IVTokenFull(VUSDT).borrowBalanceStored(rio), borrowAmt - repay, 2);
     }
+
+    /// The app's one-batch journey: starter (collateral + buffer), enter market, borrow, approve, set guard.
+    function test_Fork_StarterJourney() public {
+        if (!vm.envOr("FORK_TESTS", false)) return;
+        vm.createSelectFork("bsc_testnet");
+        address rio = makeAddr("rio2");
+        VenusStarter starter =
+            new VenusStarter(IERC20(CAKE), IVTokenMintBehalf(VCAKE), IVenusFaucetToken(USDT));
+        LoanGuard guard = LoanGuard(
+            address(
+                new ERC1967Proxy(
+                    address(new LoanGuard()),
+                    abi.encodeCall(LoanGuard.initialize, (address(this), IComptroller(COMPTROLLER)))
+                )
+            )
+        );
+        vm.startPrank(rio);
+        starter.open(1_000e18, 500e6);
+        assertEq(IERC20Faucet(USDT).balanceOf(rio), 500e6);
+        assertEq(IERC20Faucet(CAKE).balanceOf(rio), 0); // went straight into Venus
+        address[] memory m = new address[](1);
+        m[0] = VCAKE;
+        IComptrollerFull(COMPTROLLER).enterMarkets(m);
+        (, uint256 limit) = guard.position(rio);
+        assertGt(limit, 0);
+        assertEq(IVTokenFull(VUSDT).borrow(100e6), 0);
+        assertGt(guard.usedBps(rio), 0);
+        vm.stopPrank();
+
+        vm.expectRevert(VenusStarter.TooMuch.selector);
+        starter.open(100_001e18, 0);
+    }
 }
+
