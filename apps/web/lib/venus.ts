@@ -12,11 +12,15 @@ export const VENUS = {
   vCAKE: deployments.vCAKE as `0x${string}`,
   CAKE: deployments.CAKE as `0x${string}`, // 18 decimals
   loanGuard: deployments.loanGuard as `0x${string}`,
+  starter: deployments.starter as `0x${string}`, // testnet helper: collateral straight into Venus + a USDT buffer
 };
 
 export const USDT_DEC = 6;
 export const CAKE_DEC = 18;
 export const COOLDOWN = 3600;
+/** The test loan: collateral minted into Venus for the user, and the buffer the guard repays from. */
+export const TEST_CAKE = 1_000n * 10n ** 18n;
+export const TEST_BUFFER = 500n * 10n ** 6n;
 
 /** Trigger and target as bps of the liquidation limit (10_000 = liquidatable). */
 export const PROFILES = {
@@ -46,7 +50,14 @@ export const vTokenAbi = parseAbi([
   "function balanceOf(address account) view returns (uint256)",
 ]);
 
-export const comptrollerAbi = parseAbi(["function enterMarkets(address[] vTokens) returns (uint256[])", "function getAssetsIn(address account) view returns (address[])"]);
+export const comptrollerAbi = parseAbi([
+  "function enterMarkets(address[] vTokens) returns (uint256[])",
+  "function getAssetsIn(address account) view returns (address[])",
+  // markets() grew fields across versions; the first four are stable: listed, collateral factor, isVenus, liquidation threshold
+  "function markets(address vToken) view returns (bool, uint256, bool, uint256)",
+]);
+
+export const starterAbi = parseAbi(["function open(uint256 collateralAmount, uint256 bufferAmount)"]);
 
 export const oracleAbi = parseAbi(["function getUnderlyingPrice(address vToken) view returns (uint256)"]);
 
