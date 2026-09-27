@@ -85,3 +85,13 @@ No change to `TestExchange`, `MockUSDT` or `MockStock` sources: **no redeploy ne
 | Deploy | Implementation + ERC1967Proxy deployed directly (the upgrades plugin trips over two OZ copies in lib/); v2 appended `borrowers` and `rescues`. Testnet proxy `0xD48C…bab3`, impl `0x1e7e…E242` |
 | Tests | 6 unit (mock Venus) + fork test against the BSC testnet core pool |
 
+## StockLendingPool (testnet fixture, 2026-09-28)
+
+Venus-compatible stand-in because Venus has no stock markets on testnet. Not upgradeable, not for mainnet (mainnet uses
+Venus). Borrow limit Σ collateral × CF; liquidation when debt > Σ collateral × LT; close factor 50%, bonus 10%;
+1 vToken = 1 underlying, no interest. Checks: borrow/redeem update state first and revert via the pool hook if the
+account ends under-collateralised; stale prices (> 1h) block borrow, redeem and liquidation; only the keeper/owner set
+prices and the stablecoin market stays at $1; only the pool can `seize`/`repayFor`. Tests: 5 (limits, stale price,
+LoanGuard rescue after a price drop, liquidation math, repay-all and price auth). Deployed with 18 stock markets,
+all 22 contracts verified.
+

@@ -1,26 +1,34 @@
 import { parseAbi } from "viem";
 import { bscTestnet } from "viem/chains";
-import deployments from "../../../contracts/deployments/venus-testnet.json";
+import pool from "../../../contracts/deployments/stockpool-testnet.json";
 
-/** Venus core pool on BSC testnet + Portir's LoanGuard (contracts/deployments/venus-testnet.json). */
-export const VENUS = {
+/**
+ * Loans on BSC testnet: Portir's Venus-compatible stock lending pool (Venus has no stock markets on testnet), with the
+ * MockStocks as collateral and tUSDT as debt, and a LoanGuard proxy pointed at it (contracts/deployments/stockpool-testnet.json).
+ * All tokens are 18 decimals and tUSDT is priced at $1, so USD 1e18 = tUSDT units.
+ */
+export const POOL = {
   chainId: bscTestnet.id,
-  comptroller: deployments.comptroller as `0x${string}`,
-  oracle: deployments.oracle as `0x${string}`,
-  vUSDT: deployments.vUSDT as `0x${string}`,
-  USDT: deployments.USDT as `0x${string}`, // 6 decimals on testnet
-  vCAKE: deployments.vCAKE as `0x${string}`,
-  CAKE: deployments.CAKE as `0x${string}`, // 18 decimals
-  loanGuard: deployments.loanGuard as `0x${string}`,
-  starter: deployments.starter as `0x${string}`, // testnet helper: collateral straight into Venus + a USDT buffer
+  pool: pool.pool as `0x${string}`,
+  vUSDT: pool.vUSDT as `0x${string}`,
+  USDT: pool.USDT as `0x${string}`,
+  loanGuard: pool.loanGuard as `0x${string}`,
+  markets: pool.markets as Record<string, `0x${string}`>,
+};
+export const TICKERS = Object.keys(POOL.markets);
+export const tickerOfMarket = (vToken: string) => TICKERS.find((t) => POOL.markets[t].toLowerCase() === vToken.toLowerCase());
+
+/** Venus core pool on BSC mainnet, where tokenized stocks are real markets (read-only card). */
+export const VENUS_MAINNET = {
+  comptroller: "0xfD36E2c2a6789Db23113685031d7F16329158384" as `0x${string}`,
+  vTSLAB: "0x97421799419Eb782628e73e7220d8E0A207469a3" as `0x${string}`,
+  TSLAB: "0x5b1910eAaD6450E50f816082Aa078C41F10C292f" as `0x${string}`,
 };
 
-export const USDT_DEC = 6;
-export const CAKE_DEC = 18;
 export const COOLDOWN = 3600;
-/** The test loan: collateral minted into Venus for the user, and the buffer the guard repays from. */
-export const TEST_CAKE = 1_000n * 10n ** 18n;
-export const TEST_BUFFER = 500n * 10n ** 6n;
+export const MAX_PRICE_AGE = 3600;
+export const DEFAULT_BUFFER = 500n * 10n ** 18n;
+export const DEFAULT_CAP = 200n * 10n ** 18n;
 
 /** Trigger and target as bps of the liquidation limit (10_000 = liquidatable). */
 export const PROFILES = {
@@ -39,7 +47,13 @@ export const loanGuardAbi = parseAbi([
   "function position(address borrower) view returns (uint256 debtUsd, uint256 limitUsd)",
   "function usedBps(address borrower) view returns (uint256)",
   "function rescuesOf(address borrower) view returns (Rescue[])",
-  "function borrowers() view returns (address[])",
+]);
+
+export const poolAbi = parseAbi([
+  "function enterMarkets(address[] vTokens) returns (uint256[])",
+  "function getAssetsIn(address account) view returns (address[])",
+  "function accountValues(address account) view returns (uint256 borrowLimit, uint256 liquidationLimit, uint256 debt)",
+  "function marketOf(address vToken) view returns (bool listed, uint64 cf, uint64 lt, bool fixedUsd, uint128 price, uint40 updatedAt)",
 ]);
 
 export const vTokenAbi = parseAbi([
@@ -50,21 +64,17 @@ export const vTokenAbi = parseAbi([
   "function balanceOf(address account) view returns (uint256)",
 ]);
 
-export const comptrollerAbi = parseAbi([
-  "function enterMarkets(address[] vTokens) returns (uint256[])",
-  "function getAssetsIn(address account) view returns (address[])",
-  // markets() grew fields across versions; the first four are stable: listed, collateral factor, isVenus, liquidation threshold
-  "function markets(address vToken) view returns (bool, uint256, bool, uint256)",
-]);
-
-export const starterAbi = parseAbi(["function open(uint256 collateralAmount, uint256 bufferAmount)"]);
-
-export const oracleAbi = parseAbi(["function getUnderlyingPrice(address vToken) view returns (uint256)"]);
-
-/** Venus testnet tokens: plain ERC20 plus a public faucet. */
-export const faucetTokenAbi = parseAbi([
-  "function allocateTo(address to, uint256 amount)",
+export const erc20Abi = parseAbi([
   "function approve(address spender, uint256 amount) returns (bool)",
   "function allowance(address owner, address spender) view returns (uint256)",
   "function balanceOf(address account) view returns (uint256)",
+  "function faucet()",
 ]);
+
+/** Venus mainnet reads: markets() grew fields across versions; the first four are stable. */
+export const venusComptrollerAbi = parseAbi([
+  "function markets(address vToken) view returns (bool, uint256, bool, uint256)",
+  "function oracle() view returns (address)",
+]);
+export const venusOracleAbi = parseAbi(["function getUnderlyingPrice(address vToken) view returns (uint256)"]);
+export const symbolAbi = parseAbi(["function symbol() view returns (string)"]);

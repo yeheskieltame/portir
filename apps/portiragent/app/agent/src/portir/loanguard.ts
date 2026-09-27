@@ -1,14 +1,20 @@
 /**
- * Loan Guard: keeps Venus borrowers out of liquidation. Borrowers set a guard on the LoanGuard contract and
+ * Loan Guard: keeps borrowers of tokenized-stock loans out of liquidation. On testnet the loans live in
+ * StockLendingPool (Venus-compatible, MockStock collateral, tUSDT debt; Venus has no stock markets on testnet);
+ * on mainnet the same LoanGuard points at Venus, which lists TSLAB/NVDAB. Borrowers set a guard on the LoanGuard contract and
  * approve it for their safety buffer (the debt token). Every PORTIR_GUARD_SECONDS this agent reads each guarded
  * position and, past the borrower's trigger, repays just enough (capped) to bring it back to the target.
  * The contract re-checks the position on-chain and pays Venus straight from the borrower; nothing passes here.
  */
 import { type Address, encodeFunctionData, erc20Abi, parseAbi } from "viem";
-import venus from "../../../../../../contracts/deployments/venus-testnet.json" with { type: "json" };
+import pool from "../../../../../../contracts/deployments/stockpool-testnet.json" with { type: "json" };
+import { assess } from "./market.js";
 import { client, sendTx } from "./registry.js";
 
-export const VENUS = venus as Record<"comptroller" | "oracle" | "vUSDT" | "USDT" | "vCAKE" | "CAKE" | "loanGuard", Address>;
+/** The stock pool is its own oracle (Venus: comptroller.oracle()). */
+export const VENUS = { comptroller: pool.pool, oracle: pool.pool, vUSDT: pool.vUSDT, USDT: pool.USDT, loanGuard: pool.loanGuard } as Record<"comptroller" | "oracle" | "vUSDT" | "USDT" | "loanGuard", Address>;
+const MARKETS = pool.markets as Record<string, Address>;
+const poolAbi = parseAbi(["function setPrices(address[] vTokens, uint128[] prices)"]);
 
 export const loanGuardAbi = parseAbi([
   "struct Guard { address executor; address vToken; uint16 triggerBps; uint16 targetBps; uint128 maxPerRescue; uint32 cooldown; uint40 lastRescueAt; bool active; }",
@@ -50,7 +56,19 @@ async function repayToTarget(borrower: Address, g: Guard): Promise<bigint> {
   return ((debtUsd - targetDebt) * 10n ** 18n) / price + 1n;
 }
 
+/** Keeper: mirror every stock market's live per-share price (best tradable issuer on BSC mainnet) into the pool. */
+export async function pushPoolPrices(): Promise<void> {
+  const entries = Object.entries(MARKETS);
+  const priced = await Promise.allSettled(entries.map(async ([ticker, vToken]) => ({ vToken, price: (await assess(ticker)).view.offers[0].onchain })));
+  const ok = priced.flatMap((p) => (p.status === "fulfilled" && p.value.price > 0 ? [p.value] : []));
+  if (ok.length === 0) return;
+  const hash = await sendTx(VENUS.comptroller, encodeFunctionData({ abi: poolAbi, functionName: "setPrices", args: [ok.map((o) => o.vToken), ok.map((o) => BigInt(Math.round(o.price * 1e6)) * 10n ** 12n)] }));
+  log(`prices for ${ok.length}/${entries.length} stock markets [${hash}]`);
+}
+
 export async function guardScan(): Promise<void> {
+  // Prices first: borrowing needs them fresh, and the guard must judge today's price, not yesterday's.
+  await pushPoolPrices().catch((e) => log(`price feed failed: ${e instanceof Error ? e.message.slice(0, 160) : e}`));
   const me = ((await import("@bnbagent/studio-runtime/wallet")).getWallet().address as Address).toLowerCase();
   const borrowers = await read<readonly Address[]>("borrowers");
   const now = Math.floor(Date.now() / 1000);
