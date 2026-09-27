@@ -2,7 +2,12 @@
 
 import { Handle, type NodeProps, Position } from "@xyflow/react";
 import { Logo } from "@/app/logo";
-import type { Status, StepKind, StepNode } from "./model";
+import type { Brand, Status, StepKind, StepNode } from "./model";
+
+/* eslint-disable @next/next/no-img-element -- tiny static logos inside a canvas; next/image adds nothing here */
+function BrandImg({ b, size }: { b: Brand; size: number }) {
+  return <img src={b.src} alt="" width={size} height={size} className="rounded-full bg-white/90 object-contain" style={{ width: size, height: size, padding: b.src.endsWith(".svg") ? size * 0.14 : 0 }} />;
+}
 
 const ICON: Record<StepKind, string> = {
   trigger: "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
@@ -78,6 +83,15 @@ export function StepNodeView({ data }: NodeProps<StepNode>) {
           <p className="truncate text-[13px] font-medium leading-tight text-white">{data.title}</p>
           <p className="truncate text-[11px] text-muted">{data.lines[0]}</p>
         </div>
+        {data.via && (
+          <span className="flex shrink-0 items-center" title={`via ${data.via.map((b) => b.name).join(", ")}`}>
+            {data.via.map((b, i) => (
+              <span key={b.name} className="rounded-full ring-2 ring-[#0d1420]" style={{ marginLeft: i ? -5 : 0 }}>
+                <BrandImg b={b} size={16} />
+              </span>
+            ))}
+          </span>
+        )}
         <span className={`size-2 shrink-0 rounded-full ${t.dot}`} />
       </div>
     );
@@ -92,10 +106,14 @@ export function StepNodeView({ data }: NodeProps<StepNode>) {
       ))}
 
       <div className="flex items-start gap-2.5">
-        <span className={`grid size-8 shrink-0 place-items-center rounded-xl border ${data.status === "idle" || data.status === "skipped" ? "border-white/10 bg-white/5 text-white/70" : `${t.pill}`}`}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d={ICON[k]} />
-          </svg>
+        <span className={`grid size-9 shrink-0 place-items-center rounded-xl border ${data.status === "idle" || data.status === "skipped" ? "border-white/10 bg-white/5 text-white/70" : `${t.pill}`}`}>
+          {data.brand ? (
+            <BrandImg b={data.brand} size={24} />
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d={ICON[k]} />
+            </svg>
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
@@ -124,6 +142,17 @@ export function StepNodeView({ data }: NodeProps<StepNode>) {
           <p key={line} className="truncate text-[11.5px] leading-snug text-muted">{line}</p>
         ))}
       </div>
+      {data.via && data.via.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-white/8 pt-2">
+          <span className="text-[10px] text-white/40">via</span>
+          {data.via.map((b) => (
+            <span key={b.name} className="flex items-center gap-1 rounded-full bg-white/[0.06] py-0.5 pl-0.5 pr-1.5 text-[10px] text-white/80">
+              <BrandImg b={b} size={14} />
+              {b.name}
+            </span>
+          ))}
+        </div>
+      )}
       {data.editable && <p className="mt-2 text-[10.5px] text-brand">Tap to change</p>}
     </div>
   );

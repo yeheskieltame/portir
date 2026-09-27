@@ -36,6 +36,10 @@ export interface StepData extends Record<string, unknown> {
   status: Status;
   pill?: string;
   icons?: { ticker: string; icon?: string | null }[];
+  /** Logo shown in the icon tile instead of the line icon: the platform doing this step. */
+  brand?: Brand;
+  /** "via" row: the platforms and tokens this step uses. */
+  via?: Brand[];
   editable?: boolean;
   selected?: boolean;
   layout?: "wide" | "tall";
@@ -44,6 +48,25 @@ export interface StepData extends Record<string, unknown> {
   handles?: { id: string; type: "source" | "target"; side: "left" | "right" | "top" | "bottom" }[];
 }
 export type StepNode = Node<StepData, "step">;
+
+export interface Brand {
+  src: string;
+  name: string;
+}
+export const BRAND = {
+  portir: { src: "/mark.svg", name: "Portir" },
+  studio: { src: "/logos/bnbchain.svg", name: "BNB Agent Studio" },
+  binance: { src: "/logos/binance.svg", name: "Binance RWA data" },
+  usdt: { src: "/logos/usdt.png", name: "USDT" },
+  bnb: { src: "/logos/bnb.png", name: "BNB Chain" },
+  bscscan: { src: "/logos/bscscan.png", name: "BscScan" },
+  ondo: { src: "/logos/ondo.png", name: "Ondo" },
+  bstocks: { src: "/logos/bstocks.svg", name: "bStocks" },
+  xstocks: { src: "/logos/xstocks.png", name: "xStocks" },
+  pancakeswap: { src: "/logos/pancakeswap.png", name: "PancakeSwap" },
+  venus: { src: "/logos/venus.png", name: "Venus" },
+  cake: { src: "/logos/cake.png", name: "CAKE" },
+} satisfies Record<string, Brand>;
 
 /** Which step the last run stopped at, and how. */
 export interface RunState {
@@ -106,15 +129,15 @@ export function planFlow(
 
   const basket = legs.length > 1;
   const spread = lastRun && lastRun.spreadBps !== 0 ? `${lastRun.spreadBps > 0 ? "+" : ""}${(lastRun.spreadBps / 100).toFixed(2)}% at the last check` : "Checked on every run";
-  const info: Record<StepKind, { title: string; lines: string[]; pill: string; editable?: boolean }> = {
-    trigger: { title: plan.once ? "Once, when fair" : cadence(plan.intervalDays), lines: [plan.once ? "Watches for up to 7 days" : "Checked every 15 min when due"], pill: "Trigger", editable: true },
+  const info: Record<StepKind, { title: string; lines: string[]; pill: string; editable?: boolean; brand?: Brand; via?: Brand[] }> = {
+    trigger: { title: plan.once ? "Once, when fair" : cadence(plan.intervalDays), lines: [plan.once ? "Watches for up to 7 days" : "Checked every 15 min when due"], pill: "Trigger", editable: true, brand: BRAND.portir, via: [BRAND.studio] },
     asset: { title: plan.label, lines: [`${money(plan.amount)} ${plan.once ? "one time" : "per run"}`, basket ? `${legs.length} holdings, fixed weights` : plan.target], pill: basket ? "Basket" : "Stock", editable: true },
-    market: { title: "NYSE open?", lines: ["Smart timing: regular", "session only"], pill: "Check", editable: true },
-    guard: { title: "Fair price?", lines: ["Waits if >1% above the exchange", spread], pill: "Guard" },
-    funding: { title: "From your wallet", lines: ["Via PlanRegistry,", `max ${money(plan.amount)} per run`], pill: "Funds" },
-    buy: { title: "Buy", lines: ["Best issuer, live price"], pill: "Swap" },
-    deliver: { title: "Shares to your wallet", lines: ["Unspent money comes back"], pill: "Deliver" },
-    record: { title: "Reason on BSC", lines: ["One sentence per run,", "public on PlanRegistry"], pill: "Record" },
+    market: { title: "NYSE open?", lines: ["Smart timing: regular", "session only"], pill: "Check", editable: true, brand: BRAND.binance, via: [BRAND.binance] },
+    guard: { title: "Fair price?", lines: ["Waits if >1% above the exchange", spread], pill: "Guard", brand: BRAND.portir, via: [BRAND.binance] },
+    funding: { title: "From your wallet", lines: ["Via PlanRegistry,", `max ${money(plan.amount)} per run`], pill: "Funds", brand: BRAND.usdt, via: [BRAND.usdt, BRAND.bnb] },
+    buy: { title: "Buy", lines: ["Best issuer, live price"], pill: "Swap", brand: BRAND.pancakeswap, via: [BRAND.ondo, BRAND.bstocks, BRAND.xstocks] },
+    deliver: { title: "Shares to your wallet", lines: ["Unspent money comes back"], pill: "Deliver", brand: BRAND.bnb, via: [BRAND.bnb] },
+    record: { title: "Reason on BSC", lines: ["One sentence per run,", "public on PlanRegistry"], pill: "Record", brand: BRAND.bscscan, via: [BRAND.bscscan] },
     window: { title: plan.once ? "Within 7 days?" : "Within 48 hours?", lines: ["Yes: check again in 15 min", "No: skip this run"], pill: "Wait" },
     skip: { title: "Skip this run", lines: [plan.once ? "The order ends" : "Next run stays on schedule"], pill: "Skip" },
   };
@@ -128,7 +151,7 @@ export function planFlow(
   const edges: Edge[] = [];
   const add = (id: string, kind: StepKind, x: number, y: number, status: Status, extra: Partial<StepData> = {}) => {
     const i = info[kind];
-    nodes.push({ id, type: "step", position: { x, y }, draggable: false, data: { kind, title: i.title, lines: i.lines, pill: i.pill, status, layout, editable: opts.editable && i.editable, selected: opts.selected === kind, ...extra } });
+    nodes.push({ id, type: "step", position: { x, y }, draggable: false, data: { kind, title: i.title, lines: i.lines, pill: i.pill, brand: i.brand, via: i.via, status, layout, editable: opts.editable && i.editable, selected: opts.selected === kind, ...extra } });
   };
   const buyIds = basket ? legs.map((l) => `buy-${l.ticker}`) : ["buy"];
   const addBuy = (pos: (i: number) => { x: number; y: number }) =>
