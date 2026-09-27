@@ -71,3 +71,17 @@ Upgrades plugin validation that runs on every deploy/upgrade. The testnet fixtur
 
 No change to `TestExchange`, `MockUSDT` or `MockStock` sources: **no redeploy needed**. Only `PlanRegistry` changed (finding 1) and needs an in-place upgrade when the operator chooses to ship it.
 
+## LoanGuard (2026-09-27)
+
+| Check | Result |
+| --- | --- |
+| Pattern | UUPS, ERC-7201 `portir.storage.LoanGuard` (slot computed), `_disableInitializers`, `_authorizeUpgrade` onlyOwner (Ownable2Step) |
+| Funds | Never held: `rescue` pulls exactly `amount` from the borrower and repays Venus in the same call (`forceApprove` + `repayBorrowBehalf`) |
+| Authorization | Only the executor the borrower chose; `amount ≤ maxPerRescue`; once per `cooldown`; borrower can `cancelGuard` or revoke the allowance any time |
+| Risk check on-chain | Rescue reverts `NotAtRisk` unless `usedBps ≥ triggerBps`, computed from Venus' oracle, `getAccountSnapshot` and the liquidation threshold (4th word of `markets()`, decoded by position for version drift) |
+| Venus error codes | vTokens return codes instead of reverting; non-zero → `VenusError(code)` |
+| Worst case, leaked executor key | Repays part of the borrower's own debt from their approved buffer, capped and rate-limited. No transfer to anyone else |
+| Accepted | `getAssetsIn` loop is bounded by the markets a borrower entered; oracle trust is Venus' own; `borrowers` list only grows (view, used for off-chain scanning because public RPCs block eth_getLogs) |
+| Deploy | Implementation + ERC1967Proxy deployed directly (the upgrades plugin trips over two OZ copies in lib/); v2 appended `borrowers` and `rescues`. Testnet proxy `0xD48C…bab3`, impl `0x1e7e…E242` |
+| Tests | 6 unit (mock Venus) + fork test against the BSC testnet core pool |
+

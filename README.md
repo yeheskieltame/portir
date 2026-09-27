@@ -8,7 +8,7 @@ the on-chain vs exchange price before every order.
 | Path | What | Status |
 | --- | --- | --- |
 | `packages/core` | `@portir/core`: the Guard (pure verdict logic), the Binance RWA Data client (catalog, quotes, fundamentals, K-lines, logos) and the Trading client (official SDK). | quote + build verified live on mainnet; `simulate` blocked by an SDK bug (see DevEx report) |
-| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. | 15 tests, verified on BSC testnet, upgraded in place four times (v2: `updatePlan`, `resumePlan`; v3: one-time "buy when fair" plans; v4: a completed once plan cannot be resumed; v5: plans pay from the owner through the registry, capped per run) |
+| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. `LoanGuard`: keeps Venus borrowers out of liquidation, UUPS upgradeable. | 15 tests, verified on BSC testnet, upgraded in place four times (v2: `updatePlan`, `resumePlan`; v3: one-time "buy when fair" plans; v4: a completed once plan cannot be resumed; v5: plans pay from the owner through the registry, capped per run) |
 | `apps/landing` | Static landing page (one HTML file, no build). Its own Vercel project on the root domain; the app lives on `app.<domain>`. | `pnpm dev:landing` → :3001 |
 | `apps/portiragent` | The Portir agent on **BNB Agent Studio** (`bag` workspace, not part of the pnpm root workspace). One AgentCore runtime with three faces: **MCP** (`/mcp`, ten Portir tools for Claude or any client), **x402** (`/x402`, free passthrough answering with the same tools), **A2A**. Runs the **DCA executor**: scans `PlanRegistry` every 15 min, applies the Guard to single stocks and baskets (worst holding decides), buys on testnet with the owner's tUSDT pulled through PlanRegistry (capped at the plan amount per run) and sends the shares to the owner, records `Waited / Skipped / Executed` with a one-sentence reason; one-time "buy when fair" orders complete after their first buy. | runs locally (`cd apps/portiragent && bag dev`); trial deploy next; execution backend off until the Agentic Wallet test |
 | `apps/web` | Next.js app, mobile-first. Markets (510 US stocks/ETFs on BSC, search, filter, pages), stock detail (chart, Guard, providers, fundamentals), baskets, one-tap buy with the Guard, portfolio (live balances, history, dividends), plans, profile. | live; buying signs real BSC mainnet transactions |
@@ -51,6 +51,23 @@ so the wallet is asked to switch network between Plans and Buy. Put `BINANCE_W3_
 
 `www.binance.com` is DNS-blocked on Indonesian ISPs. Locally the catalog falls back to labelled sample prices unless you
 are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
+
+### Loan Guard (Venus)
+
+Borrow against your assets on Venus without waking up liquidated. The borrower sets a guard on `LoanGuard` (trigger and
+target as a share of the liquidation limit, a cap per rescue, a cooldown) and approves it for a safety buffer in the debt
+token. Every `PORTIR_GUARD_SECONDS` (300) the agent reads each guarded position; past the trigger it repays just enough to
+reach the target, capped. The contract re-checks the position on-chain with Venus' own oracle and liquidation thresholds
+(`usedBps = debt / Σ collateral × LT`) before it moves anything, then pays Venus with `repayBorrowBehalf` straight from the
+borrower. Nothing passes through the agent, and a leaked agent key can only repay the borrower's own debt, capped.
+
+Testnet (Venus core pool on BSC testnet, `contracts/deployments/venus-testnet.json`): LoanGuard proxy
+[`0xD48C…bab3`](https://testnet.bscscan.com/address/0xD48C560C824EDCE220e509979D3566D963AFbab3#code), collateral CAKE,
+debt USDT (both have public `allocateTo` faucets; testnet oracle prices are not realistic, which does not matter: the
+guard uses the numbers Venus liquidates on). Verified live: a position at 90.0% of the limit was rescued with 400 USDT
+from the buffer to 65.6%. App: `/loans`. MCP: `get_loan_health`. Idea credit: the Fortion hackathon project's Guard
+policy (it stopped at a dry run; the on-chain authorization is new here). `FORK_TESTS=true forge test --match-contract
+LoanGuardForkTest` runs the rescue against the real testnet pool.
 
 ## Backlog (decided, not started)
 

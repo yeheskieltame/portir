@@ -13,6 +13,7 @@ import { z } from "zod";
 import { USDT, createTrader, usdt } from "@portir/core/trading";
 import { targetLegs } from "@portir/core/catalog";
 import { assess, bestRoute, history, marketWindow, searchStock, tokenList } from "./market.js";
+import { loanHealth } from "./loanguard.js";
 import { news } from "./news.js";
 import { decodeTarget, getPlan, planIdsOf, prepareCreatePlan, runsOf } from "./registry.js";
 
@@ -145,6 +146,12 @@ export const PORTIR_TOOLS = [
 ];
 
 PORTIR_TOOLS.push(
+  def({
+    name: "get_loan_health",
+    description: "A wallet's Venus loan (BSC testnet core pool) as Loan Guard sees it: debt and liquidation limit in USD, usedBps (debt / limit, 10000 = liquidatable), the guard's trigger/target/cap if one is set, and how many rescues the agent has made.",
+    input: { address: z.string().regex(/^0x[0-9a-fA-F]{40}$/) },
+    run: ({ address }) => loanHealth(address as Address),
+  }),
   def({
     name: "executor_status",
     description: "How this agent executes plans: execution backend, Agentic Wallet session state and limits, scan interval.",

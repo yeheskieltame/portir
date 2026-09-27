@@ -55,7 +55,15 @@ export async function planIdsOf(owner: Address): Promise<readonly bigint[]> {
 }
 
 /** Sign a call with the agent wallet (legacy tx via the studio provider) and broadcast it. Fixed code, never an LLM tool. */
-export async function sendTx(to: Address, data: Hex): Promise<Hex> {
+// One signer, several loops (plans, loan guard): transactions go out one at a time so nonces never collide.
+let queue: Promise<unknown> = Promise.resolve();
+export function sendTx(to: Address, data: Hex): Promise<Hex> {
+  const next = queue.then(() => send(to, data));
+  queue = next.catch(() => {});
+  return next;
+}
+
+async function send(to: Address, data: Hex): Promise<Hex> {
   const wallet = getWallet();
   const from = wallet.address as Address;
   const pc = client();

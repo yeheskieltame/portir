@@ -315,3 +315,14 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
   was read from a load-balanced BSC testnet RPC node one block behind the receipt. Read results from the receipt's own
   event logs, never from state immediately after a write.
 
+### 2026-09-27: Loan Guard on Venus
+
+- Venus core pool runs on BSC testnet with 42 markets, and its mock USDT/CAKE have a public `allocateTo` faucet, so a
+  full borrow-and-rescue loop is testable for free. Testnet oracle prices are fantasy (USDT $0.50, BTCB $2.1M); fine for
+  a guard, which must use exactly the numbers Venus liquidates on.
+- `markets()` returns 7 fields here (CF 0.75 / LT 0.80 for vUSDT, CF = LT = 0.60 for vCAKE); decode by position.
+- openzeppelin-foundry-upgrades refused to deploy ("multiple contracts with name ..." / "multiple matching artifacts"),
+  even after `forge clean` and `--skip test`: two copies of OpenZeppelin under lib/. Deployed implementation + proxy
+  directly; upgrade safety covered by tests.
+- Two agent loops (plans every 15 min, guard every 5 min) sign from one wallet: transactions now go through one queue.
+

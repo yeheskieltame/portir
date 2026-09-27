@@ -11,6 +11,7 @@ const TABS = [
   { href: "/portfolio", label: "Portfolio", d: "M5 20V10M12 20V4M19 20v-7" },
   { href: "/", label: "Markets", d: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm3.5-12.5-2 5-5 2 2-5 5-2Z" },
   { href: "/plans", label: "Plans", d: "M4 8h13M13 4l4 4-4 4M20 16H7M11 12l-4 4 4 4" },
+  { href: "/loans", label: "Loans", d: "M12 3 5 6v5c0 4.4 3 8.2 7 10 4-1.8 7-5.6 7-10V6l-7-3Zm-3 9 2 2 4-4" },
   { href: "/profile", label: "Profile", d: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0" },
 ] as const;
 
@@ -26,9 +27,9 @@ export function Nav() {
   const index = TABS.findIndex((t) => (t.href === "/" ? path === "/" || path.startsWith("/stock/") || path.startsWith("/basket/") : path.startsWith(t.href)));
   return (
     <>
-      <nav className="glass fixed bottom-4 left-1/2 z-20 grid w-[calc(100%-2rem)] max-w-[calc(28rem-2rem)] -translate-x-1/2 grid-cols-4 rounded-full p-1.5 lg:hidden">
+      <nav className="glass fixed bottom-4 left-1/2 z-20 grid w-[calc(100%-2rem)] max-w-[calc(28rem-2rem)] -translate-x-1/2 grid-cols-5 rounded-full p-1.5 lg:hidden">
         {index >= 0 && (
-          <span aria-hidden className="absolute inset-y-1.5 w-[calc(25%-0.375rem)] rounded-full bg-white/[0.14] shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_0_24px_rgba(97,166,246,.25)] transition-[left] duration-500 ease-[cubic-bezier(.22,1,.36,1)]" style={{ left: `calc(${index} * 25% + 0.375rem)` }} />
+          <span aria-hidden className="absolute inset-y-1.5 w-[calc(20%-0.375rem)] rounded-full bg-white/[0.14] shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_0_24px_rgba(97,166,246,.25)] transition-[left] duration-500 ease-[cubic-bezier(.22,1,.36,1)]" style={{ left: `calc(${index} * 20% + 0.375rem)` }} />
         )}
         {TABS.map((t, i) => (
           <Link key={t.href} href={t.href} className={`relative flex flex-col items-center gap-1 rounded-full py-2 text-[11px] transition-[transform,color] duration-300 active:scale-90 ${i === index ? "text-white" : "text-muted"}`}>

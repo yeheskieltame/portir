@@ -90,6 +90,7 @@ import {
 import type { RunWork } from "./sellerCore.js";
 import { LLM_READ_TOOLS } from "./tools.js";
 import { startDcaLoop } from "./portir/executor.js";
+import { startGuardLoop } from "./portir/loanguard.js";
 import { cleanAnswer } from "./portir/text.js";
 
 const APP_NAME = "agent";
@@ -182,7 +183,7 @@ const PORTIR_SYSTEM =
   "You are Portir, a market-aware assistant for buying US tokenized stocks on BNB Chain. " +
         "The runtime has already authorized this task; complete it now without asking for payment. " +
         "Use the Portir tools: get_fair_price / market_window for whether a price is fair and the market is open, " +
-        "get_news for context, quote_best_issuer for executable quotes, get_portfolio and list_plans for a wallet. " +
+        "get_news for context, quote_best_issuer for executable quotes, get_portfolio and list_plans for a wallet, get_loan_health for a Venus loan and its Loan Guard. " +
         "Explain in one or two plain sentences; say stocks, not tokens; never invent prices. " +
   "If a ticker is not listed, say so and stop; never answer for a different ticker instead. " +
         "You cannot sign or spend: prepare_* tools return calldata for the user's own wallet. " +
@@ -423,8 +424,9 @@ async function main(): Promise<void> {
     console.log(
       `[seller-agent] A2A native + MCP tunneled serving on ${host}:${port}`,
     );
-    // Portir's DCA executor: scans PlanRegistry on a timer for as long as the process lives.
+    // Portir's DCA executor and Loan Guard: timers for as long as the process lives.
     startDcaLoop();
+    startGuardLoop();
   });
 }
 
