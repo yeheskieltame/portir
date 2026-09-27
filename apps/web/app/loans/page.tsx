@@ -26,7 +26,7 @@ export default function Loans() {
         Borrow against it, <span className="serif-italic text-[1.1em]">without liquidation.</span>
       </h1>
       <p className="mt-3 max-w-2xl text-sm text-muted">
-        Portir&apos;s agent watches your Venus loan every 15 minutes and repays from your own safety buffer before you get close to liquidation. The LoanGuard contract only lets it repay when your position really is past your trigger, at most your cap per rescue.
+        Portir&apos;s agent watches your Venus loan every 5 minutes and repays from your own safety buffer before you get close to liquidation. The LoanGuard contract only lets it repay when your position really is past your trigger, at most your cap per rescue.
       </p>
       {mode === "mainnet" && (
         <p className="mt-4 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-xs text-warn">
