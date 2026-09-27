@@ -109,6 +109,16 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
       <AgentChat wallet={owner} onStart={startPlan} busy={busy} />
       <div className="mt-8 lg:grid lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start lg:gap-8">
       <section className="lg:sticky lg:top-6">
+        <Link href="/plans/new" className="group mb-6 flex items-center gap-4 rounded-3xl border border-brand/35 bg-gradient-to-br from-brand/15 via-brand/5 to-transparent p-4 transition-colors hover:border-brand/60">
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-brand/40 bg-brand/15 text-brand">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="6" height="5" rx="1.5" /><rect x="15" y="4" width="6" height="5" rx="1.5" /><rect x="9" y="15" width="6" height="5" rx="1.5" /><path d="M9 6.5h6M18 9v3H12v3M6 9v3h6" /></svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">Build a plan in flow</span>
+            <span className="block text-xs text-muted">See every step the agent takes, and set it up right on the diagram.</span>
+          </span>
+          <span className="text-brand transition-transform group-hover:translate-x-0.5">→</span>
+        </Link>
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">Or pick what to buy</h2>
         <p className="mt-2 text-sm text-muted">Amount and cadence come next, on the same screen.</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -196,6 +206,10 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${status.cls}`}>{status.label}</span>
                 {plan.active && !plan.once && <span className="font-mono text-xs text-muted">{when(plan.nextRunAt)}</span>}
+                <Link href={`/plans/${id}`} className="ml-auto flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3 py-1 text-xs font-medium text-brand">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="6" height="5" rx="1.5" /><rect x="15" y="4" width="6" height="5" rx="1.5" /><rect x="9" y="15" width="6" height="5" rx="1.5" /><path d="M9 6.5h6M18 9v3H12v3M6 9v3h6" /></svg>
+                  View flow
+                </Link>
               </div>
               {plan.active && plan.once && (
                 <p className="mt-2 text-xs text-muted">The agent checks every 15 minutes for up to 7 days. The first time the market is open and the price is fair it buys, writes its reason here, and the order is done.</p>

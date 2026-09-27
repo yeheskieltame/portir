@@ -67,3 +67,18 @@ body {
 }
 .field:focus { border-color: var(--color-brand); }
 .field option { color: #000; }
+
+/* Flow canvas: a waiting step breathes; React Flow chrome follows the dark theme. */
+@keyframes flow-pulse {
+  0%, 100% { box-shadow: 0 0 22px -8px rgba(255, 176, 64, 0.45); }
+  50% { box-shadow: 0 0 34px -4px rgba(255, 176, 64, 0.7); }
+}
+.flow-pulse { animation: flow-pulse 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .flow-pulse { animation: none; } }
+.portir-flow .react-flow__controls { border: 1px solid var(--color-line); border-radius: 12px; overflow: hidden; box-shadow: none; }
+.portir-flow .react-flow__controls-button { background: #0d1420; border-bottom: 1px solid var(--color-line); fill: rgba(255,255,255,.8); }
+.portir-flow .react-flow__controls-button:hover { background: #162033; }
+.portir-flow .react-flow__attribution { background: transparent; opacity: .35; }
+.portir-flow .react-flow__attribution a { color: rgba(255,255,255,.6); }
+.portir-flow .react-flow__edge-textbg { fill: #0b111c; }
+.portir-flow .react-flow { --xy-background-color: transparent; --xy-edge-label-background-color: #0b111c; }

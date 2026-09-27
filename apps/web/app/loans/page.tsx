@@ -23,6 +23,7 @@ import {
   vTokenAbi,
 } from "@/lib/venus";
 import { type BatchCall, sendBatch, useBatchSupport } from "@/lib/wallet-batch";
+import { GuardFlow } from "@/app/flow/guard-flow";
 import { config } from "@/lib/wagmi";
 
 const POLL = 15_000;
@@ -196,6 +197,20 @@ function Journey({ owner }: { owner: `0x${string}` }) {
 
       {progress && <p className="mt-4 animate-pulse text-center text-sm text-muted">{progress}</p>}
       {error && <p role="alert" className="mt-4 break-words text-sm text-block">{error}</p>}
+
+      {step === 3 && guard && (
+        <section className="mt-6">
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">How your guard works</h2>
+          <div className="mt-3">
+            <GuardFlow
+              triggerPct={guard.triggerBps / 100}
+              targetPct={guard.targetBps / 100}
+              cap={`${usdt(guard.maxPerRescue)} USDT`}
+              lastRescue={rescues.length ? { amount: `${usdt(rescues[rescues.length - 1].amount)} USDT`, before: rescues[rescues.length - 1].usedBpsBefore / 100, after: rescues[rescues.length - 1].usedBpsAfter / 100, at: rescues[rescues.length - 1].at } : undefined}
+            />
+          </div>
+        </section>
+      )}
 
       {step === 3 && <History rescues={rescues} />}
     </>
