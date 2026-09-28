@@ -40,8 +40,11 @@ keystore_dir = "../../.studio/wallets"
 address = "0xFA0Be0E8a604250C3fdCCE4C35f645bdA03328A5"
 
 [llm]
-provider = "pieverse-llm"
-model = "auto/free"
+# Groq through Agent Studio's OpenAI-compatible provider (key: GROQ_API_KEY). Pieverse stays configured below
+# and comes back with provider = "pieverse-llm", model = "auto/free".
+provider = "openai"
+model = "openai/gpt-oss-120b"
+base_url = "https://api.groq.com/openai/v1"
 
 [llm.pieverse]
 # Pieverse topup runs ONLY on BSC mainnet (chainId=56); decoupled from [network].default.

@@ -27,7 +27,8 @@ function claudeCli(prompt: string): Promise<string> {
   });
 }
 
-async function pieverse(prompt: string): Promise<string> {
+/** The model configured in studio.toml [llm] (Groq in production). */
+async function studioModel(prompt: string): Promise<string> {
   const [{ generateText }, { buildModel }] = await Promise.all([import("ai"), import("../model.js")]);
   const { text } = await generateText({ model: buildModel(), system: SYSTEM, prompt, abortSignal: AbortSignal.timeout(60_000) });
   return text;
@@ -60,7 +61,7 @@ export async function newsCheck(tickers: string[]): Promise<NewsCall | null> {
     if (count === 0) return null;
     const hours = (at: number | null) => (at ? `${Math.max(0, Math.round((Date.now() - at) / 3600_000))}h ago` : "recent");
     const prompt = `Buying: ${key}. Now: ${new Date().toUTCString()}.\n\n${lists.map((l) => `${l.t}:\n${l.items.map((h) => `- (${hours(h.at)}, ${h.source}) ${h.title}`).join("\n") || "- no headlines"}`).join("\n\n")}`;
-    const raw = process.env.PORTIR_BRAIN === "claude-cli" ? await claudeCli(prompt) : await pieverse(prompt);
+    const raw = process.env.PORTIR_BRAIN === "claude-cli" ? await claudeCli(prompt) : await studioModel(prompt);
     const parsed = parseCall(raw);
     if (!parsed) {
       log(`${key}: unreadable answer, buying on the Guard alone (…${raw.slice(-160).replace(/\s+/g, " ")})`);

@@ -8,8 +8,8 @@ services:
     restart: unless-stopped
     env_file: ../.studio/.env.local
     environment:
-      # Production brain: Pieverse through Agent Studio (Claude CLI is for local development only).
-      PORTIR_BRAIN: pieverse
+      # Production brain: the studio.toml [llm] model (Groq). Claude CLI is for local development only.
+      PORTIR_BRAIN: studio
       # The free chat face is paid by the operator's LLM credit: cap it for the whole process.
       SELLER_RATE_LIMIT_GLOBAL_MAX_REQUESTS: "20"
       SELLER_RATE_LIMIT_WINDOW_SECONDS: "60"

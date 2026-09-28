@@ -59,7 +59,8 @@ before every buy (the LLM reads the last 72h of headlines and may only hold the 
 on-chain; fail-open when no model answers); **Loan Guard** (below); and **Telegram reports** of every recorded outcome
 and rescue (`TELEGRAM_BOT_TOKEN`; users link from Profile via `t.me/<bot>?start=<address>`).
 
-**Brains.** Production chat runs on Pieverse through Agent Studio; `PORTIR_BRAIN=claude-cli` is for local development.
+**Brains.** Production chat and the news check run on Groq (`openai/gpt-oss-120b`) through Agent Studio's OpenAI-compatible
+provider (`studio.toml` [llm], key `GROQ_API_KEY`); Pieverse stays configured as the alternative. `PORTIR_BRAIN=claude-cli` is for local development.
 Users can instead bring their own Claude over MCP (`https://agent.portir.xyz/mcp`), and run a fully self-custodial agent:
 Cowork's scheduler + Portir MCP + their own Binance Agentic Wallet skill (Profile → Run your own agent).
 

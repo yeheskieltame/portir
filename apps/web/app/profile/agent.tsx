@@ -6,8 +6,6 @@ import { executorAddress } from "@/lib/planRegistry";
 // Production: https://agent.portir.xyz (the agent's VPS). Locally `bag dev` serves it on :9000.
 const AGENT = process.env.NEXT_PUBLIC_AGENT_URL ?? (process.env.NODE_ENV === "development" ? "http://localhost:9000" : "");
 const MCP = AGENT ? `${AGENT}/mcp` : "";
-const U_TOKEN = "0xcE24439F2D9C6a2289F741120FE202248B666666"; // U on BSC mainnet, what Pieverse LLM credits are bought with
-const SWAP = `https://pancakeswap.finance/swap?outputCurrency=${U_TOKEN}&chain=bsc`;
 
 const TOOLS = ["search_stock", "get_fair_price", "market_window", "quote_best_issuer", "get_news", "price_history", "get_portfolio", "list_plans", "prepare_buy", "prepare_dca_plan", "executor_status"];
 
@@ -80,24 +78,14 @@ export function OwnAgent() {
 export function AgentFuel() {
   return (
     <section className="glass mt-4 rounded-3xl p-4">
-      <h2 className="text-lg">Agent fuel</h2>
+      <h2 className="text-lg">Agent brain</h2>
       <p className="mt-1 text-sm text-muted">
-        “Ask the agent” on the Plans page runs a model on <b className="text-white">Pieverse</b> (BNB Agent Studio). Its credits are bought with the <b className="text-white">U</b> token on BSC mainnet from the agent’s own wallet, so the operator pays, not you. Your plans keep running without it: the executor’s Guard is code, not a model.
+        “Ask the agent” and the news check before every buy run on <b className="text-white">Groq</b> (<code>gpt-oss-120b</code>), plugged in through BNB Agent Studio’s model provider. The operator pays for it, not you, and it never moves money: it can only answer, or hold a buy back with a reason.
       </p>
-      <ol className="mt-4 space-y-2 text-sm">
-        <Step n={1}>
-          Get U on BNB Chain: <a className="underline" href={SWAP} target="_blank" rel="noopener">swap on PancakeSwap ↗</a> (a few dollars is plenty).
-        </Step>
-        <Step n={2}>
-          Send it to the agent wallet <Addr value={executorAddress} />.
-        </Step>
-        <Step n={3}>
-          Operator: <code className="rounded bg-white/10 px-1">bag llm topup --amount 2</code>, then pick a paid model in <code className="rounded bg-white/10 px-1">studio.toml</code>. Auto-renew keeps the key funded from the wallet’s U.
-        </Step>
-      </ol>
       <dl className="mt-4 divide-y divide-line rounded-2xl border border-line text-xs">
-        <div className="flex justify-between gap-3 px-3 py-2"><dt className="text-muted">U token (BSC)</dt><dd><Addr value={U_TOKEN} /></dd></div>
-        <div className="flex justify-between gap-3 px-3 py-2"><dt className="text-muted">Prefer your own model?</dt><dd className="text-right">Use “Connect your Claude” above — no U needed.</dd></div>
+        <div className="flex justify-between gap-3 px-3 py-2"><dt className="text-muted">If the model is down</dt><dd className="text-right">Plans keep running on the Guard, which is code.</dd></div>
+        <div className="flex justify-between gap-3 px-3 py-2"><dt className="text-muted">Agent wallet</dt><dd><Addr value={executorAddress} /></dd></div>
+        <div className="flex justify-between gap-3 px-3 py-2"><dt className="text-muted">Prefer your own model?</dt><dd className="text-right">Connect your Claude above.</dd></div>
       </dl>
     </section>
   );

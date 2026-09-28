@@ -64,6 +64,8 @@ export function buildModel(): LanguageModel {
         "or set [llm].provider and [llm].model in studio.toml.",
     );
   }
+  // Groq speaks the OpenAI API; the runtime reads OPENAI_API_KEY for provider "openai", the operator sets GROQ_API_KEY.
+  if (String(llmCfg.base_url ?? "").includes("api.groq.com") && process.env.GROQ_API_KEY) process.env.OPENAI_API_KEY = process.env.GROQ_API_KEY;
   const inner = resolveModel(llmCfg);
 
   if (String(llmCfg.provider ?? "openrouter") !== "pieverse-llm") {
