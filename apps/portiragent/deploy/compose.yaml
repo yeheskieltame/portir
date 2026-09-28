@@ -8,12 +8,13 @@ services:
     restart: unless-stopped
     env_file: ../.studio/.env.local
     environment:
-      # The free chat face runs on the operator's Claude: cap it for the whole process.
+      # Production brain: Pieverse through Agent Studio (Claude CLI is for local development only).
+      PORTIR_BRAIN: pieverse
+      # The free chat face is paid by the operator's LLM credit: cap it for the whole process.
       SELLER_RATE_LIMIT_GLOBAL_MAX_REQUESTS: "20"
       SELLER_RATE_LIMIT_WINDOW_SECONDS: "60"
     volumes:
       - ../.studio:/app/apps/portiragent/.studio
-      - claude:/claude # `docker compose exec agent claude` once to log in
     expose: ["9000"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9000/ping').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -31,5 +32,4 @@ services:
     depends_on: [agent]
 
 volumes:
-  claude:
   caddy_data:
