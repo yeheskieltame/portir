@@ -7,7 +7,7 @@ import {TestExchange} from "../../src/testnet/TestExchange.sol";
 /// Adds any missing MockStock to the deployed TestExchange (idempotent) and rewrites deployments/testnet.json.
 /// The list is every ticker the app features or puts in a basket.
 contract AddStocks is Script {
-    string[18] internal tickers = [
+    string[20] internal tickers = [
         "NVDA",
         "TSLA",
         "AAPL",
@@ -25,9 +25,11 @@ contract AddStocks is Script {
         "KO",
         "PEP",
         "MCD",
-        "IWM"
+        "IWM",
+        "SPCX",
+        "SKHY"
     ];
-    string[18] internal names = [
+    string[20] internal names = [
         "NVIDIA (test)",
         "Tesla (test)",
         "Apple (test)",
@@ -45,7 +47,9 @@ contract AddStocks is Script {
         "Coca-Cola (test)",
         "PepsiCo (test)",
         "McDonald's (test)",
-        "Russell 2000 ETF (test)"
+        "Russell 2000 ETF (test)",
+        "SpaceX (test)",
+        "SK Hynix (test)"
     ];
 
     function run() external {

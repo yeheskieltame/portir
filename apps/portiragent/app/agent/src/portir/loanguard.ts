@@ -13,7 +13,8 @@ import { client, sendTx } from "./registry.js";
 
 /** The stock pool is its own oracle (Venus: comptroller.oracle()). */
 export const VENUS = { comptroller: pool.pool, oracle: pool.pool, vUSDT: pool.vUSDT, USDT: pool.USDT, loanGuard: pool.loanGuard } as Record<"comptroller" | "oracle" | "vUSDT" | "USDT" | "loanGuard", Address>;
-const MARKETS = pool.markets as Record<string, Address>;
+// Only the stocks Venus accepts as collateral on mainnet; the pool offers the same set on testnet.
+const MARKETS = Object.fromEntries((pool.loanTickers as string[]).map((t) => [t, (pool.markets as Record<string, Address>)[t]])) as Record<string, Address>;
 const poolAbi = parseAbi(["function setPrices(address[] vTokens, uint128[] prices)"]);
 
 export const loanGuardAbi = parseAbi([

@@ -15,14 +15,16 @@ export const POOL = {
   loanGuard: pool.loanGuard as `0x${string}`,
   markets: pool.markets as Record<string, `0x${string}`>,
 };
-export const TICKERS = Object.keys(POOL.markets);
-export const tickerOfMarket = (vToken: string) => TICKERS.find((t) => POOL.markets[t].toLowerCase() === vToken.toLowerCase());
+/** Only stocks Venus accepts as collateral on mainnet (checked on-chain): the testnet pool offers the same set. */
+export const TICKERS = pool.loanTickers as string[];
+const ALL_TICKERS = Object.keys(POOL.markets);
+export const tickerOfMarket = (vToken: string) => ALL_TICKERS.find((t) => POOL.markets[t].toLowerCase() === vToken.toLowerCase());
 
 /** Venus core pool on BSC mainnet, where tokenized stocks are real markets (read-only card). */
 export const VENUS_MAINNET = {
-  comptroller: "0xfD36E2c2a6789Db23113685031d7F16329158384" as `0x${string}`,
-  vTSLAB: "0x97421799419Eb782628e73e7220d8E0A207469a3" as `0x${string}`,
-  TSLAB: "0x5b1910eAaD6450E50f816082Aa078C41F10C292f" as `0x${string}`,
+  comptroller: pool.venusMainnet.comptroller as `0x${string}`,
+  /** Ticker → Venus vToken (vNVDAB, vTSLAB, vSPCXB, vSKHYB), bStocks tokens underneath. */
+  markets: Object.fromEntries(TICKERS.map((t) => [t, (pool.venusMainnet as Record<string, string>)[t] as `0x${string}`])) as Record<string, `0x${string}`>,
 };
 
 export const COOLDOWN = 3600;

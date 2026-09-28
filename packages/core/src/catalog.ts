@@ -2,6 +2,7 @@
 export const STOCK_NAMES: Record<string, string> = {
   NVDA: "NVIDIA", TSLA: "Tesla", AAPL: "Apple", MSFT: "Microsoft", GOOGL: "Alphabet (Google)", AMZN: "Amazon", QQQ: "Nasdaq 100 ETF", SPY: "S&P 500 ETF",
   AMD: "Advanced Micro Devices", AVGO: "Broadcom", TSM: "TSMC", META: "Meta Platforms", JNJ: "Johnson & Johnson", PG: "Procter & Gamble", KO: "Coca-Cola", PEP: "PepsiCo", MCD: "McDonald's", IWM: "Russell 2000 ETF",
+  SPCX: "SpaceX", SKHY: "SK Hynix",
 };
 
 /** Curated baskets (PRD F4): transparent, static weights. Shared by the app and the executor. */

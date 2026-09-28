@@ -10,6 +10,7 @@ import { useIcons } from "@/app/flow/editor";
 import { Logo } from "@/app/logo";
 import { useMode } from "@/app/mode";
 import { usd } from "@/app/verdict";
+import { STOCK_NAMES } from "@/lib/catalog";
 import { executorAddress } from "@/lib/planRegistry";
 import { TESTNET } from "@/lib/testnet";
 import {
@@ -681,32 +682,43 @@ function History({ rescues }: { rescues: readonly RescueRow[] }) {
 
 /** Mainnet: the same guard maps onto Venus' real tokenized-stock markets. Read live, nothing to sign. */
 function VenusMainnetCard() {
+  const tickers = TICKERS;
+  const oracle = useReadContract({ address: VENUS_MAINNET.comptroller, abi: venusComptrollerAbi, functionName: "oracle", chainId: bsc.id }).data as `0x${string}` | undefined;
   const reads = useReadContracts({
     allowFailure: true,
-    contracts: [
-      { address: VENUS_MAINNET.vTSLAB, abi: symbolAbi, functionName: "symbol", chainId: bsc.id },
-      { address: VENUS_MAINNET.comptroller, abi: venusComptrollerAbi, functionName: "markets", args: [VENUS_MAINNET.vTSLAB], chainId: bsc.id },
-      { address: VENUS_MAINNET.comptroller, abi: venusComptrollerAbi, functionName: "oracle", chainId: bsc.id },
-    ],
+    contracts: tickers.flatMap((t) => [
+      { address: VENUS_MAINNET.markets[t], abi: symbolAbi, functionName: "symbol", chainId: bsc.id },
+      { address: VENUS_MAINNET.comptroller, abi: venusComptrollerAbi, functionName: "markets", args: [VENUS_MAINNET.markets[t]], chainId: bsc.id },
+      ...(oracle ? [{ address: oracle, abi: venusOracleAbi, functionName: "getUnderlyingPrice", args: [VENUS_MAINNET.markets[t]], chainId: bsc.id }] : []),
+    ]),
   });
-  const symbol = reads.data?.[0]?.status === "success" ? (reads.data[0].result as string) : "vTSLAB";
-  const m = reads.data?.[1]?.status === "success" ? (reads.data[1].result as readonly [boolean, bigint, boolean, bigint]) : undefined;
-  const oracle = reads.data?.[2]?.status === "success" ? (reads.data[2].result as `0x${string}`) : undefined;
-  const price = useReadContract({ address: oracle, abi: venusOracleAbi, functionName: "getUnderlyingPrice", args: [VENUS_MAINNET.vTSLAB], chainId: bsc.id, query: { enabled: !!oracle } }).data;
+  const per = oracle ? 3 : 2;
+  const icons = useIcons(tickers);
   return (
     <section className="glass mt-4 rounded-3xl p-4 text-sm">
-      <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">On mainnet: Venus lists tokenized stocks</p>
-      <div className="mt-3 flex items-center gap-3">
-        <Logo src="/logos/venus.png" name="Venus" size={32} />
-        <span className="min-w-0 flex-1">
-          <span className="block font-medium">{symbol} · Tesla (bStocks TSLAB)</span>
-          <span className="block text-xs text-muted">
-            Collateral factor {m ? `${Number(formatUnits(m[1], 16)).toFixed(0)}%` : "—"} · liquidation at {m ? `${Number(formatUnits(m[3], 16)).toFixed(0)}%` : "—"}
-          </span>
-        </span>
-        <span className="font-mono tabular-nums">{price !== undefined ? usdOf(price) : "—"}</span>
+      <div className="flex items-center gap-2">
+        <Logo src="/logos/venus.png" name="Venus" size={22} />
+        <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">On mainnet: stocks Venus accepts as collateral</p>
       </div>
-      <p className="mt-3 text-xs text-muted">Live from the Venus core pool on BNB Chain. Same LoanGuard contract, next step; this page runs on BSC testnet with Portir&apos;s stock pool meanwhile.</p>
+      <ul className="mt-3 divide-y divide-line">
+        {tickers.map((t, i) => {
+          const r = reads.data?.slice(i * per, i * per + per);
+          const symbol = r?.[0]?.status === "success" ? (r[0].result as string) : "…";
+          const m = r?.[1]?.status === "success" ? (r[1].result as unknown as readonly [boolean, bigint, boolean, bigint]) : undefined;
+          const price = r?.[2]?.status === "success" ? (r[2].result as unknown as bigint) : undefined;
+          return (
+            <li key={t} className="flex items-center gap-3 py-2">
+              <Logo src={icons?.[t] ?? null} name={t} size={28} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{STOCK_NAMES[t] ?? t} <span className="font-mono text-xs text-muted">{symbol}</span></span>
+                <span className="block text-xs text-muted">Collateral factor {m ? `${Number(formatUnits(m[1], 16)).toFixed(0)}%` : "—"} · liquidation at {m ? `${Number(formatUnits(m[3], 16)).toFixed(0)}%` : "—"}</span>
+              </span>
+              <span className="font-mono tabular-nums">{price !== undefined ? usdOf(price) : "—"}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-2 text-xs text-muted">Live from the Venus core pool on BNB Chain. Same LoanGuard contract, next step; this page runs on BSC testnet with Portir&apos;s stock pool, which offers exactly these stocks with the same limits.</p>
     </section>
   );
 }

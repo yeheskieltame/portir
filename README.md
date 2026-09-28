@@ -62,9 +62,10 @@ liquidation thresholds (`usedBps = debt / Σ collateral × LT`) before anything 
 `repayBorrowBehalf` straight from the borrower. Nothing passes through the agent; a leaked agent key can only repay the
 borrower's own debt, capped.
 
-**Mainnet:** Venus lists tokenized stocks (e.g. vTSLAB, collateral factor 60%, liquidation at 70%); LoanGuard speaks the
+**Mainnet:** Venus accepts four tokenized stocks as collateral, all bStocks tokens (checked on-chain 2026-09-28): vNVDAB and
+vTSLAB (collateral factor 60%, liquidation at 70%), vSPCXB and vSKHYB (50% / 65%). Loans offer exactly these; LoanGuard speaks the
 Venus comptroller/vToken interface, so the same contract points at the Venus core pool. **Testnet:** Venus has no stock
-markets, so `StockLendingPool` stands in with the same interface and parameters over Portir's MockStocks (collateral)
+markets, so `StockLendingPool` stands in with the same interface and parameters over the same four MockStocks (NVDA, TSLA, SPCX, SKHY, with Venus' limits) as collateral
 and tUSDT (debt), with real liquidations; the agent mirrors live stock prices into it every scan
 ([`0x7E83…64c2`](https://testnet.bscscan.com/address/0x7E8317704d8a0F7EA9f3E46b706FBa3e162f64c2#code), LoanGuard
 [`0xa33f…3f61`](https://testnet.bscscan.com/address/0xa33fDbd747d95bD733172D9D7c4d6c50CcE33f61#code), addresses in
