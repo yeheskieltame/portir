@@ -43,7 +43,7 @@ registry's chain.
 against test stock tokens) and **mainnet** (real USDT and stock tokens). Prices, sessions, the Guard and news are live from
 mainnet in both: testnet only changes where the trade settles, at a quote signed with the live mainnet price. The agent wallet (`bag wallet new`) is the plan **executor**: the app passes
 it as `NEXT_PUBLIC_EXECUTOR`, and only it (or the owner) can `recordRun`. Connect Claude: `claude mcp add portir --transport
-http http://localhost:9000/mcp`.
+http https://agent.portir.xyz/mcp` (locally `http://localhost:9000/mcp`).
 
 Trading runs on **BSC mainnet only** (stock tokens have no testnet). `PlanRegistry` stays on testnet until the app is done,
 so the wallet is asked to switch network between Plans and Buy. Put `BINANCE_W3_API_KEY` / `BINANCE_W3_API_SECRET` in
@@ -51,6 +51,20 @@ so the wallet is asked to switch network between Plans and Buy. Put `BINANCE_W3_
 
 `www.binance.com` is DNS-blocked on Indonesian ISPs. Locally the catalog falls back to labelled sample prices unless you
 are on a VPN; `pnpm --filter @portir/core smoke` checks the live API.
+
+**What the agent automates.** Plans (recurring or "buy once when fair", stocks or baskets) funded from the owner's wallet
+through `PlanRegistry`; **sell rules** (take-profit / stop-loss, PlanRegistry v6: the agent pulls exactly the rule's shares
+once the live price crosses the trigger in market hours, sells, and sends the proceeds to the owner); a **news check**
+before every buy (the LLM reads the last 72h of headlines and may only hold the buy back, with its reason recorded
+on-chain; fail-open when no model answers); **Loan Guard** (below); and **Telegram reports** of every recorded outcome
+and rescue (`TELEGRAM_BOT_TOKEN`; users link from Profile via `t.me/<bot>?start=<address>`).
+
+**Brains.** Production chat runs on Pieverse through Agent Studio; `PORTIR_BRAIN=claude-cli` is for local development.
+Users can instead bring their own Claude over MCP (`https://agent.portir.xyz/mcp`), and run a fully self-custodial agent:
+Cowork's scheduler + Portir MCP + their own Binance Agentic Wallet skill (Profile → Run your own agent).
+
+**Hosting.** The agent runs in Docker on a VPS behind Caddy at `https://agent.portir.xyz` (fixed IP for the B402
+allowlist); see `apps/portiragent/deploy/`. One agent process per wallet.
 
 ### Loan Guard (stock-backed loans)
 
@@ -77,8 +91,7 @@ testnet (CAKE collateral) is kept in `deployments/venus-testnet.json`. Idea cred
 
 ## Backlog (decided, not started)
 
-- Executor agent on BNB Agent Studio signing through an Agentic Wallet session; then `NEXT_PUBLIC_EXECUTOR`.
-- `@portir/mcp`: the same engine as MCP tools (`search_stock`, `get_fair_price`, `market_window`, `quote_best_issuer`, `create_dca_plan`, `execute_buy`, `get_portfolio`).
+- Mainnet execution: plans already pull through `PlanRegistry` and deliver from the Agentic Wallet (`agentic-wallet` backend), untested until `PlanRegistry` is on mainnet; sell rules are testnet-only.
 - Move catalog reads from the public `www.binance.com` RWA API to the keyed one on `web3.binance.com`: not ISP-blocked,
   fewer calls, and its issuer list is the source of truth for what can be traded. Take the exchange price from
   `getRwaUnderlyingMarketData`, never from `getRwaTokenPrice.referencePrice` (see DEVEX_REPORT).

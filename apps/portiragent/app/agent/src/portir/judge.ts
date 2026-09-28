@@ -33,16 +33,18 @@ async function pieverse(prompt: string): Promise<string> {
   return text;
 }
 
+/** The last valid {"decision", "reason"} object: reasoning models think out loud first and may echo the format. */
 export function parseCall(raw: string): { wait: boolean; reason: string } | null {
-  const m = raw.match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  try {
-    const j = JSON.parse(m[0]) as { decision?: string; reason?: string };
-    if (j.decision !== "buy" && j.decision !== "wait") return null;
-    return { wait: j.decision === "wait", reason: String(j.reason ?? "").trim().slice(0, 160) };
-  } catch {
-    return null;
+  const candidates = raw.match(/\{[^{}]*"decision"[^{}]*\}/g) ?? [];
+  for (const c of candidates.reverse()) {
+    try {
+      const j = JSON.parse(c) as { decision?: string; reason?: string };
+      if (j.decision === "buy" || j.decision === "wait") return { wait: j.decision === "wait", reason: String(j.reason ?? "").trim().slice(0, 160) };
+    } catch {
+      // the echoed format, or a half-written object: try the previous one
+    }
   }
+  return null;
 }
 
 /** Should the buy of `tickers` wait for the news? Returns null when the check could not run (then: buy). */
@@ -61,7 +63,7 @@ export async function newsCheck(tickers: string[]): Promise<NewsCall | null> {
     const raw = process.env.PORTIR_BRAIN === "claude-cli" ? await claudeCli(prompt) : await pieverse(prompt);
     const parsed = parseCall(raw);
     if (!parsed) {
-      log(`${key}: unreadable answer, buying on the Guard alone`);
+      log(`${key}: unreadable answer, buying on the Guard alone (…${raw.slice(-160).replace(/\s+/g, " ")})`);
       return null;
     }
     const call = { ...parsed, headlines: count };
@@ -80,5 +82,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   assert.deepEqual(parseCall('{"decision":"buy","reason":"Nothing unusual."}'), { wait: false, reason: "Nothing unusual." });
   assert.equal(parseCall('{"decision":"maybe"}'), null);
   assert.equal(parseCall("no json"), null);
+  assert.deepEqual(parseCall('Format: {"decision":"buy"|"wait","reason":"..."}\nThinking...\n{"decision":"wait","reason":"Delivery report Thursday."}'), { wait: true, reason: "Delivery report Thursday." });
   console.log("judge ok");
 }
