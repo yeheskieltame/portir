@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <ModeProvider mode={mode}>
           <Nav />
           {/* Phone: one column with a tab bar. Desktop: sidebar + a wide content area. */}
-          <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pb-32 lg:ml-60 lg:max-w-none lg:px-10 lg:pb-16 xl:px-16">
+          <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 lg:ml-60 lg:max-w-none lg:px-10 lg:pb-16 xl:px-16">
             <header className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-paper px-4 py-4 lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:py-6">
               <a href={LANDING} className="text-2xl tracking-tight lg:invisible">
                 <Mark size={22} className="mr-2 inline-block align-[-2px]" />Port<span className="serif-italic text-[1.2em]">ir</span>
@@ -42,7 +42,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <ConnectButton />
               </div>
             </header>
-            <main className="flex-1 lg:mx-auto lg:w-full lg:max-w-6xl">{children}</main>
+            {/* Phone: content sits in a sheet rounded only on top, running to the bottom edge. */}
+            <main className="-mx-2 flex-1 rounded-t-[28px] border border-b-0 border-line bg-white/[0.025] px-3 pb-32 pt-5 lg:mx-auto lg:w-full lg:max-w-6xl lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0">{children}</main>
           </div>
           </ModeProvider>
         </Providers>
