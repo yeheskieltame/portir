@@ -1,0 +1,35 @@
+# Portir agent + Caddy (HTTPS). Run from the repo root on the VPS:
+#   docker compose -f apps/portiragent/deploy/compose.yaml up -d --build
+services:
+  agent:
+    build:
+      context: ../../..
+      dockerfile: apps/portiragent/deploy/Dockerfile
+    restart: unless-stopped
+    env_file: ../.studio/.env.local
+    environment:
+      # The free chat face runs on the operator's Claude: cap it for the whole process.
+      SELLER_RATE_LIMIT_GLOBAL_MAX_REQUESTS: "20"
+      SELLER_RATE_LIMIT_WINDOW_SECONDS: "60"
+    volumes:
+      - ../.studio:/app/apps/portiragent/.studio
+      - claude:/claude # `docker compose exec agent claude` once to log in
+    expose: ["9000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9000/ping').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [agent]
+
+volumes:
+  claude:
+  caddy_data:
