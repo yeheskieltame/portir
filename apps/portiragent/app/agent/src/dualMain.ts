@@ -198,7 +198,8 @@ const PORTIR_SYSTEM =
 export function buildRunWork(): RunWork {
   // Local-development brain: the operator's Claude Code answers, with this agent's MCP tools.
   if (process.env.PORTIR_BRAIN === "claude-cli") {
-    return async (prompt, { abortSignal }) => cleanAnswer(await claudeCliWork(prompt, PORTIR_SYSTEM, abortSignal));
+    // The public /x402 face is free: cap the prompt so one caller cannot spend the operator's Claude quota on a novel.
+    return async (prompt, { abortSignal }) => cleanAnswer(await claudeCliWork(prompt.slice(0, 2000), PORTIR_SYSTEM, abortSignal));
   }
   // The model is resolved LAZILY on first delivery, not at boot: a seller
   // with no provider key yet must still serve negotiate (which never calls

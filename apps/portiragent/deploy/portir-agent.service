@@ -1,0 +1,21 @@
+# /etc/systemd/system/portir-agent.service — the Portir agent (plans, sell rules, Loan Guard, Telegram, MCP, chat).
+# `bag dev` loads .studio/.env.local, unlocks the keystore and serves on 127.0.0.1:9000; Caddy fronts it with HTTPS.
+[Unit]
+Description=Portir agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=portir
+WorkingDirectory=/opt/portir/apps/portiragent
+ExecStart=/usr/bin/env bag dev
+Restart=always
+RestartSec=10
+Environment=NODE_OPTIONS=
+Environment=PATH=/home/portir/.npm-global/bin:/usr/local/bin:/usr/bin:/bin
+# The free chat face runs on the operator's Claude: cap it for the whole process.
+Environment=SELLER_RATE_LIMIT_GLOBAL_MAX_REQUESTS=20
+Environment=SELLER_RATE_LIMIT_WINDOW_SECONDS=60
+
+[Install]
+WantedBy=multi-user.target

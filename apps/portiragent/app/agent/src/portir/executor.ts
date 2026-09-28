@@ -96,13 +96,15 @@ const executionEnabled = () => backend() !== "off";
 
 export async function scanOnce(): Promise<void> {
   const n = await planCount();
+  // Only plans that name this agent as executor: anything else would revert on-chain anyway.
+  const me = ((await import("@bnbagent/studio-runtime/wallet")).getWallet().address as string).toLowerCase();
   const now = Math.floor(Date.now() / 1000);
   const due: number[] = [];
   for (let i = 0; i < n; i++) {
     const id = BigInt(i);
     try {
       const plan = await getPlan(id);
-      if (!plan.active || plan.nextRunAt > now) continue;
+      if (!plan.active || plan.nextRunAt > now || plan.executor.toLowerCase() !== me) continue;
       due.push(i);
       const rule = await sellRuleOf(id);
       await (rule ? runSell(id, plan, rule) : runPlan(id, plan, now));
