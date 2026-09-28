@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <Nav />
           {/* Phone: one column with a tab bar. Desktop: sidebar + a wide content area. */}
           <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pb-32 lg:ml-60 lg:max-w-none lg:px-10 lg:pb-16 xl:px-16">
-            <header className="flex items-center justify-between py-4 lg:py-6">
+            <header className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-paper px-4 py-4 lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:py-6">
               <a href={LANDING} className="text-2xl tracking-tight lg:invisible">
                 <Mark size={22} className="mr-2 inline-block align-[-2px]" />Port<span className="serif-italic text-[1.2em]">ir</span>
               </a>

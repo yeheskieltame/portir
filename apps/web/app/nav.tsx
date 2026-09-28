@@ -27,12 +27,13 @@ export function Nav() {
   const index = TABS.findIndex((t) => (t.href === "/" ? path === "/" || path.startsWith("/stock/") || path.startsWith("/basket/") : path.startsWith(t.href)));
   return (
     <>
-      <nav className="glass fixed bottom-4 left-1/2 z-20 grid w-[calc(100%-2rem)] max-w-[calc(28rem-2rem)] -translate-x-1/2 grid-cols-5 rounded-full p-1.5 lg:hidden">
+      {/* Solid and light on phones so it never blends into the content scrolling behind it. */}
+      <nav className="fixed bottom-4 left-1/2 z-20 grid w-[calc(100%-2rem)] max-w-[calc(28rem-2rem)] -translate-x-1/2 grid-cols-5 rounded-full bg-white p-1.5 shadow-[0_12px_40px_rgba(0,0,0,.45)] lg:hidden">
         {index >= 0 && (
-          <span aria-hidden className="absolute inset-y-1.5 w-[calc(20%-0.375rem)] rounded-full bg-white/[0.14] shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_0_24px_rgba(97,166,246,.25)] transition-[left] duration-500 ease-[cubic-bezier(.22,1,.36,1)]" style={{ left: `calc(${index} * 20% + 0.375rem)` }} />
+          <span aria-hidden className="absolute inset-y-1.5 w-[calc(20%-0.375rem)] rounded-full bg-black transition-[left] duration-500 ease-[cubic-bezier(.22,1,.36,1)]" style={{ left: `calc(${index} * 20% + 0.375rem)` }} />
         )}
         {TABS.map((t, i) => (
-          <Link key={t.href} href={t.href} className={`relative flex flex-col items-center gap-1 rounded-full py-2 text-[11px] transition-[transform,color] duration-300 active:scale-90 ${i === index ? "text-white" : "text-muted"}`}>
+          <Link key={t.href} href={t.href} className={`relative flex flex-col items-center gap-1 rounded-full py-2 text-[11px] transition-[transform,color] duration-300 active:scale-90 ${i === index ? "text-white" : "text-black/55"}`}>
             <Icon d={t.d} on={i === index} />
             {t.label}
           </Link>
