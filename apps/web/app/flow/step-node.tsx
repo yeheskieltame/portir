@@ -6,7 +6,7 @@ import type { Brand, Status, StepKind, StepNode } from "./model";
 
 /* eslint-disable @next/next/no-img-element -- tiny static logos inside a canvas; next/image adds nothing here */
 function BrandImg({ b, size }: { b: Brand; size: number }) {
-  return <img src={b.src} alt="" width={size} height={size} className="rounded-full bg-white/90 object-contain" style={{ width: size, height: size, padding: b.src.endsWith(".svg") ? size * 0.14 : 0 }} />;
+  return <img src={b.src} alt="" width={size} height={size} referrerPolicy="no-referrer" className="rounded-full bg-white/90 object-contain" style={{ width: size, height: size, padding: b.src.endsWith(".svg") ? size * 0.14 : 0 }} />;
 }
 
 const ICON: Record<StepKind, string> = {

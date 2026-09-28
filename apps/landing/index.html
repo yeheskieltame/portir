@@ -85,6 +85,36 @@ body{overflow-x:hidden}
 .gfig figcaption span{display:block;margin-top:8px;max-width:26ch;color:rgba(255,255,255,.78);font-size:14px;line-height:1.4}
 .gcard h3{margin:22px 4px 6px;font-size:19px;font-weight:500;line-height:1.2;letter-spacing:-.01em}
 .gcard p{max-width:360px;margin:0 4px;color:rgba(255,255,255,.55);font-size:15px;line-height:1.45}
+.plans{background:radial-gradient(circle at 12% 18%,rgba(97,166,246,.10),transparent 24rem)}
+.loans{max-width:none;background:radial-gradient(circle at 86% 30%,rgba(255,176,64,.06),transparent 26rem)}
+.loans .guard-heading,.loan-wide{width:min(100%,1240px);margin-inline:auto}
+.loan-wide{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(20px,3vw,40px);align-items:stretch}
+.gfig.loan-fig{aspect-ratio:auto;min-height:420px}
+.loan-copy{display:flex;flex-direction:column;justify-content:center}
+.loan-points{list-style:none;margin:0;padding:0;display:grid;gap:18px}
+.loan-points li{color:rgba(255,255,255,.6);font-size:16px;line-height:1.45;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.08)}
+.loan-points b{display:block;color:#fff;font-weight:500;font-size:18px;margin-bottom:4px}
+.loan-label{display:flex;align-items:center;gap:8px;margin:28px 0 12px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.loan-label img{width:18px;height:18px;border-radius:50%}
+.loan-stocks{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.loan-stocks li{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.1);border-radius:16px}
+.loan-stocks img{width:28px;height:28px;border-radius:50%;object-fit:cover}
+.loan-stocks span{flex:1;font-size:15px}
+.loan-stocks small{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--muted)}
+.loan-note{margin:12px 0 0;font-size:13px;color:rgba(255,255,255,.45);line-height:1.45}
+.flows{max-width:1240px}
+.flow-frame{margin:0 0 28px;border:1px solid var(--line);border-radius:28px;background:#060a12;overflow:hidden}
+.flow-frame figcaption{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;border-bottom:1px solid rgba(255,255,255,.08);font-size:15px;color:var(--muted)}
+.flow-frame figcaption b{color:#fff;font-weight:500;margin-right:8px}
+.flow-frame figcaption a{flex-shrink:0;color:#fff;text-decoration:none;font-size:14px;border:1px solid var(--line);border-radius:99px;padding:8px 14px}
+.flow-frame figcaption a:hover{background:#fff;color:#000}
+.flow-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.flow-scroll img{display:block;width:100%;height:auto}
+.flow-hint{display:none;margin:-12px 0 0;font-size:13px;color:var(--muted)}
+.tile img.brand.svg{background:#fff;border-radius:16px;padding:10px;box-sizing:border-box}
+.tile i.mono{--c:#fff;font:600 20px/1 "Geist Mono",ui-monospace,monospace;letter-spacing:.02em;border:1px solid rgba(255,255,255,.3);background:transparent}
+@media (max-width:900px){.loan-wide{grid-template-columns:minmax(0,1fr)}.gfig.loan-fig{min-height:0;aspect-ratio:4/3}}
+@media (max-width:560px){.loan-fig figcaption strong{font-size:44px}.loan-stocks{grid-template-columns:1fr}.flow-frame figcaption{flex-direction:column;align-items:flex-start;gap:12px}.flow-scroll img{width:900px;max-width:none}.flow-hint{display:block}}
 #stack{padding-bottom:0}
 .ring-scene{position:relative;height:420px;overflow:hidden;perspective:1400px;cursor:grab;user-select:none;touch-action:pan-y}
 .ring-scene:active{cursor:grabbing}
@@ -146,8 +176,10 @@ html,body,a,button{cursor:none!important}
   <div class="header-actions">
     <nav class="nav-pill">
       <a class="active" href="#guard">How it works</a>
+      <a href="#plans">Plans</a>
+      <a href="#loans">Loans</a>
+      <a href="#flows">Flows</a>
       <a href="#stack">Stack</a>
-      <a href="#demo">Demo</a>
     </nav>
     <a class="open-app" data-app-link href="#">Open app</a>
   </div>
@@ -161,7 +193,7 @@ html,body,a,button{cursor:none!important}
     <div class="content-layer">
       <section class="content-state hero" data-state="hero">
         <h1><span class="title-line"><span class="word" style="--word-index:0">Own</span> <span class="word" style="--word-index:1">US</span> <span class="word" style="--word-index:2">stocks</span> <span class="word" style="--word-index:3">on</span> <span class="word" style="--word-index:4">BNB</span> <span class="word" style="--word-index:5">Chain.</span></span><span class="title-line italic"><span class="word" style="--word-index:6">Bought</span> <span class="word" style="--word-index:7">at</span> <span class="word" style="--word-index:8">a</span> <span class="word" style="--word-index:9">fair</span> <span class="word" style="--word-index:10">price.</span></span></h1>
-        <div class="copy"><p>Portir checks the US market session and compares the on-chain price to the exchange before every order. Stocks, not tokens. No slippage settings, no seed phrases.</p><a class="cta" data-app-link href="#">Start with $10</a></div>
+        <div class="copy"><p>Portir checks the US market session and the exchange price before every order, runs your plans only when the price is fair, and keeps loans against your stocks out of liquidation. Stocks, not tokens.</p><a class="cta" data-app-link href="#">Start with $10</a></div>
       </section>
       <section class="content-state mid" data-state="mid">
         <h1><span class="title-line"><span class="word">It's</span> <span class="word">3 AM</span> <span class="word">in</span> <span class="word">Jakarta.</span></span><span class="title-line italic"><span class="word">Wall</span> <span class="word">Street</span> <span class="word">is</span> <span class="word">asleep.</span></span></h1>
@@ -169,11 +201,11 @@ html,body,a,button{cursor:none!important}
       </section>
       <div class="cards" data-state="cards">
         <article class="glass-card left"><h2>The <em>Guard</em></h2><p>Session check, fair-price check, and the cheapest issuer across Ondo and bStocks. Above a 1% premium, the order is blocked and you are offered a better window.</p></article>
-        <article class="glass-card right"><h2>Smart <em>timing</em></h2><p>Set $50 a week. An agent on BNB Agent Studio waits up to 48 hours for the market to open and the price to be fair, then tells you why it bought.</p></article>
+        <article class="glass-card right"><h2>The <em>agent</em></h2><p>An agent on BNB Agent Studio runs your plans when the market is open and the price is fair, and repays your stock loan from your own buffer before it can be liquidated.</p></article>
       </div>
       <section class="content-state final" data-state="final">
         <h1><span class="title-line"><span class="word">Same</span> <span class="word">brain,</span></span><span class="title-line italic"><span class="word">every</span> <span class="word">surface.</span></span></h1>
-        <div class="copy"><p>The app, an MCP server for Claude, and the executor agent all run one engine. Plans and their reasons live on-chain, readable by anyone.</p><a class="cta" data-app-link href="#">Open the app</a></div>
+        <div class="copy"><p>The app, an MCP server for Claude, and the agent all run one engine. Plans, rescues and their reasons live on-chain, readable by anyone.</p><a class="cta" data-app-link href="#">Open the app</a></div>
       </section>
     </div>
   </div>
@@ -218,27 +250,117 @@ html,body,a,button{cursor:none!important}
     </div>
   </section>
 
+  <section class="section guard plans" id="plans">
+    <div class="guard-heading">
+      <div>
+        <p class="eyebrow">Plans</p>
+        <h2>Set it once. <em>The agent waits for you.</em></h2>
+      </div>
+      <p>Pick a stock or a basket and an amount. Every 15 minutes the agent checks the market; it buys only when the exchange is open and the price is fair, pays from your wallet through PlanRegistry, and writes one sentence on BSC about why.</p>
+    </div>
+    <div class="gcards">
+      <article class="gcard">
+        <figure class="gfig">
+          <img src="img/plans-1.jpg" alt="An office window before dawn over a quiet financial district">
+          <span class="gpill">Waits for the open</span>
+          <figcaption><strong>48h</strong><span>A weekly plan can wait up to two days for a fair price.</span></figcaption>
+        </figure>
+        <h3>Smart timing</h3>
+        <p>Due at 3 AM in Jakarta? The agent holds until New York opens and the on-chain price is back within 0.5% of the exchange.</p>
+      </article>
+      <article class="gcard">
+        <figure class="gfig">
+          <img src="img/plans-2.jpg" alt="A single chess pawn in a narrow beam of light">
+          <span class="gpill">One order, then done</span>
+          <figcaption><strong>7 days</strong><span>Watched every 15 minutes until the price is fair.</span></figcaption>
+        </figure>
+        <h3>Buy when it's fair</h3>
+        <p>Blocked because the premium is too high? Leave a one-time order. The agent buys once the moment it clears, then the order closes.</p>
+      </article>
+      <article class="gcard">
+        <figure class="gfig">
+          <img src="img/ai-semis.jpg" alt="A silicon wafer with a glowing chip">
+          <span class="gpill">AI &amp; Semis · Big Tech · Dividends · US market</span>
+          <figcaption><strong>6 holdings</strong><span>One guarded swap per holding, fixed weights.</span></figcaption>
+        </figure>
+        <h3>Baskets</h3>
+        <p>Four curated baskets. The agent never takes more than the plan amount per run, and your shares land in your own wallet.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section loans" id="loans">
+    <div class="guard-heading">
+      <div>
+        <p class="eyebrow">Loan Guard</p>
+        <h2>Borrow against your stocks, <em>without liquidation.</em></h2>
+      </div>
+      <p>Put your stocks to work as collateral and borrow USDT. If the price drops, the agent repays part of the loan from your own safety buffer before you get anywhere near liquidation.</p>
+    </div>
+    <div class="loan-wide">
+      <figure class="gfig loan-fig">
+        <img src="img/loans.jpg" alt="A vault door slightly open, a line of warm light on the floor">
+        <span class="gpill">Checked every 5 minutes</span>
+        <figcaption><strong>85.7% → 60%</strong><span>A real rescue on testnet: back to the target in one repayment.</span></figcaption>
+      </figure>
+      <div class="loan-copy">
+        <ul class="loan-points">
+          <li><b>Only past your trigger.</b> The LoanGuard contract re-checks the position on-chain before anything moves.</li>
+          <li><b>From your own buffer.</b> Money goes from your wallet straight to the lender, never through the agent.</li>
+          <li><b>Capped.</b> At most your limit per rescue, at most once per cooldown.</li>
+        </ul>
+        <p class="loan-label"><img src="logos/venus.png" alt="">Collateral Venus accepts on BNB Chain</p>
+        <ul class="loan-stocks">
+          <li><img src="logos/stock-nvda.png" alt=""><span>NVIDIA</span><small>60% · 70%</small></li>
+          <li><img src="logos/stock-tsla.png" alt=""><span>Tesla</span><small>60% · 70%</small></li>
+          <li><img src="logos/stock-spcx.png" alt=""><span>SpaceX</span><small>50% · 65%</small></li>
+          <li><img src="logos/stock-skhy.png" alt=""><span>SK Hynix</span><small>50% · 65%</small></li>
+        </ul>
+        <p class="loan-note">Borrow limit · liquidation threshold. Testnet runs on a Venus-compatible pool with the same stocks and limits.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section flows" id="flows">
+    <div class="guard-heading">
+      <div>
+        <p class="eyebrow">See what the agent does</p>
+        <h2>Every step, <em>on one screen.</em></h2>
+      </div>
+      <p>Each plan and each loan has its own flow in the app. Every node is a real step the agent takes; the last run lights up where it stopped, with the reason in plain words.</p>
+    </div>
+    <figure class="flow-frame">
+      <figcaption><span><b>A basket plan</b> AI &amp; Semis, $100 a week: checks, funds, six buys, delivered, recorded.</span><a data-app-link data-app-path="/plans/13" href="#">Open the live flow →</a></figcaption>
+      <div class="flow-scroll"><img src="img/flow-plan.jpg" alt="Flow of a basket plan: trigger, basket, NYSE open, fair price, funds, six buys, deliver, record" width="2144" height="1122"></div>
+    </figure>
+    <figure class="flow-frame">
+      <figcaption><span><b>Loan Guard</b> Every 5 minutes: read the loan, past 80%?, repay from the buffer, back to 60%, recorded.</span><a data-app-link data-app-path="/loans" href="#">Open the live flow →</a></figcaption>
+      <div class="flow-scroll"><img src="img/flow-loan.jpg" alt="Flow of Loan Guard: every 5 minutes, read the loan, past the trigger, repay from the buffer, back to target, record" width="1536" height="762"></div>
+    </figure>
+    <p class="flow-hint">Swipe to follow the flow →</p>
+  </section>
+
   <section class="section" id="stack">
     <p class="eyebrow">Built on the BNB stack</p>
     <h2>Every piece of the chain, <em>doing one job.</em></h2>
-    <p class="lead">Drag to spin.</p>
+    <p class="lead">Market data and trades from Binance, liquidity from PancakeSwap, stocks from Ondo, bStocks and xStocks, loans on Venus, the agent on BNB Agent Studio. Drag to spin.</p>
   </section>
-  <div class="ring-scene" aria-label="BNB stack: BNB Smart Chain, Agent Studio, Binance Web3 Wallet, Agentic Wallet, PancakeSwap, LiquidMesh, Ondo, bStocks, xStocks, MCP, Claude, b402, USDT, BscScan">
+  <div class="ring-scene" aria-label="BNB stack: BNB Chain, BNB Agent Studio, Binance RWA and Trading API, Agentic Wallet, Venus, PancakeSwap, LiquidMesh, Ondo, bStocks, xStocks, USDT, b402, BscScan, Claude via MCP">
     <div class="ring">
-      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/bnbchain.svg"><span>BNB Smart Chain</span></div>
-      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/bnbchain.svg"><span>BNB Agent Studio</span></div>
-      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/binance.svg"><span>Binance Web3 Wallet</span></div>
-      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/binance.svg"><span>Agentic Wallet</span></div>
+      <div class="tile"><img class="brand" alt="" src="logos/bnb.png"><span>BNB Chain</span></div>
+      <div class="tile"><img class="brand svg" alt="" src="logos/bnbchain.svg"><span>BNB Agent Studio</span></div>
+      <div class="tile"><img class="brand svg" alt="" src="logos/binance.svg"><span>Binance RWA + Trading API</span></div>
+      <div class="tile"><img class="brand svg" alt="" src="logos/binance.svg"><span>Agentic Wallet</span></div>
+      <div class="tile"><img class="brand" alt="" src="logos/venus.png"><span>Venus</span></div>
       <div class="tile"><img class="brand" alt="" src="logos/pancakeswap.png"><span>PancakeSwap</span></div>
       <div class="tile"><img class="brand wide" alt="" src="logos/liquidmesh.svg"><span>LiquidMesh</span></div>
       <div class="tile"><img class="brand" alt="" src="logos/ondo.png"><span>Ondo</span></div>
       <div class="tile"><img class="brand wide" alt="" src="logos/bstocks.svg"><span>bStocks</span></div>
       <div class="tile"><img class="brand wide" alt="" src="logos/xstocks.png"><span>xStocks</span></div>
-      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/modelcontextprotocol.svg"><span>MCP</span></div>
-      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/claude.svg"><span>Claude</span></div>
+      <div class="tile"><img class="brand" alt="" src="logos/usdt.png"><span>USDT</span></div>
       <div class="tile"><img class="brand wide" alt="" src="logos/b402.png"><span>b402</span></div>
-      <div class="tile"><img alt="" src="https://cdn.jsdelivr.net/npm/simple-icons@15/icons/tether.svg"><span>USDT</span></div>
       <div class="tile"><img class="brand onlight" alt="" src="logos/bscscan.png"><span>BscScan</span></div>
+      <div class="tile"><i class="mono">MCP</i><span>Claude via MCP</span></div>
     </div>
   </div>
 
@@ -256,14 +378,14 @@ html,body,a,button{cursor:none!important}
     <div class="footer-top">
       <div>
         <div class="wordmark">Port<em>ir</em></div>
-        <p>US stocks on BNB Chain, bought at a fair price.</p>
+        <p>US stocks on BNB Chain, bought at a fair price, borrowed against safely.</p>
       </div>
       <a class="open-app" data-app-link href="#">Open app</a>
     </div>
     <div class="footer-cols">
-      <div><h4>Product</h4><a href="#guard">How it works</a><a href="#stack">Stack</a><a href="#demo">Demo</a><a data-app-link href="#">Open app</a></div>
-      <div><h4>Surfaces</h4><span>Web app</span><span>MCP server for Claude</span><span>Executor agent on Agent Studio</span></div>
-      <div><h4>On-chain</h4><a href="https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b" target="_blank" rel="noopener">PlanRegistry on BscScan</a><span>BSC testnet · mainnet next</span></div>
+      <div><h4>Product</h4><a href="#guard">How it works</a><a href="#plans">Plans</a><a href="#loans">Loan Guard</a><a href="#flows">Flows</a><a data-app-link href="#">Open app</a></div>
+      <div><h4>Build</h4><a data-app-link data-app-path="/profile" href="#">MCP server for Claude</a><span>Agent on BNB Agent Studio</span><span>Web app</span></div>
+      <div><h4>On-chain</h4><a href="https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code" target="_blank" rel="noopener">PlanRegistry on BscScan</a><a href="https://testnet.bscscan.com/address/0xa33fDbd747d95bD733172D9D7c4d6c50CcE33f61#code" target="_blank" rel="noopener">LoanGuard on BscScan</a><span>BSC testnet · mainnet next</span></div>
       <div><h4>Hackathon</h4><span>BNB Hack: Tokenized Stocks Edition</span><span>Main track · Agentic Wallet · Agent Studio</span></div>
     </div>
     <div class="giant" aria-hidden="true">Port<em>ir</em></div>
@@ -278,7 +400,17 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 const APP_URL = location.hostname === "localhost" || location.hostname === "127.0.0.1" ? "http://localhost:3000"
   : location.hostname.endsWith("vercel.app") ? "https://portir-app.vercel.app"
   : "https://app." + location.hostname.replace(/^www\./, "");
-document.querySelectorAll("[data-app-link]").forEach((a) => (a.href = APP_URL));
+document.querySelectorAll("[data-app-link]").forEach((a) => (a.href = APP_URL + (a.dataset.appPath ?? "")));
+
+// Nav follows the section in view.
+{
+  const links = [...document.querySelectorAll(".nav-pill a")];
+  const byId = new Map(links.map((a) => [a.getAttribute("href").slice(1), a]));
+  const spy = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting && byId.has(e.target.id)) links.forEach((a) => a.classList.toggle("active", a === byId.get(e.target.id)));
+  }, { rootMargin: "-30% 0px -60% 0px" });
+  byId.forEach((_, id) => { const el = document.getElementById(id); if (el) spy.observe(el); });
+}
 
 const states = {
   hero: { enter: [0, 0], exit: [0.16, 0.28] },

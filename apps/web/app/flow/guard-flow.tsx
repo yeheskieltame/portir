@@ -14,7 +14,7 @@ const VENUS_MAINNET = { src: "/logos/venus.png", name: "Venus (mainnet)" };
 export function GuardFlow({ triggerPct, targetPct, cap, lastRescue, collateral }: { triggerPct: number; targetPct: number; cap: string; lastRescue?: { amount: string; before: number; after: number; at: number }; collateral?: { ticker: string; icon: string | null } }) {
   const stock = collateral?.icon ? { src: collateral.icon, name: collateral.ticker } : undefined;
   const rescued = !!lastRescue;
-  const X = 270, Y = 175;
+  const X = 270, Y = 215; // rows leave room for the via row, which wraps when the collateral logo joins it
   const node = (id: string, kind: StepKind, x: number, y: number, data: Partial<StepData>): StepNode => ({
     id,
     type: "step",
