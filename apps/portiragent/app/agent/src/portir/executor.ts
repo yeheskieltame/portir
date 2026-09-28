@@ -42,11 +42,11 @@ const log = (msg: string) => console.log(`[portir.executor] ${msg}`);
 type Execute = (amount: number, ticker: string, owner: Address) => Promise<{ txHash: Hex; note: string }>;
 
 /**
- * `agentic-wallet`: quote through the user's Binance Agentic Wallet, re-run the
- * Guard on the executable price, then swap and wait for the order to finish.
- * The wallet's own daily limit and token scope bound what this can do.
+ * `agentic-wallet` (mainnet): the run's money is already in the operator's Binance Agentic Wallet (pulled through
+ * PlanRegistry, then forwarded). Quote, re-run the Guard on the executable price, swap, and send the shares to the
+ * owner. The wallet's own daily limit and token scope bound what this can do.
  */
-const viaAgenticWallet: Execute = async (amount, ticker, _owner) => {
+const viaAgenticWallet: Execute = async (amount, ticker, owner) => {
   const a = await assess(ticker);
   const offer = a.view.offers.find((o) => !o.halted && !(o.spreadBps !== null && isSuspectDiscount(o.spreadBps)));
   if (!offer) throw new Error("no tradable issuer");
@@ -57,7 +57,9 @@ const viaAgenticWallet: Execute = async (amount, ticker, _owner) => {
     if (d.verdict === "BLOCK") throw new Error(`executable price failed the Guard: ${d.reason}`);
   }
   const { txHash } = await aw.swap(offer.contractAddress, amount);
-  return { txHash: (txHash || `0x${"0".repeat(64)}`) as Hex, note: `Bought ≈${(q.tokensOut * offer.multiplier).toFixed(4)} shares from ${offer.issuer} at $${pricePerShare.toFixed(2)} via Agentic Wallet.` };
+  // ponytail: "max" of this token is this order's output because runs execute one at a time; per-order amounts if that changes.
+  await aw.send(offer.contractAddress, owner, "max");
+  return { txHash: (txHash || `0x${"0".repeat(64)}`) as Hex, note: `Bought ≈${(q.tokensOut * offer.multiplier).toFixed(4)} shares from ${offer.issuer} at $${pricePerShare.toFixed(2)} via Agentic Wallet, sent to your wallet.` };
 };
 
 /** `testnet`: same live price and Guard as mainnet; the owner's tUSDT buys on the TestExchange and the shares go to the owner. */
@@ -156,18 +158,18 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
     const bought: string[] = [];
     const failed: string[] = [];
     let txHash: Hex | undefined;
-    // Testnet: the owner's money moves through PlanRegistry, which caps it at the plan amount for this run.
-    const tn = backend() === "testnet" ? await import("./testnet.js") : null;
-    let unspent = 0;
-    if (tn) {
-      const problem = await tn.fundingProblem(plan.owner, total);
-      if (problem) {
-        await record(plan.owner, id, "Waited", spread, `Ready to buy, but: ${problem}`, last);
-        return;
-      }
-      await tn.pullFunds(id, total);
-      unspent = total;
+    // The owner's money moves through PlanRegistry, which caps it at the plan amount for this run.
+    // Mainnet: it is then forwarded to the Agentic Wallet, which swaps and sends the shares to the owner.
+    const fd = await import("./funding.js");
+    const problem = await fd.fundingProblem(plan.owner, total);
+    if (problem) {
+      await record(plan.owner, id, "Waited", spread, `Ready to buy, but: ${problem}`, last);
+      return;
     }
+    await fd.pullFunds(id, total);
+    let unspent = total;
+    const awAddress = backend() === "agentic-wallet" ? ((await aw.bscAddress()) as Address) : null;
+    if (awAddress) await fd.forward(awAddress, total);
     // One guarded swap per leg, in sequence. A failed leg is reported, not retried next tick (that would double-buy the others).
     for (const l of legs) {
       const slice = Math.floor(total * l.weight * 100) / 100;
@@ -184,9 +186,11 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
         failed.push(`${l.ticker}: ${e instanceof Error ? e.message : e}`);
       }
     }
-    if (tn && unspent >= 0.01) {
+    if (unspent >= 0.01) {
+      const back = Math.floor(unspent * 100) / 100;
       try {
-        await tn.returnFunds(id, Math.floor(unspent * 100) / 100);
+        if (awAddress) await aw.send(aw.USDT, await fd.agentAddress(), back);
+        await fd.returnFunds(id, back);
       } catch (e) {
         log(`plan ${id}: could not return $${unspent.toFixed(2)} unspent: ${e instanceof Error ? e.message : e}`);
       }

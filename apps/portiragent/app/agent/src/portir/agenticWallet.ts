@@ -86,3 +86,10 @@ export async function swap(token: string, usdt: number, timeoutMs = 90_000): Pro
   }
   throw new Error(`Agentic Wallet order ${orderId} still pending after ${timeoutMs / 1000}s`);
 }
+
+/** Send a token from the Agentic Wallet; `max` sends its whole balance of that token. Returns the tx hash. */
+export async function send(token: string, recipient: string, amount: number | "max"): Promise<string> {
+  const qty = amount === "max" ? ["--max"] : ["--amount", String(amount)];
+  const d = await baw<{ txHash?: string; hash?: string }>("wallet", "send", "--binanceChainId", BSC, "--tokenAddress", token, "--recipient", recipient, ...qty);
+  return d.txHash ?? d.hash ?? "";
+}

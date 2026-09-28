@@ -20,6 +20,7 @@ export const planRegistryAbi = parseAbi([
   "function runsOf(uint256 planId) view returns (Run[])",
   "function pullFunds(uint256 planId, uint128 amount)",
   "function returnFunds(uint256 planId, uint128 amount)",
+  "function fundingToken() view returns (address)",
   "struct SellRule { address token; uint128 triggerPrice; bool below; }",
   "function sellRuleOf(uint256 planId) view returns (SellRule)",
   "function pullShares(uint256 planId, uint128 amount)",

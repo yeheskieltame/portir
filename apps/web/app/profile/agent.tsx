@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { executorAddress } from "@/lib/planRegistry";
 
-// Unset until the agent is published (bag deploy); locally `bag dev` serves it on :9000.
+// Production: https://agent.portir.xyz (the agent's VPS). Locally `bag dev` serves it on :9000.
 const AGENT = process.env.NEXT_PUBLIC_AGENT_URL ?? (process.env.NODE_ENV === "development" ? "http://localhost:9000" : "");
 const MCP = AGENT ? `${AGENT}/mcp` : "";
 const U_TOKEN = "0xcE24439F2D9C6a2289F741120FE202248B666666"; // U on BSC mainnet, what Pieverse LLM credits are bought with
@@ -28,7 +28,7 @@ export function ConnectClaude() {
         Use your own Claude (or any MCP client) as the brain. The Portir agent serves the market data, the Guard and ready-to-sign transactions as tools; nothing is signed on your behalf.
       </p>
       {!MCP ? (
-        <p className="mt-4 rounded-2xl border border-dashed border-line px-3 py-2 text-xs text-muted">The agent is not published yet. Once it runs on BNB Agent Studio, its MCP address appears here.</p>
+        <p className="mt-4 rounded-2xl border border-dashed border-line px-3 py-2 text-xs text-muted">The agent address is not configured on this deployment.</p>
       ) : (
       <>
       <div className="glass mt-4 grid grid-cols-3 rounded-full p-1 text-xs font-medium">
@@ -45,6 +45,33 @@ export function ConnectClaude() {
         <p className="mt-2 font-mono leading-relaxed">{TOOLS.join(" · ")}</p>
         <p className="mt-2">Read tools are free. <code>prepare_*</code> return calldata for your wallet to sign.</p>
       </details>
+    </section>
+  );
+}
+
+const SKILL = "npx skills add binance/binance-skills-hub/skills/binance-web3/binance-agentic-wallet";
+const TASK = `Every weekday at 22:00 WIB: use the portir tools to check NVDA. If the market is open and get_fair_price says GO, quote $20 with quote_best_issuer and buy it with my Binance Agentic Wallet. If not, tell me why in one sentence.`;
+
+/** Self-custody: the user's own Claude runs the schedule and signs with the user's own Agentic Wallet; Portir only advises. */
+export function OwnAgent() {
+  return (
+    <section className="glass mt-4 rounded-3xl p-4">
+      <h2 className="text-lg">Run your own agent</h2>
+      <p className="mt-1 text-sm text-muted">
+        Prefer to keep every key yourself? Let your Claude run the schedule and trade from <b className="text-white">your</b> Binance Agentic Wallet. Portir gives it the fair-price check, news and quotes; it never touches your money.
+      </p>
+      <ol className="mt-4 space-y-3 text-sm">
+        <Step n={1}>Connect Portir to Claude (Cowork or Claude Code) with the snippet above.</Step>
+        <Step n={2}>
+          Add the Binance Agentic Wallet skill, then sign in with the QR code in the Binance App. Set the daily limit and allowed tokens there; the wallet enforces them.
+          <Copy text={SKILL} />
+        </Step>
+        <Step n={3}>
+          Create a scheduled task in Cowork with a prompt like:
+          <Copy text={TASK} />
+        </Step>
+      </ol>
+      <p className="mt-3 text-xs text-muted">Managed plans (this app) and your own agent can run side by side. Only the managed ones appear under Plans.</p>
     </section>
   );
 }
@@ -98,7 +125,7 @@ function Copy({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="mt-3 rounded-2xl border border-line bg-[#04070d]">
-      <pre className="overflow-x-auto p-3 font-mono text-[11px] leading-relaxed text-white/85">{text}</pre>
+      <pre className="whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-white/85">{text}</pre>
       <button onClick={() => navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1200); })} className="m-2 mt-0 rounded-full bg-white px-3 py-1 text-[11px] font-medium text-black">
         {copied ? "Copied" : "Copy"}
       </button>
