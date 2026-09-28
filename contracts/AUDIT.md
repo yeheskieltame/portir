@@ -95,3 +95,11 @@ prices and the stablecoin market stays at $1; only the pool can `seize`/`repayFo
 LoanGuard rescue after a price drop, liquidation math, repay-all and price auth). Deployed with 18 stock markets,
 all 22 contracts verified.
 
+
+## PlanRegistry v6: sell rules (2026-09-28)
+
+- `createSellRule` stores a one-time plan whose `amount` is shares of `SellRule.token`, plus the trigger price and direction. Storage: one mapping appended to the namespaced struct (`sellRules`); `Plan` is unchanged, since it lives in an array and must keep its size.
+- `pullShares` / `returnShares` reuse the per-run budget accounting of `pullFunds`: executor only, while active and due, at most `amount` shares in total. A sell rule can never pull the stablecoin, and a buy plan can never pull shares (`WrongPlanKind`, both directions tested).
+- The trigger is checked by the executor off-chain against the live exchange price, the same trust model as the Guard for buys: the contract bounds how much can move, not when. Proceeds are sent to the owner by the executor.
+- Allowances: the app approves the registry for `current allowance + shares`, so several rules on one stock do not overwrite each other.
+- Testnet: implementation `0x03A4C05c7a44A6B732a8D4CDa42C2a4A14Fe6806`, verified. End-to-end run: rule #14 sold 0.215 NVDA at $231.92 for $49.81 once NVDA crossed $230, then completed.

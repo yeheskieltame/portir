@@ -11,15 +11,23 @@
  *   Skipped   — the plan's window (48h after due) passed without a fair
  *               moment, or trading is halted, or execution is not enabled
  *
- * Decisions are deterministic (@portir/core thresholds). The LLM is not in
- * this loop. Signing is fixed code in registry.ts.
+ * Sell rules (take-profit / stop-loss) are one-time plans: when the stock's
+ * price crosses the trigger during market hours, the agent pulls the shares
+ * through PlanRegistry, sells them and sends the proceeds to the owner.
+ *
+ * Price and session decisions are deterministic (@portir/core thresholds).
+ * Before a buy the LLM reads the news and may only say "wait" (judge.ts).
+ * Signing is fixed code in registry.ts. Every recorded outcome is also sent
+ * to the owner's Telegram when linked (notify.ts).
  */
 import { type Address, formatUnits, type Hex } from "viem";
 import { guard, isSuspectDiscount } from "@portir/core";
 import { targetLegs } from "@portir/core/catalog";
 import * as aw from "./agenticWallet.js";
+import { newsCheck } from "./judge.js";
 import { assess } from "./market.js";
-import { OUTCOME, type Plan, decodeTarget, getPlan, planCount, recordRun, runsOf } from "./registry.js";
+import { notify } from "./notify.js";
+import { OUTCOME, type Plan, type SellRule, decodeTarget, getPlan, planCount, recordRun, runsOf, sellRuleOf } from "./registry.js";
 
 const SMART_WINDOW = 48 * 3600;
 const ONCE_WINDOW = 7 * 24 * 3600; // a one-time "buy when fair" order waits up to a week
@@ -96,7 +104,8 @@ export async function scanOnce(): Promise<void> {
       const plan = await getPlan(id);
       if (!plan.active || plan.nextRunAt > now) continue;
       due.push(i);
-      await runPlan(id, plan, now);
+      const rule = await sellRuleOf(id);
+      await (rule ? runSell(id, plan, rule) : runPlan(id, plan, now));
     } catch (e) {
       log(`plan ${i}: ${e instanceof Error ? e.message : e}`);
     }
@@ -110,7 +119,7 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
   const last = runs[runs.length - 1];
   const legs = targetLegs(target);
   if (!legs) {
-    await record(id, "Skipped", 0, `Unknown target ${target}.`, last);
+    await record(plan.owner, id, "Skipped", 0, `Unknown target ${target}.`, last);
     return;
   }
   const overdue = now - plan.nextRunAt;
@@ -132,7 +141,13 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
 
   if (fairEnough || (plan.smartTiming && windowOver && verdict === "WARN")) {
     if (!executionEnabled()) {
-      await record(id, "Skipped", spread, `Would buy now (${reason}) but execution is not enabled on this agent yet.`, last);
+      await record(plan.owner, id, "Skipped", spread, `Would buy now (${reason}) but execution is not enabled on this agent yet.`, last);
+      return;
+    }
+    // The LLM reads the headlines and may hold the buy back; past the window the schedule wins.
+    const nc = await newsCheck(legs.map((l) => l.ticker));
+    if (nc?.wait && !windowOver) {
+      await record(plan.owner, id, "Waited", spread, `Price is fair, but holding back for the news: ${nc.reason}`, last);
       return;
     }
     const total = Number(formatUnits(plan.amount, 18));
@@ -145,7 +160,7 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
     if (tn) {
       const problem = await tn.fundingProblem(plan.owner, total);
       if (problem) {
-        await record(id, "Waited", spread, `Ready to buy, but: ${problem}`, last);
+        await record(plan.owner, id, "Waited", spread, `Ready to buy, but: ${problem}`, last);
         return;
       }
       await tn.pullFunds(id, total);
@@ -175,22 +190,59 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
       }
     }
     if (bought.length === 0) {
-      await record(id, "Waited", spread, `Buy failed: ${failed.join("; ")}`, last);
+      await record(plan.owner, id, "Waited", spread, `Buy failed: ${failed.join("; ")}`, last);
       return;
     }
     const note = basket ? `Bought ${bought.length}/${legs.length} holdings.${failed.length ? ` Failed: ${failed.join("; ")}.` : ""}` : bought[0];
-    await record(id, "Executed", spread, `${reason} ${note}`.trim(), last, txHash);
+    await record(plan.owner, id, "Executed", spread, `${reason} ${note}${nc ? ` News checked: ${nc.reason}` : ""}`.trim(), last, txHash);
     return;
   }
   if (windowOver) {
-    await record(id, "Skipped", spread, `No fair moment in ${plan.once ? "7 days" : "48 hours"}. ${reason}`, last);
+    await record(plan.owner, id, "Skipped", spread, `No fair moment in ${plan.once ? "7 days" : "48 hours"}. ${reason}`, last);
     return;
   }
   const SESSION: Record<string, string> = { pre: "in pre-market", after: "in after-hours", closed: "closed" };
-  await record(id, "Waited", spread, plan.smartTiming && !open && verdict === "GO" ? `The market is ${SESSION[session] ?? "closed"} and the price is fair; waiting for the open.` : reason, last);
+  await record(plan.owner, id, "Waited", spread, plan.smartTiming && !open && verdict === "GO" ? `The market is ${SESSION[session] ?? "closed"} and the price is fair; waiting for the open.` : reason, last);
 }
 
-async function record(id: bigint, outcome: keyof typeof OUTCOME, spread: number, reason: string, last: { at: number; outcome: number } | undefined, txHash?: Hex) {
+/** A sell rule: watch the stock's real price; once it crosses the trigger in market hours, sell the shares for the owner. */
+async function runSell(id: bigint, plan: Plan, rule: SellRule): Promise<void> {
+  const ticker = decodeTarget(plan.target);
+  const trigger = Number(rule.triggerPrice) / 1e18;
+  const kind = rule.below ? "stop-loss" : "take-profit";
+  const runs = await runsOf(id);
+  const last = runs[runs.length - 1];
+  const a = await assess(ticker);
+  const ref = a.view.reference;
+  if (ref === null) return log(`sell #${id} ${ticker}: no price right now`);
+  const hit = rule.below ? ref <= trigger : ref >= trigger;
+  if (!hit) return log(`sell #${id} ${ticker}: $${ref.toFixed(2)}, ${kind} at $${trigger.toFixed(2)}; watching`);
+  if (a.view.session !== "open") return log(`sell #${id} ${ticker}: $${ref.toFixed(2)} crossed the ${kind}, waiting for the market to open`);
+  if (backend() !== "testnet") return log(`sell #${id} ${ticker}: trigger hit, but selling runs on testnet only for now`);
+
+  const tn = await import("./testnet.js");
+  const offer = a.view.offers.find((o) => !o.halted && !(o.spreadBps !== null && isSuspectDiscount(o.spreadBps)));
+  if (!offer) return log(`sell #${id} ${ticker}: no fair on-chain price to sell at`);
+  const problem = await tn.sharesProblem(plan.owner, rule.token, plan.amount);
+  if (problem) {
+    await record(plan.owner, id, "Waited", 0, `${ticker} hit your ${kind} at $${trigger.toFixed(2)}, but: ${problem}`, last);
+    return;
+  }
+  await tn.pullShares(id, plan.amount);
+  try {
+    const { txHash, usdt } = await tn.sellOnTestnet(plan.owner, ticker, plan.amount, offer.onchain);
+    const shares = Number(plan.amount) / 1e18;
+    await record(plan.owner, id, "Executed", offer.spreadBps ?? 0, `${ticker} at $${ref.toFixed(2)} crossed your ${kind} ($${trigger.toFixed(2)}). Sold ${shares.toFixed(4)} shares at $${offer.onchain.toFixed(2)} for $${usdt.toFixed(2)}.`, last, txHash);
+  } catch (e) {
+    await tn.returnShares(id, rule.token, plan.amount).catch((r) => log(`sell #${id}: could not return shares: ${r instanceof Error ? r.message : r}`));
+    await record(plan.owner, id, "Waited", 0, `Sell failed, shares returned: ${e instanceof Error ? e.message.slice(0, 120) : e}`, last);
+  }
+}
+
+const EXPLORER = () => (process.env.PORTIR_REGISTRY_CHAIN === "mainnet" ? "https://bscscan.com" : "https://testnet.bscscan.com");
+const EMOJI = { Executed: "✅", Waited: "⏸", Skipped: "⏭" } as const;
+
+async function record(owner: Address, id: bigint, outcome: keyof typeof OUTCOME, spread: number, reason: string, last: { at: number; outcome: number } | undefined, txHash?: Hex) {
   // A Waited entry costs gas and does not advance the schedule: log it sparingly.
   if (outcome === "Waited" && last?.outcome === OUTCOME.Waited && Date.now() / 1000 - last.at < WAIT_LOG_HOURS * 3600) {
     log(`plan ${id} still waiting (logged on-chain at most every ${WAIT_LOG_HOURS}h): ${reason}`);
@@ -198,6 +250,8 @@ async function record(id: bigint, outcome: keyof typeof OUTCOME, spread: number,
   }
   const hash = await recordRun(id, outcome, spread, txHash ?? (`0x${"0".repeat(64)}` as Hex), reason);
   log(`plan ${id} ${outcome} (${spread} bps): ${reason} [${hash}]`);
+  const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  await notify(owner, `${EMOJI[outcome]} <b>Plan #${id} · ${outcome}</b>\n${esc(reason)}${txHash ? `\n<a href="${EXPLORER()}/tx/${txHash}">Trade</a> · ` : "\n"}<a href="${EXPLORER()}/tx/${hash}">Record</a>`);
 }
 
 /** Start the loop; returns a stop function. */

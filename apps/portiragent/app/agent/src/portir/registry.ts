@@ -20,6 +20,10 @@ export const planRegistryAbi = parseAbi([
   "function runsOf(uint256 planId) view returns (Run[])",
   "function pullFunds(uint256 planId, uint128 amount)",
   "function returnFunds(uint256 planId, uint128 amount)",
+  "struct SellRule { address token; uint128 triggerPrice; bool below; }",
+  "function sellRuleOf(uint256 planId) view returns (SellRule)",
+  "function pullShares(uint256 planId, uint128 amount)",
+  "function returnShares(uint256 planId, uint128 amount)",
 ]);
 
 export const OUTCOME = { Executed: 0, Waited: 1, Skipped: 2 } as const;
@@ -49,6 +53,11 @@ export async function getPlan(id: bigint): Promise<Plan> {
 }
 export async function runsOf(id: bigint): Promise<readonly Run[]> {
   return client().readContract({ address: registryAddress(), abi: planRegistryAbi, functionName: "runsOf", args: [id] });
+}
+export type SellRule = { token: Address; triggerPrice: bigint; below: boolean };
+export async function sellRuleOf(id: bigint): Promise<SellRule | null> {
+  const r = await client().readContract({ address: registryAddress(), abi: planRegistryAbi, functionName: "sellRuleOf", args: [id] });
+  return /^0x0{40}$/.test(r.token) ? null : r;
 }
 export async function planIdsOf(owner: Address): Promise<readonly bigint[]> {
   return client().readContract({ address: registryAddress(), abi: planRegistryAbi, functionName: "planIdsOf", args: [owner] });

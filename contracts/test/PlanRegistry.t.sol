@@ -333,6 +333,49 @@ contract PlanRegistryTest is Test {
         registry.pullFunds(id, 1e18);
     }
 
+    function test_SellRule_PullsSharesOnceThenCompletes() public {
+        MockUSDT stock = new MockUSDT(); // any ERC20 stands in for the stock token
+        stock.mint(rio, 10e18);
+        vm.startPrank(rio);
+        stock.approve(address(registry), type(uint256).max);
+        uint256 id = registry.createSellRule(NVDA, address(stock), 4e18, 250e18, false, agent);
+        vm.stopPrank();
+
+        PlanRegistry.SellRule memory rule = registry.sellRuleOf(id);
+        assertEq(rule.token, address(stock));
+        assertEq(rule.triggerPrice, 250e18);
+        assertFalse(rule.below);
+        assertTrue(registry.getPlan(id).once);
+
+        vm.prank(stranger);
+        vm.expectRevert(PlanRegistry.NotAuthorized.selector);
+        registry.pullShares(id, 1e18);
+
+        vm.startPrank(agent);
+        vm.expectRevert(PlanRegistry.WrongPlanKind.selector);
+        registry.pullFunds(id, 1e18); // a sell rule never moves the owner's stablecoin
+        registry.pullShares(id, 3e18);
+        vm.expectRevert(abi.encodeWithSelector(PlanRegistry.OverBudget.selector, uint128(1e18)));
+        registry.pullShares(id, 2e18);
+        stock.approve(address(registry), 1e18);
+        registry.returnShares(id, 1e18);
+        registry.recordRun(id, PlanRegistry.Outcome.Executed, 0, bytes32(0), "sold");
+        vm.expectRevert(PlanRegistry.PlanInactive.selector);
+        registry.pullShares(id, 1e18);
+        vm.stopPrank();
+
+        assertEq(stock.balanceOf(rio), 8e18);
+        assertEq(stock.balanceOf(agent), 2e18);
+        assertFalse(registry.getPlan(id).active);
+    }
+
+    function test_BuyPlan_CannotPullShares() public {
+        uint256 id = _create(0);
+        vm.prank(agent);
+        vm.expectRevert(PlanRegistry.WrongPlanKind.selector);
+        registry.pullShares(id, 1e18);
+    }
+
     function test_Initialize_OnlyOnceAndImplementationLocked() public {
         assertEq(registry.owner(), admin);
         vm.expectRevert(Initializable.InvalidInitialization.selector);

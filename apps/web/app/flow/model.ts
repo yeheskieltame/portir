@@ -6,7 +6,7 @@
 import type { Edge, Node } from "@xyflow/react";
 
 export type Status = "idle" | "passed" | "waiting" | "stopped" | "skipped";
-export type StepKind = "trigger" | "asset" | "market" | "guard" | "funding" | "buy" | "deliver" | "record" | "window" | "skip";
+export type StepKind = "trigger" | "asset" | "market" | "guard" | "news" | "funding" | "buy" | "deliver" | "record" | "window" | "skip";
 
 export interface FlowPlan {
   target: string; // ticker or "BASKET:<name>"
@@ -66,6 +66,8 @@ export const BRAND = {
   pancakeswap: { src: "/logos/pancakeswap.png", name: "PancakeSwap" },
   venus: { src: "/logos/venus.png", name: "Venus" },
   cake: { src: "/logos/cake.png", name: "CAKE" },
+  news: { src: "/logos/news.svg", name: "Yahoo Finance news" },
+  llm: { src: "/logos/ai.svg", name: "LLM" },
 } satisfies Record<string, Brand>;
 
 /** Which step the last run stopped at, and how. */
@@ -85,6 +87,7 @@ export function runState(run: FlowRun | undefined, plan?: Pick<FlowPlan, "smartT
     if (/^No fair moment/.test(r)) return { at: "window", status: "stopped", note: r };
     return { at: "record", status: "skipped", note: r };
   }
+  if (/holding back for the news/.test(r)) return { at: "news", status: "waiting", note: r };
   if (/^Ready to buy, but/.test(r)) return { at: "funding", status: "waiting", note: r };
   if (/^Buy failed/.test(r)) return { at: "buy", status: "stopped", note: r };
   if (/waiting for the open/.test(r) || (plan?.smartTiming !== false && MARKET.test(r) && !/above the exchange price, so it is better to wait/.test(r))) {
@@ -113,7 +116,7 @@ export function planFlow(
 ): { nodes: StepNode[]; edges: Edge[] } {
   const layout = opts.layout ?? "wide";
   const state = runState(lastRun, plan);
-  const main: StepKind[] = ["trigger", "asset", ...(plan.smartTiming ? (["market"] as const) : []), "guard", "funding", "buy", "deliver", "record"];
+  const main: StepKind[] = ["trigger", "asset", ...(plan.smartTiming ? (["market"] as const) : []), "guard", "news", "funding", "buy", "deliver", "record"];
   const stopIdx = state.at === "done" ? main.length : state.at ? main.indexOf(state.at as StepKind) : -1;
   const branchStop = state.at === "window" || state.at === "record";
   const failIdx = branchStop ? main.indexOf(plan.smartTiming ? "market" : "guard") : -1;
@@ -134,6 +137,7 @@ export function planFlow(
     asset: { title: plan.label, lines: [`${money(plan.amount)} ${plan.once ? "one time" : "per run"}`, basket ? `${legs.length} holdings, fixed weights` : plan.target], pill: basket ? "Basket" : "Stock", editable: true },
     market: { title: "NYSE open?", lines: ["Smart timing: regular", "session only"], pill: "Check", editable: true, brand: BRAND.binance, via: [BRAND.binance] },
     guard: { title: "Fair price?", lines: ["Waits if >1% above the exchange", spread], pill: "Guard", brand: BRAND.portir, via: [BRAND.binance] },
+    news: { title: "News check", lines: ["AI reads the latest headlines,", "may hold back for real risk"], pill: "AI", brand: BRAND.llm, via: [BRAND.news, BRAND.llm] },
     funding: { title: "From your wallet", lines: ["Via PlanRegistry,", `max ${money(plan.amount)} per run`], pill: "Funds", brand: BRAND.usdt, via: [BRAND.usdt, BRAND.bnb] },
     buy: { title: "Buy", lines: ["Best issuer, live price"], pill: "Swap", brand: BRAND.pancakeswap, via: [BRAND.ondo, BRAND.bstocks, BRAND.xstocks] },
     deliver: { title: "Shares to your wallet", lines: ["Unspent money comes back"], pill: "Deliver", brand: BRAND.bnb, via: [BRAND.bnb] },
@@ -198,7 +202,7 @@ export function planFlow(
     const dsts = b === "buy" ? buyIds : [b];
     for (const sId of srcs) for (const dId of dsts) link(sId, dId, between(a, b), a === "funding" ? { sourceHandle: "down" } : {});
   }
-  const waitingHere = state.status === "waiting" && (state.at === "market" || state.at === "guard" || state.at === "funding");
+  const waitingHere = state.status === "waiting" && (state.at === "market" || state.at === "guard" || state.at === "news" || state.at === "funding");
   const windowStatus: Status = state.at === "window" ? "stopped" : waitingHere ? "waiting" : "idle";
   nodes.find((n) => n.id === "window")!.data.status = windowStatus;
   nodes.find((n) => n.id === "skip")!.data.status = state.at === "window" ? "stopped" : "idle";
@@ -209,6 +213,7 @@ export function planFlow(
   };
   if (plan.smartTiming) into("market", "closed");
   into("guard", "not fair");
+  into("news", "news risk");
   into("funding", "short");
   link("window", "trigger", windowStatus === "waiting" ? "waiting" : "idle", { sourceHandle: "retry", targetHandle: "loop", label: "check again in 15 min", ...LABEL });
   link("window", "skip", state.at === "window" ? "stopped" : "idle", { sourceHandle: "skip", label: "past window", ...LABEL });

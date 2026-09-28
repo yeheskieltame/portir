@@ -14,6 +14,7 @@ const ICON: Record<StepKind, string> = {
   asset: "M4 19V9m5 10V5m5 14v-7m5 7V8",
   market: "M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6",
   guard: "M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Zm-3 9 2 2 4-4",
+  news: "M4 5h13v14H6a2 2 0 0 1-2-2V5Zm13 4h3v8a2 2 0 0 1-2 2M8 9h5M8 13h5",
   funding: "M3 7h18v12H3zM3 11h18M7 15h3",
   buy: "M4 12h16m-5-5 5 5-5 5",
   deliver: "M20 7 12 3 4 7m16 0-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
@@ -50,6 +51,7 @@ function handles(k: StepKind, layout: "wide" | "tall"): H[] {
       return [flowOut, { id: "loop", type: "target", pos: wide ? P.Top : P.Right }];
     case "market":
     case "guard":
+    case "news":
       return [flowIn, flowOut, branch];
     case "funding":
       return [flowIn, { id: "down", type: "source", pos: P.Bottom }, branch];

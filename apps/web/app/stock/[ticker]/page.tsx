@@ -8,6 +8,7 @@ import { BuySheet } from "@/app/buy-sheet";
 import { Suspense } from "react";
 import { StockChart } from "./chart";
 import { ModeNote } from "./mode-note";
+import { SellRule } from "./sell-rule";
 import { News } from "./news";
 
 export const revalidate = 30;
@@ -93,6 +94,7 @@ export default async function StockPage({ params, searchParams }: PageProps<"/st
       <div className="mt-3 grid grid-cols-2 gap-2">
         <BuySheet name={s.name} legs={[{ ticker: s.ticker, name: s.name, onchain: s.onchain, weight: 1 }]} initial={plan !== undefined ? "plan" : undefined} />
       </div>
+      <SellRule ticker={s.ticker} price={s.reference ?? s.onchain} />
       <ModeNote ticker={s.ticker} />
 
       {s.offers && s.offers.length > 0 && (

@@ -12,6 +12,9 @@ export const planRegistryAbi = parseAbi([
   "function planIdsOf(address owner) view returns (uint256[])",
   "function runsOf(uint256 planId) view returns (Run[])",
   "function fundingToken() view returns (address)",
+  "struct SellRule { address token; uint128 triggerPrice; bool below; }",
+  "function createSellRule(bytes32 target, address token, uint128 shares, uint128 triggerPrice, bool below, address executor) returns (uint256 planId)",
+  "function sellRuleOf(uint256 planId) view returns (SellRule)",
 ]);
 
 /** Runs of budget a new plan asks the owner to allow: the registry's allowance is spent run by run. */

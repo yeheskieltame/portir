@@ -81,6 +81,16 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
     query: { refetchInterval: POLL },
   });
 
+  const rules = useReadContracts({
+    contracts: (ids.data ?? []).map((id) => ({ ...contract, functionName: "sellRuleOf", args: [id] }) as const),
+    allowFailure: true,
+    query: { refetchInterval: POLL },
+  });
+  const sellOf = (i: number) => {
+    const r = rules.data?.[i];
+    return r?.status === "success" && r.result.token !== zeroAddress ? r.result : null;
+  };
+
   // A confirmed create/cancel changes what the reads return.
   useEffect(() => {
     if (receipt.isSuccess) queryClient.invalidateQueries();
@@ -99,7 +109,8 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
     queryFn: () => fetch(`/api/icons?tickers=${iconTickers.join(",")}`).then((r) => r.json() as Promise<Record<string, string | null>>),
     staleTime: 3_600_000,
   }).data;
-  const active = (plans.data ?? []).filter((p) => p.active);
+  // Sell rules hold shares, not dollars: keep them out of the budget numbers.
+  const active = (plans.data ?? []).filter((p, i) => p.active && !sellOf(i));
   // One-time orders are not a monthly commitment.
   const perMonth = active.filter((p) => !p.once).reduce((n, p) => n + (Number(formatUnits(p.amount, USDT_DECIMALS)) * 30) / (p.interval / DAY), 0);
   const nextRun = active.map((p) => p.nextRunAt).filter((t) => t * 1000 > now).sort((a, b) => a - b)[0];
@@ -162,6 +173,8 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
         {plans.data?.map((plan, i) => {
           const id = ids.data![i];
           const target = decodeTarget(plan.target);
+          const rule = sellOf(i);
+          if (rule) return <SellRuleItem key={id} id={id} ticker={target} plan={plan} rule={rule} icon={icons?.[target] ?? null} registry={registry} busy={busy} onCancel={() => call("cancelPlan", id)} />;
           const basket = target.startsWith("BASKET:");
           const label = basket ? target.slice(7) : (STOCK_NAMES[target] ?? target);
           const due = plan.nextRunAt * 1000 <= now;
@@ -230,7 +243,7 @@ function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${st
         })}
       </ul>
       {ids.data && plans.data && (
-        <Activity registry={registry} ids={ids.data} targets={Object.fromEntries(ids.data.map((id, i) => [String(id), decodeTarget(plans.data![i].target)]))} />
+        <Activity registry={registry} ids={ids.data} targets={Object.fromEntries(ids.data.map((id, i) => [String(id), decodeTarget(plans.data![i].target)]))} sells={new Set(ids.data.filter((_, i) => sellOf(i)).map(String))} />
       )}
       {ids.data && ids.data.length > 0 && executorAddress === zeroAddress && (
         <p className="mt-3 text-xs text-muted">Runs are recorded by the executor agent on BNB Agent Studio once it is live; until then plans are owner-run.</p>
@@ -281,7 +294,35 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Runs({ registry, planId }: { registry: `0x${string}`; planId: bigint }) {
+function SellRuleItem({ id, ticker, plan, rule, icon, registry, busy, onCancel }: { id: bigint; ticker: string; plan: { amount: bigint; active: boolean }; rule: { triggerPrice: bigint; below: boolean }; icon: string | null; registry: `0x${string}`; busy: boolean; onCancel: () => void }) {
+  const trigger = usd.format(Number(formatUnits(rule.triggerPrice, 18)));
+  const shares = Number(formatUnits(plan.amount, 18)).toFixed(4);
+  const kind = rule.below ? "Stop loss" : "Take profit";
+  return (
+    <li className={`glass rounded-3xl p-4 text-sm ${plan.active ? "" : "opacity-60"}`}>
+      <div className="flex items-start gap-3">
+        <Logo src={icon} name={ticker} size={44} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-lg font-medium leading-tight">
+            Sell {STOCK_NAMES[ticker] ?? ticker}
+            <span className="ml-2 rounded border border-line px-1 align-middle text-[10px] uppercase text-muted">{kind}</span>
+          </p>
+          <p className="mt-0.5 font-mono text-xs text-muted tabular-nums">{shares} shares · {rule.below ? "at or below" : "at or above"} {trigger}</p>
+        </div>
+        {plan.active && <button disabled={busy} onClick={onCancel} className="shrink-0 rounded-full px-3 py-1 text-xs text-warn disabled:opacity-60">Cancel</button>}
+      </div>
+      <div className="mt-3">
+        <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${plan.active ? "text-warn border-warn/40 bg-warn/10" : "text-muted border-line"}`}>
+          {plan.active ? `Watching · sells when ${ticker} ${rule.below ? "falls to" : "reaches"} ${trigger}` : "Ended"}
+        </span>
+      </div>
+      {plan.active && <p className="mt-2 text-xs text-muted">The agent checks the real {ticker} price every 15 minutes. Once it crosses {trigger} while the market is open, it sells these shares and sends the tUSDT to your wallet. No time limit.</p>}
+      <Runs registry={registry} planId={id} sell />
+    </li>
+  );
+}
+
+function Runs({ registry, planId, sell }: { registry: `0x${string}`; planId: bigint; sell?: boolean }) {
   const runs = useReadContract({
     address: registry,
     abi: planRegistryAbi,
@@ -296,17 +337,17 @@ function Runs({ registry, planId }: { registry: `0x${string}`; planId: bigint })
   return (
     <details className="mt-3 border-t border-line pt-3">
       <summary className="flex cursor-pointer items-center gap-2 text-xs">
-        <Outcome outcome={latest.outcome} />
+        <Outcome outcome={latest.outcome} sell={sell} />
         <span className="text-muted">last run {when(latest.at)}</span>
         <span className="ml-auto flex items-center gap-2 font-mono text-muted">
           <span aria-hidden className="h-1 w-16 overflow-hidden rounded-full bg-white/10"><span className="block h-full rounded-full bg-go" style={{ width: `${(bought / runs.data.length) * 100}%` }} /></span>
-          {bought}/{runs.data.length} bought
+          {bought}/{runs.data.length} {sell ? "sold" : "bought"}
         </span>
       </summary>
       <ol className="mt-3 space-y-3">
         {runs.data.toReversed().map((run, i) => (
           <li key={i} className="flex gap-3">
-            <Outcome outcome={run.outcome} />
+            <Outcome outcome={run.outcome} sell={sell} />
             <div className="min-w-0 flex-1">
               <p className="font-mono text-xs text-muted tabular-nums">
                 {when(run.at)}
@@ -326,8 +367,8 @@ function Runs({ registry, planId }: { registry: `0x${string}`; planId: bigint })
 
 const ZERO_HASH = `0x${"0".repeat(64)}`;
 const OUTCOME_CLS = ["text-go border-go/40 bg-go/10", "text-warn border-warn/40 bg-warn/10", "text-muted border-line"];
-function Outcome({ outcome }: { outcome: number }) {
-  return <span className={`shrink-0 self-start rounded-full border px-2 py-0.5 text-[11px] font-medium ${OUTCOME_CLS[outcome] ?? OUTCOME_CLS[2]}`}>{OUTCOMES[outcome] ?? "?"}</span>;
+function Outcome({ outcome, sell }: { outcome: number; sell?: boolean }) {
+  return <span className={`shrink-0 self-start rounded-full border px-2 py-0.5 text-[11px] font-medium ${OUTCOME_CLS[outcome] ?? OUTCOME_CLS[2]}`}>{sell && outcome === 0 ? "Sold" : (OUTCOMES[outcome] ?? "?")}</span>;
 }
 
 // The minute, ticking, so countdowns re-render without calling Date.now() in render.

@@ -19,6 +19,8 @@ const exchangeAbi = parseAbi([
   "function buy(address stock, uint256 usdtIn, uint256 minSharesOut, uint128 price, uint40 deadline, bytes sig) returns (uint256)",
   "function feeBps() view returns (uint16)",
   "event Bought(address indexed buyer, address indexed stock, uint256 usdtIn, uint256 sharesOut, uint128 price)",
+  "function sell(address stock, uint256 sharesIn, uint256 minUsdtOut, uint128 price, uint40 deadline, bytes sig) returns (uint256)",
+  "event Sold(address indexed seller, address indexed stock, uint256 sharesIn, uint256 usdtOut, uint128 price)",
 ]);
 const QUOTE_DOMAIN = { name: "Portir TestExchange", version: "1", chainId: 97, verifyingContract: TESTNET.exchange } as const;
 const QUOTE_TYPES = { Quote: [{ name: "stock", type: "address" }, { name: "price", type: "uint128" }, { name: "deadline", type: "uint40" }] } as const;
@@ -54,6 +56,49 @@ export async function returnFunds(planId: bigint, usdt: number): Promise<void> {
   const allowance = await pc.readContract({ address: TESTNET.usdt, abi: erc20Abi, functionName: "allowance", args: [me, registryAddress()] });
   if (allowance < amount) await sendTx(TESTNET.usdt, encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [registryAddress(), 2n ** 255n] }));
   await sendTx(registryAddress(), encodeFunctionData({ abi: planRegistryAbi, functionName: "returnFunds", args: [planId, amount] }));
+}
+
+/** Why the owner cannot hand over `shares` of `token` right now, or null if they can. */
+export async function sharesProblem(owner: Address, token: Address, shares: bigint): Promise<string | null> {
+  const pc = client();
+  const [balance, allowance] = await Promise.all([
+    pc.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [owner] }),
+    pc.readContract({ address: token, abi: erc20Abi, functionName: "allowance", args: [owner, registryAddress()] }),
+  ]);
+  const n = (v: bigint) => (Number(v) / 1e18).toFixed(4);
+  if (balance < shares) return `You hold ${n(balance)} shares, the rule sells ${n(shares)}.`;
+  if (allowance < shares) return `The rule may take ${n(allowance)} shares, it needs ${n(shares)}. Allow it on the Plans page.`;
+  return null;
+}
+
+export const pullShares = (planId: bigint, shares: bigint) =>
+  sendTx(registryAddress(), encodeFunctionData({ abi: planRegistryAbi, functionName: "pullShares", args: [planId, shares] }));
+
+export async function returnShares(planId: bigint, token: Address, shares: bigint): Promise<void> {
+  const me = await agentAddress();
+  const allowance = await client().readContract({ address: token, abi: erc20Abi, functionName: "allowance", args: [me, registryAddress()] });
+  if (allowance < shares) await sendTx(token, encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [registryAddress(), 2n ** 255n] }));
+  await sendTx(registryAddress(), encodeFunctionData({ abi: planRegistryAbi, functionName: "returnShares", args: [planId, shares] }));
+}
+
+/** With shares already pulled: sell them at `pricePerShare` and send the tUSDT to `owner`. */
+export async function sellOnTestnet(owner: Address, ticker: string, shares: bigint, pricePerShare: number): Promise<{ txHash: Hex; usdt: number }> {
+  const stock = TESTNET.stocks[ticker];
+  if (!stock) throw new Error(`${ticker} is not on the testnet exchange`);
+  const key = process.env.PORTIR_TESTNET_KEEPER_KEY as Hex | undefined;
+  if (!key) throw new Error("PORTIR_TESTNET_KEEPER_KEY is not set");
+  const pc = client();
+  const price = parseUnits(pricePerShare.toFixed(6), 18);
+  const feeBps = BigInt(await testnetFeeBps());
+  const minOut = (((shares * price) / 10n ** 18n) * (10_000n - feeBps) * 995n) / (10_000n * 1000n);
+  const deadline = Math.floor(Date.now() / 1000) + 600;
+  const sig = await privateKeyToAccount(key).signTypedData({ domain: QUOTE_DOMAIN, types: QUOTE_TYPES, primaryType: "Quote", message: { stock, price, deadline } });
+  const txHash = await sendTx(TESTNET.exchange, encodeFunctionData({ abi: exchangeAbi, functionName: "sell", args: [stock, shares, minOut, price, deadline, sig] }));
+  const receipt = await pc.waitForTransactionReceipt({ hash: txHash });
+  const [ev] = parseEventLogs({ abi: exchangeAbi, eventName: "Sold", logs: receipt.logs });
+  if (!ev) throw new Error(`sell ${txHash} emitted no Sold event`);
+  await sendTx(TESTNET.usdt, encodeFunctionData({ abi: erc20Abi, functionName: "transfer", args: [owner, ev.args.usdtOut] }));
+  return { txHash, usdt: Number(ev.args.usdtOut) / 1e18 };
 }
 
 /** With funds already pulled: buy `ticker` at `pricePerShare`, then send the shares to `owner`. */

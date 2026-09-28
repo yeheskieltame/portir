@@ -10,7 +10,7 @@ const CLS = ["text-go border-go/40 bg-go/10", "text-warn border-warn/40 bg-warn/
 const when = (s: number) => new Date(s * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 /** What the agent did across all of the user's plans, newest first: every run it recorded on-chain, with its reason. */
-export function Activity({ registry, ids, targets, limit = 8 }: { registry: `0x${string}`; ids: readonly bigint[]; targets: Record<string, string>; limit?: number }) {
+export function Activity({ registry, ids, targets, sells, limit = 8 }: { registry: `0x${string}`; ids: readonly bigint[]; targets: Record<string, string>; sells?: Set<string>; limit?: number }) {
   const runs = useReadContracts({
     contracts: ids.map((id) => ({ address: registry, abi: planRegistryAbi, functionName: "runsOf" as const, args: [id] as const, chainId: chain.id })),
     allowFailure: true,
@@ -23,7 +23,8 @@ export function Activity({ registry, ids, targets, limit = 8 }: { registry: `0x$
   if (items.length === 0) return null;
   const label = (id: bigint) => {
     const t = targets[String(id)] ?? "";
-    return t.startsWith("BASKET:") ? `${t.slice(7)} basket` : (STOCK_NAMES[t] ?? t);
+    const name = t.startsWith("BASKET:") ? `${t.slice(7)} basket` : (STOCK_NAMES[t] ?? t);
+    return sells?.has(String(id)) ? `Sell ${name}` : name;
   };
   return (
     <section className="mt-6">
@@ -31,7 +32,7 @@ export function Activity({ registry, ids, targets, limit = 8 }: { registry: `0x$
       <ol className="glass mt-3 divide-y divide-line rounded-3xl text-sm">
         {items.map((r, i) => (
           <li key={i} className="flex gap-3 px-4 py-3">
-            <span className={`mt-0.5 shrink-0 self-start rounded-full border px-2 py-0.5 text-[11px] font-medium ${CLS[r.outcome] ?? CLS[2]}`}>{OUTCOMES[r.outcome] ?? "?"}</span>
+            <span className={`mt-0.5 shrink-0 self-start rounded-full border px-2 py-0.5 text-[11px] font-medium ${CLS[r.outcome] ?? CLS[2]}`}>{r.outcome === 0 && sells?.has(String(r.id)) ? "Sold" : (OUTCOMES[r.outcome] ?? "?")}</span>
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-medium">{label(r.id)}</span>
@@ -48,7 +49,7 @@ export function Activity({ registry, ids, targets, limit = 8 }: { registry: `0x$
           </li>
         ))}
       </ol>
-      <p className="mt-2 text-xs text-muted">Every decision is written to PlanRegistry on BSC: what the agent bought, why it waited, when it stopped.</p>
+      <p className="mt-2 text-xs text-muted">Every decision is written to PlanRegistry on BSC: what the agent bought or sold, why it waited, when it stopped.</p>
     </section>
   );
 }

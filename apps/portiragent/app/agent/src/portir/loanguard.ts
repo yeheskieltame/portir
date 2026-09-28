@@ -30,6 +30,7 @@ export const loanGuardAbi = parseAbi([
 const vTokenAbi = parseAbi(["function underlying() view returns (address)"]);
 const oracleAbi = parseAbi(["function getUnderlyingPrice(address) view returns (uint256)"]);
 
+import { notify } from "./notify.js";
 const log = (msg: string) => console.log(`[portir.guard] ${msg}`);
 const pct = (bps: bigint | number) => `${(Number(bps) / 100).toFixed(1)}%`;
 const read = <T>(functionName: string, args: unknown[] = []) =>
@@ -99,6 +100,7 @@ export async function guardScan(): Promise<void> {
       const hash = await sendTx(VENUS.loanGuard, encodeFunctionData({ abi: loanGuardAbi, functionName: "rescue", args: [b, amount] }));
       const after = await read<bigint>("usedBps", [b]);
       log(`${b}: rescued ${amount} (${amount < want ? "capped" : "to target"}), ${pct(used)} → ${pct(after)} [${hash}]`);
+      await notify(b, `🛟 <b>Loan Guard rescued your loan</b>\nYour loan used ${pct(used)} of its liquidation limit. I repaid $${(Number(amount) / 1e18).toFixed(2)} from your buffer; it is now at ${pct(after)}.\n<a href="https://testnet.bscscan.com/tx/${hash}">View on BscScan</a>`);
     } catch (e) {
       log(`${b}: ${e instanceof Error ? e.message.slice(0, 200) : e}`);
     }

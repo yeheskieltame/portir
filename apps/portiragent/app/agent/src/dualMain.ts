@@ -91,6 +91,7 @@ import type { RunWork } from "./sellerCore.js";
 import { LLM_READ_TOOLS } from "./tools.js";
 import { startDcaLoop } from "./portir/executor.js";
 import { startGuardLoop } from "./portir/loanguard.js";
+import { startTelegramLoop } from "./portir/notify.js";
 import { cleanAnswer } from "./portir/text.js";
 
 const APP_NAME = "agent";
@@ -427,6 +428,7 @@ async function main(): Promise<void> {
     // Portir's DCA executor and Loan Guard: timers for as long as the process lives.
     startDcaLoop();
     startGuardLoop();
+    startTelegramLoop();
   });
 }
 

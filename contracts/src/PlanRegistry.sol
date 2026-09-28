@@ -9,8 +9,10 @@ import {
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-/// @notice DCA plans and their run history. Holds no funds: owners approve this contract, and a plan's
-/// executor can move at most `amount` per scheduled run from the owner, only while that run is due.
+/// @notice DCA plans, sell rules and their run history. Holds no funds: owners approve this contract, and a plan's
+/// executor can move at most `amount` per scheduled run from the owner, only while that run is due. A sell rule
+/// is a one-time plan whose `amount` is shares of `SellRule.token`; the executor sells them once the price
+/// crosses the trigger and sends the proceeds to the owner.
 contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
@@ -37,6 +39,12 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         uint128 pulled;
     }
 
+    struct SellRule {
+        address token; // the stock token sold; zero for buy plans
+        uint128 triggerPrice; // USD per share, 1e18
+        bool below; // true: stop-loss (sell at or below), false: take-profit (at or above)
+    }
+
     struct Run {
         uint40 at;
         Outcome outcome;
@@ -52,6 +60,7 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         mapping(address owner => uint256[]) planIdsOf;
         IERC20 fundingToken; // v5
         mapping(uint256 planId => Funding) funding; // v5
+        mapping(uint256 planId => SellRule) sellRules; // v6
     }
 
     // keccak256(abi.encode(uint256(keccak256("portir.storage.PlanRegistry")) - 1)) & ~bytes32(uint256(0xff))
@@ -69,6 +78,9 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     event FundingTokenSet(address token);
     event FundsPulled(uint256 indexed planId, uint40 run, uint128 amount);
     event FundsReturned(uint256 indexed planId, uint40 run, uint128 amount);
+    event SellRuleCreated(uint256 indexed planId, address indexed token, uint128 triggerPrice, bool below);
+    event SharesPulled(uint256 indexed planId, uint128 amount);
+    event SharesReturned(uint256 indexed planId, uint128 amount);
     event PlanRun(uint256 indexed planId, Outcome outcome, int32 spreadBps, bytes32 txHash, string reason);
 
     error ZeroAmount();
@@ -83,6 +95,7 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     error ReasonTooLong();
     error NoFundingToken();
     error OverBudget(uint128 available);
+    error WrongPlanKind();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -113,6 +126,26 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
             .push(Plan(msg.sender, executor, target, amount, interval, firstRunAt, smartTiming, true, once));
         $.planIdsOf[msg.sender].push(planId);
         emit PlanCreated(planId, msg.sender, target, amount);
+    }
+
+    /// @notice Sell `shares` of `token` once the price crosses `triggerPrice`; the owner approves this contract for them.
+    function createSellRule(
+        bytes32 target,
+        address token,
+        uint128 shares,
+        uint128 triggerPrice,
+        bool below,
+        address executor
+    ) external returns (uint256 planId) {
+        if (target == bytes32(0) || token == address(0)) revert EmptyTarget();
+        if (shares == 0 || triggerPrice == 0) revert ZeroAmount();
+        PlanRegistryStorage storage $ = _storage();
+        planId = $.plans.length;
+        $.plans.push(Plan(msg.sender, executor, target, shares, MIN_INTERVAL, uint40(block.timestamp), false, true, true));
+        $.planIdsOf[msg.sender].push(planId);
+        $.sellRules[planId] = SellRule(token, triggerPrice, below);
+        emit PlanCreated(planId, msg.sender, target, shares);
+        emit SellRuleCreated(planId, token, triggerPrice, below);
     }
 
     /// @notice Change amount, cadence or smart timing; the next run date is kept.
@@ -195,9 +228,9 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         PlanRegistryStorage storage $ = _storage();
         Plan storage plan = $.plans[planId];
         Funding storage f = _dueFunding($, plan, planId);
-        if (amount == 0) revert ZeroAmount();
-        if (f.pulled + amount > plan.amount) revert OverBudget(plan.amount - f.pulled);
-        f.pulled += amount;
+        if ($.sellRules[planId].token != address(0)) revert WrongPlanKind();
+        if (address($.fundingToken) == address(0)) revert NoFundingToken();
+        _take(f, plan, amount);
         $.fundingToken.safeTransferFrom(plan.owner, plan.executor, amount);
         emit FundsPulled(planId, f.run, amount);
     }
@@ -207,11 +240,38 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         PlanRegistryStorage storage $ = _storage();
         Plan storage plan = $.plans[planId];
         Funding storage f = _dueFunding($, plan, planId);
-        if (amount == 0) revert ZeroAmount();
-        if (amount > f.pulled) revert OverBudget(f.pulled);
-        f.pulled -= amount;
+        if ($.sellRules[planId].token != address(0)) revert WrongPlanKind();
+        _give(f, amount);
         $.fundingToken.safeTransferFrom(plan.executor, plan.owner, amount);
         emit FundsReturned(planId, f.run, amount);
+    }
+
+    /// @notice Executor takes the rule's shares from the owner to sell them; at most `amount` shares in total.
+    function pullShares(uint256 planId, uint128 amount) external {
+        PlanRegistryStorage storage $ = _storage();
+        Plan storage plan = $.plans[planId];
+        Funding storage f = _dueFunding($, plan, planId);
+        address token = $.sellRules[planId].token;
+        if (token == address(0)) revert WrongPlanKind();
+        _take(f, plan, amount);
+        IERC20(token).safeTransferFrom(plan.owner, plan.executor, amount);
+        emit SharesPulled(planId, amount);
+    }
+
+    /// @notice Executor gives back shares it did not sell.
+    function returnShares(uint256 planId, uint128 amount) external {
+        PlanRegistryStorage storage $ = _storage();
+        Plan storage plan = $.plans[planId];
+        Funding storage f = _dueFunding($, plan, planId);
+        address token = $.sellRules[planId].token;
+        if (token == address(0)) revert WrongPlanKind();
+        _give(f, amount);
+        IERC20(token).safeTransferFrom(plan.executor, plan.owner, amount);
+        emit SharesReturned(planId, amount);
+    }
+
+    function sellRuleOf(uint256 planId) external view returns (SellRule memory) {
+        return _storage().sellRules[planId];
     }
 
     function fundingToken() external view returns (IERC20) {
@@ -250,12 +310,23 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
         if (msg.sender != plan.executor) revert NotAuthorized();
         if (!plan.active) revert PlanInactive();
         if (block.timestamp < plan.nextRunAt) revert NotDue(plan.nextRunAt);
-        if (address($.fundingToken) == address(0)) revert NoFundingToken();
         f = $.funding[planId];
         if (f.run != plan.nextRunAt) {
             f.run = plan.nextRunAt;
             f.pulled = 0;
         }
+    }
+
+    function _take(Funding storage f, Plan storage plan, uint128 amount) private {
+        if (amount == 0) revert ZeroAmount();
+        if (f.pulled + amount > plan.amount) revert OverBudget(plan.amount - f.pulled);
+        f.pulled += amount;
+    }
+
+    function _give(Funding storage f, uint128 amount) private {
+        if (amount == 0) revert ZeroAmount();
+        if (amount > f.pulled) revert OverBudget(f.pulled);
+        f.pulled -= amount;
     }
 
     function _storage() private pure returns (PlanRegistryStorage storage $) {
