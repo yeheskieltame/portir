@@ -33,6 +33,11 @@ const SMART_WINDOW = 48 * 3600;
 const ONCE_WINDOW = 7 * 24 * 3600; // a one-time "buy when fair" order waits up to a week
 const WAIT_LOG_HOURS = Number(process.env.PORTIR_WAIT_LOG_HOURS ?? 6);
 const log = (msg: string) => console.log(`[portir.executor] ${msg}`);
+const ZERO = `0x${"0".repeat(64)}` as Hex;
+const MIN_PLAN = 10n ** 18n; // $1: smaller plans are ignored, they cannot buy anything
+// A plan whose buy broke is not retried for a while: each attempt costs several transactions.
+const RETRY_AFTER_MS = 30 * 60_000;
+const cooldown = new Map<bigint, number>();
 
 /**
  * Execution backend. `off` (default) records the decision but does not buy:
@@ -43,23 +48,43 @@ type Execute = (amount: number, ticker: string, owner: Address) => Promise<{ txH
 
 /**
  * `agentic-wallet` (mainnet): the run's money is already in the operator's Binance Agentic Wallet (pulled through
- * PlanRegistry, then forwarded). Quote, re-run the Guard on the executable price, swap, and send the shares to the
- * owner. The wallet's own daily limit and token scope bound what this can do.
+ * PlanRegistry, then forwarded). Quote, re-run the Guard on the executable price, swap, and send exactly the shares
+ * this swap produced to the owner. Throws only while nothing is spent; once the order is out it reports instead,
+ * so the executor never refunds money that already bought shares.
  */
 const viaAgenticWallet: Execute = async (amount, ticker, owner) => {
   const a = await assess(ticker);
+  if (a.view.reference === null) throw new Error("no exchange price to check the swap against");
   const offer = a.view.offers.find((o) => !o.halted && !(o.spreadBps !== null && isSuspectDiscount(o.spreadBps)));
   if (!offer) throw new Error("no tradable issuer");
   const q = await aw.quote(offer.contractAddress, amount);
   const pricePerShare = amount / (q.tokensOut * offer.multiplier);
-  if (a.view.reference !== null) {
-    const d = guard({ session: a.view.session ?? "closed", onchain: pricePerShare, reference: a.view.reference });
-    if (d.verdict === "BLOCK") throw new Error(`executable price failed the Guard: ${d.reason}`);
+  const d = guard({ session: a.view.session ?? "closed", onchain: pricePerShare, reference: a.view.reference });
+  if (d.verdict === "BLOCK") throw new Error(`executable price failed the Guard: ${d.reason}`);
+
+  const token = offer.contractAddress as Address;
+  const wallet = (await aw.bscAddress()) as Address;
+  const before = await aw.balanceOf(token, wallet);
+  let txHash: string;
+  try {
+    ({ txHash } = await aw.swap(token, amount));
+  } catch (e) {
+    if (!(e instanceof aw.SwapPending)) throw e; // refused or failed: nothing was spent
+    log(`ALERT ${ticker} for ${owner}: ${e.message}. Check the order and deliver the shares by hand.`);
+    return { txHash: ZERO, note: `The ${ticker} order is placed but not confirmed yet; the shares follow once it settles.` };
   }
-  const { txHash } = await aw.swap(offer.contractAddress, amount);
-  // ponytail: "max" of this token is this order's output because runs execute one at a time; per-order amounts if that changes.
-  await aw.send(offer.contractAddress, owner, "max");
-  return { txHash: (txHash || `0x${"0".repeat(64)}`) as Hex, note: `Bought ≈${(q.tokensOut * offer.multiplier).toFixed(4)} shares from ${offer.issuer} at $${pricePerShare.toFixed(2)} via Agentic Wallet, sent to your wallet.` };
+  try {
+    await aw.settled(txHash);
+    const after = await aw.balanceOf(token, wallet);
+    const got = after.raw - before.raw;
+    if (got <= 0n) throw new Error("no shares arrived in the Agentic Wallet");
+    const qty = aw.units(got, after.decimals);
+    await aw.send(token, owner, qty);
+    return { txHash: (txHash || ZERO) as Hex, note: `Bought ≈${(Number(qty) * offer.multiplier).toFixed(4)} shares from ${offer.issuer} at $${pricePerShare.toFixed(2)} via Agentic Wallet, sent to your wallet.` };
+  } catch (e) {
+    log(`ALERT ${ticker} for ${owner}: bought (${txHash}) but not delivered: ${e instanceof Error ? e.message : e}. Send the shares by hand.`);
+    return { txHash: (txHash || ZERO) as Hex, note: `Bought ${ticker}; sending the shares to your wallet did not go through yet, the operator will deliver them.` };
+  }
 };
 
 /** `testnet`: same live price and Guard as mainnet; the owner's tUSDT buys on the TestExchange and the shares go to the owner. */
@@ -111,6 +136,7 @@ export async function scanOnce(): Promise<void> {
       const rule = await sellRuleOf(id);
       await (rule ? runSell(id, plan, rule) : runPlan(id, plan, now));
     } catch (e) {
+      cooldown.set(id, Date.now() + RETRY_AFTER_MS);
       log(`plan ${i}: ${e instanceof Error ? e.message : e}`);
     }
   }
@@ -118,6 +144,23 @@ export async function scanOnce(): Promise<void> {
 }
 
 async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
+  if ((cooldown.get(id) ?? 0) > Date.now()) return log(`plan ${id}: last attempt failed, retrying after the cooldown`);
+  // Anyone can name this agent as executor. Only plans that can actually pay get on-chain entries (which cost gas);
+  // the app's funding banner tells an owner who has not allowed enough yet.
+  // ponytail: one funded wallet can still back many plans; cap plans per owner if that is ever abused.
+  const fd = await import("./funding.js");
+  // Money already pulled for this run means an earlier attempt broke halfway (it may even have bought and failed
+  // to record). Which one is not knowable from here, so no new buy and no automatic refund: the operator settles it.
+  const held = await fd.pulledFor(id);
+  if (held > 0n) {
+    cooldown.set(id, Date.now() + RETRY_AFTER_MS);
+    log(`ALERT plan ${id}: ${formatUnits(held, 18)} USDT pulled by an earlier attempt is unaccounted for; settle it by hand (deliver or returnFunds)`);
+    await record(plan.owner, id, "Waited", 0, `$${Number(formatUnits(held, 18)).toFixed(2)} from an earlier attempt is still being settled; no new buy until it is.`, (await runsOf(id)).at(-1));
+    return;
+  }
+  const total = Number(formatUnits(plan.amount, 18));
+  const problem = plan.amount < MIN_PLAN ? "below $1" : await fd.fundingProblem(plan.owner, total);
+  if (problem) return log(`plan ${id}: not funded, nothing recorded (${problem})`);
   const target = decodeTarget(plan.target);
   const runs = await runsOf(id);
   const last = runs[runs.length - 1];
@@ -154,22 +197,27 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
       await record(plan.owner, id, "Waited", spread, `Price is fair, but holding back for the news: ${nc.reason}`, last);
       return;
     }
-    const total = Number(formatUnits(plan.amount, 18));
     const bought: string[] = [];
     const failed: string[] = [];
     let txHash: Hex | undefined;
-    // The owner's money moves through PlanRegistry, which caps it at the plan amount for this run.
-    // Mainnet: it is then forwarded to the Agentic Wallet, which swaps and sends the shares to the owner.
-    const fd = await import("./funding.js");
-    const problem = await fd.fundingProblem(plan.owner, total);
-    if (problem) {
-      await record(plan.owner, id, "Waited", spread, `Ready to buy, but: ${problem}`, last);
+    const awReady = backend() === "agentic-wallet" ? await aw.notReady(total) : null;
+    if (awReady) {
+      await record(plan.owner, id, "Waited", spread, `Ready to buy, but ${awReady}.`, last);
       return;
     }
-    await fd.pullFunds(id, total);
-    let unspent = total;
+    // The owner's money moves through PlanRegistry, which caps it at the plan amount for this run.
+    // Mainnet: it is then forwarded to the Agentic Wallet, which swaps and sends the shares to the owner.
     const awAddress = backend() === "agentic-wallet" ? ((await aw.bscAddress()) as Address) : null;
-    if (awAddress) await fd.forward(awAddress, total);
+    await fd.pullFunds(id, plan.amount);
+    if (awAddress) {
+      try {
+        await fd.forward(awAddress, plan.amount);
+      } catch (e) {
+        await fd.returnFunds(id, plan.amount).catch((r) => log(`ALERT plan ${id}: forward and return both failed: ${r instanceof Error ? r.message : r}`));
+        throw e;
+      }
+    }
+    let unspent = total;
     // One guarded swap per leg, in sequence. A failed leg is reported, not retried next tick (that would double-buy the others).
     for (const l of legs) {
       const slice = Math.floor(total * l.weight * 100) / 100;
@@ -187,15 +235,17 @@ async function runPlan(id: bigint, plan: Plan, now: number): Promise<void> {
       }
     }
     if (unspent >= 0.01) {
-      const back = Math.floor(unspent * 100) / 100;
+      // Nothing bought: the exact pulled amount goes back, so no sub-cent remainder keeps the run looking half-done.
+      const back = bought.length === 0 ? plan.amount : Math.floor(unspent * 100) / 100;
       try {
-        if (awAddress) await aw.send(aw.USDT, await fd.agentAddress(), back);
+        if (awAddress) await aw.send(aw.USDT, await fd.agentAddress(), typeof back === "bigint" ? formatUnits(back, 18) : back);
         await fd.returnFunds(id, back);
       } catch (e) {
-        log(`plan ${id}: could not return $${unspent.toFixed(2)} unspent: ${e instanceof Error ? e.message : e}`);
+        log(`ALERT plan ${id}: could not return $${unspent.toFixed(2)} unspent: ${e instanceof Error ? e.message : e}`);
       }
     }
     if (bought.length === 0) {
+      cooldown.set(id, Date.now() + RETRY_AFTER_MS);
       await record(plan.owner, id, "Waited", spread, `Buy failed: ${failed.join("; ")}`, last);
       return;
     }

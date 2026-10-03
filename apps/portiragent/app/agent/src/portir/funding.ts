@@ -11,6 +11,8 @@ export const fundingToken = async (): Promise<Address> =>
 
 export const agentAddress = async () => (await import("@bnbagent/studio-runtime/wallet")).getWallet().address as Address;
 export const wei = (usdt: number) => parseUnits(usdt.toFixed(6), 18); // BSC USDT and tUSDT are 18 decimals
+// Exact on-chain amounts pass through untouched: rounding a plan amount to 6 decimals could exceed the run's budget.
+const raw = (v: number | bigint) => (typeof v === "bigint" ? v : wei(v));
 const fmt = (v: bigint) => `$${(Number(v / 10n ** 16n) / 100).toFixed(2)}`;
 
 /** Why the owner cannot fund `usdt` right now (balance, or allowance to PlanRegistry), or null if they can. */
@@ -27,20 +29,24 @@ export async function fundingProblem(owner: Address, usdt: number): Promise<stri
   return null;
 }
 
+/** Money already pulled for the plan's current run and not given back (a run that broke halfway). */
+export const pulledFor = (planId: bigint) =>
+  client().readContract({ address: registryAddress(), abi: planRegistryAbi, functionName: "pulledFor", args: [planId] });
+
 /** Pull this run's budget from the owner (the registry enforces: executor only, due, at most plan.amount). */
-export const pullFunds = (planId: bigint, usdt: number) =>
-  sendTx(registryAddress(), encodeFunctionData({ abi: planRegistryAbi, functionName: "pullFunds", args: [planId, wei(usdt)] }));
+export const pullFunds = (planId: bigint, usdt: number | bigint) =>
+  sendTx(registryAddress(), encodeFunctionData({ abi: planRegistryAbi, functionName: "pullFunds", args: [planId, raw(usdt)] }));
 
 /** Give unspent money back to the owner through the registry, which frees the run's budget for a retry. */
-export async function returnFunds(planId: bigint, usdt: number): Promise<void> {
+export async function returnFunds(planId: bigint, usdt: number | bigint): Promise<void> {
   const t = await fundingToken();
-  const amount = wei(usdt);
+  const amount = raw(usdt);
   const allowance = await client().readContract({ address: t, abi: erc20Abi, functionName: "allowance", args: [await agentAddress(), registryAddress()] });
   if (allowance < amount) await sendTx(t, encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [registryAddress(), 2n ** 255n] }));
   await sendTx(registryAddress(), encodeFunctionData({ abi: planRegistryAbi, functionName: "returnFunds", args: [planId, amount] }));
 }
 
 /** Move pulled money from the agent's signer to another address it controls (the Agentic Wallet on mainnet). */
-export async function forward(to: Address, usdt: number) {
-  return sendTx(await fundingToken(), encodeFunctionData({ abi: erc20Abi, functionName: "transfer", args: [to, wei(usdt)] }));
+export async function forward(to: Address, usdt: number | bigint) {
+  return sendTx(await fundingToken(), encodeFunctionData({ abi: erc20Abi, functionName: "transfer", args: [to, raw(usdt)] }));
 }
