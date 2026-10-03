@@ -182,7 +182,12 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
             revert PlanDone();
         }
         plan.active = true;
-        if (plan.nextRunAt < block.timestamp) plan.nextRunAt = uint40(block.timestamp);
+        if (plan.nextRunAt < block.timestamp) {
+            // The run keeps what was already pulled for it: pause + resume must not reset its budget.
+            Funding storage f = $.funding[planId];
+            if (f.run == plan.nextRunAt) f.run = uint40(block.timestamp);
+            plan.nextRunAt = uint40(block.timestamp);
+        }
         emit PlanResumed(planId, plan.nextRunAt);
     }
 
@@ -236,10 +241,11 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     }
 
     /// @notice Executor sends back what it did not spend; the run's budget is freed again.
+    /// Open while paused or after the run was recorded, so money is never stuck with the executor.
     function returnFunds(uint256 planId, uint128 amount) external {
         PlanRegistryStorage storage $ = _storage();
         Plan storage plan = $.plans[planId];
-        Funding storage f = _dueFunding($, plan, planId);
+        Funding storage f = _executorFunding($, plan, planId);
         if ($.sellRules[planId].token != address(0)) revert WrongPlanKind();
         _give(f, amount);
         $.fundingToken.safeTransferFrom(plan.executor, plan.owner, amount);
@@ -262,7 +268,7 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
     function returnShares(uint256 planId, uint128 amount) external {
         PlanRegistryStorage storage $ = _storage();
         Plan storage plan = $.plans[planId];
-        Funding storage f = _dueFunding($, plan, planId);
+        Funding storage f = _executorFunding($, plan, planId);
         address token = $.sellRules[planId].token;
         if (token == address(0)) revert WrongPlanKind();
         _give(f, amount);
@@ -315,6 +321,15 @@ contract PlanRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable
             f.run = plan.nextRunAt;
             f.pulled = 0;
         }
+    }
+
+    function _executorFunding(PlanRegistryStorage storage $, Plan storage plan, uint256 planId)
+        private
+        view
+        returns (Funding storage)
+    {
+        if (msg.sender != plan.executor) revert NotAuthorized();
+        return $.funding[planId];
     }
 
     function _take(Funding storage f, Plan storage plan, uint128 amount) private {

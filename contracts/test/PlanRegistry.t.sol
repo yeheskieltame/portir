@@ -333,6 +333,51 @@ contract PlanRegistryTest is Test {
         registry.pullFunds(id, 1e18);
     }
 
+    function test_PauseResume_KeepsRunBudget() public {
+        (MockUSDT usdt, uint256 id) = _funded();
+        vm.prank(agent);
+        registry.pullFunds(id, AMOUNT);
+
+        vm.warp(block.timestamp + 1);
+        vm.startPrank(rio);
+        registry.cancelPlan(id);
+        registry.resumePlan(id);
+        vm.stopPrank();
+
+        assertEq(registry.pulledFor(id), AMOUNT);
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(PlanRegistry.OverBudget.selector, uint128(0)));
+        registry.pullFunds(id, 1e18);
+        assertEq(usdt.balanceOf(agent), AMOUNT);
+    }
+
+    function test_ReturnFunds_OpenWhilePausedAndAfterRecord() public {
+        (MockUSDT usdt, uint256 id) = _funded();
+        vm.prank(agent);
+        registry.pullFunds(id, AMOUNT);
+
+        // paused mid-run: the money still goes home
+        vm.prank(rio);
+        registry.cancelPlan(id);
+        vm.prank(agent);
+        registry.returnFunds(id, 10e18);
+
+        vm.prank(rio);
+        registry.resumePlan(id);
+        vm.startPrank(agent);
+        registry.recordRun(id, PlanRegistry.Outcome.Executed, 0, 0, "bought");
+        // recorded run: leftovers still go home, never more than was pulled
+        registry.returnFunds(id, 5e18);
+        vm.expectRevert(abi.encodeWithSelector(PlanRegistry.OverBudget.selector, uint128(35e18)));
+        registry.returnFunds(id, 36e18);
+        vm.stopPrank();
+        assertEq(usdt.balanceOf(rio), 10_000e18 - 35e18);
+
+        vm.prank(stranger);
+        vm.expectRevert(PlanRegistry.NotAuthorized.selector);
+        registry.returnFunds(id, 1e18);
+    }
+
     function test_SellRule_PullsSharesOnceThenCompletes() public {
         MockUSDT stock = new MockUSDT(); // any ERC20 stands in for the stock token
         stock.mint(rio, 10e18);

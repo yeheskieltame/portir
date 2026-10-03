@@ -5,10 +5,17 @@ review against the OpenZeppelin upgrade-safety checklist, the 13 Foundry tests (
 Upgrades plugin validation that runs on every deploy/upgrade. The testnet fixtures in `src/testnet/` are out of scope
 (non-upgradeable test doubles, never deployed to mainnet).
 
-## What the contract does not do (by design)
+## Trust model
 
-- Holds no funds, no token approvals, no external calls: it is a registry of plans and run logs. The worst case of a bug is
-  a wrong log line, not lost money. Money moves only through the user's wallet (app) or the Agentic Wallet (executor).
+- Holds no funds between calls. Since v5 it **moves tokens**: owners approve the registry (never the agent EOA) for the
+  funding token, and for stock tokens of sell rules. `pullFunds` / `pullShares` move at most `plan.amount` per scheduled
+  run from the owner to the plan's executor; `returnFunds` / `returnShares` send unspent money back. A leaked executor
+  key can take at most one run's amount per due plan and interval (≥ 1 day), not the owner's whole allowance.
+- External calls: `safeTransferFrom` on the funding token and on the token a sell rule names. State is updated before
+  the call. A sell rule's token is chosen by its owner, so a hostile token can only reenter that owner's own plans.
+- The contract owner is fully trusted: `upgradeToAndCall` can replace the logic and reach every allowance given to the
+  registry, and `setFundingToken` chooses which token `pullFunds` moves. Mainnet owner must be a multisig. The app asks
+  for 12 runs of allowance, not unlimited, which bounds the damage of a compromised owner per user.
 
 ## Upgradeability
 
@@ -33,6 +40,10 @@ Upgrades plugin validation that runs on every deploy/upgrade. The testnet fixtur
 | `createPlan` | anyone | plan owner = `msg.sender`; executor is chosen by the owner |
 | `cancelPlan` | plan owner | `NotPlanOwner`; inactive plans revert `PlanInactive` |
 | `recordRun` | plan executor **or** owner | `NotAuthorized`; owner fallback so a user can log a manual run |
+| `updatePlan` / `resumePlan` | plan owner | `resumePlan` refuses a finished once plan (`PlanDone`) |
+| `pullFunds` / `pullShares` | plan executor | active and due only; at most `plan.amount` per run; buy plans pull the funding token, sell rules their token (`WrongPlanKind`) |
+| `returnFunds` / `returnShares` | plan executor | at most what was pulled for the run; open while paused and after the run is recorded |
+| `setFundingToken` | owner | |
 | `upgradeToAndCall` | owner (2-step) | |
 
 ## Findings
@@ -45,13 +56,13 @@ Upgrades plugin validation that runs on every deploy/upgrade. The testnet fixtur
 | 4 | Info | `uint40` timestamps: fine until year 36812. `interval` is `uint32` (max ~136 years). | No action |
 | 5 | Info | `firstRunAt` in the past is clamped to `block.timestamp`: a plan is due immediately, which is the intended "run at creation" semantics. | Documented |
 | 6 | Info | `MAX_REASON_LENGTH = 200` bounds event/log size; longer reasons revert `ReasonTooLong`. Executor truncates before sending. | Verified |
-| 7 | Info | No reentrancy surface (no external calls, no ETH). | No action |
+| 7 | Info | No reentrancy surface (no external calls, no ETH). Superseded since v5: see Trust model and the 2026-10-03 review. | Superseded |
 | 8 | Info | `forge lint`: one intentional `uint40` cast in `recordRun` (`next` ≤ `2^40`), annotated `disable-next-line`. | Verified |
 
 ## Pre-mainnet checklist
 
 - [ ] `OWNER` = a multisig (Safe) address; deployer keeps no admin.
-- [ ] `forge test --profile ci` (5,000 fuzz runs) green.
+- [ ] `FOUNDRY_PROFILE=ci forge test` (5,000 fuzz runs) green.
 - [ ] `pnpm deploy:mainnet` → verify on BscScan (implementation + proxy, `script/verify.sh bsc <proxy>`).
 - [ ] App `NEXT_PUBLIC_CHAIN=mainnet`, `NEXT_PUBLIC_PLAN_REGISTRY=<proxy>`, executor address set in every plan.
 - [ ] Executor dry run against the mainnet registry with `PORTIR_EXECUTION=off` for one scan before enabling execution.
@@ -103,3 +114,21 @@ all 22 contracts verified.
 - The trigger is checked by the executor off-chain against the live exchange price, the same trust model as the Guard for buys: the contract bounds how much can move, not when. Proceeds are sent to the owner by the executor.
 - Allowances: the app approves the registry for `current allowance + shares`, so several rules on one stock do not overwrite each other.
 - Testnet: implementation `0x03A4C05c7a44A6B732a8D4CDa42C2a4A14Fe6806`, verified. End-to-end run: rule #14 sold 0.215 NVDA at $231.92 for $49.81 once NVDA crossed $230, then completed.
+
+## Review 2026-10-03 (pre-mainnet, 5,000 fuzz runs, `forge lint` clean)
+
+| # | Finding | Severity | Status |
+| --- | --- | --- | --- |
+| 1 | `resumePlan` moved an overdue `nextRunAt` to now, which also reset the run's pulled budget: pull 50, pause, resume a second later, pull 50 again in the same period. Owner-triggered only, but it broke "at most `amount` per run". | Medium | **Fixed**: resume carries the run's funding over to the new `nextRunAt`. Test `test_PauseResume_KeepsRunBudget`. |
+| 2 | `returnFunds` / `returnShares` required the run to be active and due, so pausing a plan mid-run, or recording the run first, left the executor holding the owner's money with no way back through the registry. | Medium | **Fixed**: returns only check the executor and the pulled amount. Test `test_ReturnFunds_OpenWhilePausedAndAfterRecord`. |
+| 3 | The "does not move funds / no external calls" statements above were written before v5 and no longer held. | Docs | **Fixed** (Trust model, access table). |
+| 4 | Owner is an EOA on testnet; with UUPS and user allowances, the owner key is the single point of failure. | High for mainnet | Open until mainnet: deploy with `OWNER=<Safe>`. |
+
+Storage unchanged (no field added or moved), ABI unchanged: testnet takes an in-place upgrade, mainnet a fresh deploy. Testnet implementation `0xf55A8d7050950F5869A649A189ccC7927F92af89` (v7), verified; 16 plans, owner and funding token intact after the upgrade.
+
+Executor fixes in the same pass (`apps/portiragent`): the Agentic Wallet is checked (session, daily limit) before any
+money is pulled; a submitted swap is never refunded (pending orders are reported, not retried); exactly the shares a
+swap produced are delivered (no more "send max"); explicit slippage (`PORTIR_SLIPPAGE_PCT`, default 1%); the executable
+price must pass the Guard, a missing exchange price refuses the buy; a run with money still out blocks new buys until the
+operator settles it; failed buys back off 30 minutes; plans under $1 or without balance and allowance get no on-chain
+entries (gas griefing).
