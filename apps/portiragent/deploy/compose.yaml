@@ -10,6 +10,8 @@ services:
     environment:
       # Production brain: the studio.toml [llm] model (Groq). Claude CLI is for local development only.
       PORTIR_BRAIN: studio
+      # Public URL for the A2A agent card and the B402 resource URL. AgentCore sets this itself; on the VPS we must.
+      AGENTCORE_RUNTIME_URL: https://agent.portir.xyz
       # The free chat face is paid by the operator's LLM credit: cap it for the whole process.
       SELLER_RATE_LIMIT_GLOBAL_MAX_REQUESTS: "20"
       SELLER_RATE_LIMIT_WINDOW_SECONDS: "60"
