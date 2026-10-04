@@ -1,0 +1,78 @@
+---
+title: "Introduction"
+description: "What Portir is, the problem it solves, and who it is for."
+---
+
+**Portir is a non-custodial app and agent for buying tokenized US stocks on BNB Chain at a fair price.** It checks the US market session and the exchange price before every order, runs your recurring plans only when the price is fair, and keeps loans against your stocks out of liquidation.
+
+Stocks, not tokens: what you hold is the issuer's stock token (Ondo, bStocks or xStocks) in your own wallet.
+
+<Frame caption="The Guard: four checks before every order">
+  <img src="/images/l-guard.jpg" alt="The Guard: four checks before every order" />
+</Frame>
+
+## The problem
+
+Tokenized US stocks trade on BNB Chain around the clock. The stocks they track do not.
+
+<AccordionGroup>
+  <Accordion title="On-chain prices drift when Wall Street is asleep" icon="moon">
+    It is 3 AM in Jakarta and the NYSE is closed. The on-chain pool keeps trading with no exchange price to anchor it. On one night NVIDIA traded **1.4% above its close**. A buyer who taps Buy at that moment overpays, and nothing in a normal wallet tells them so.
+  </Accordion>
+  <Accordion title="The same stock has several issuers, each with its own quirks" icon="layer-group">
+    Ondo, bStocks and xStocks all list NVIDIA, with different multipliers (shares per token), different halts (dividends, splits, earnings) and different staleness. A naive "cheapest token" choice often picks the one whose price is simply out of date.
+  </Accordion>
+  <Accordion title="Recurring investing needs someone awake at the right time" icon="clock">
+    Dollar-cost averaging works best when it is boring and automatic. On-chain, "automatic" usually means a bot that buys at the scheduled minute, whatever the price and whether or not the market is open.
+  </Accordion>
+  <Accordion title="Stock-backed loans liquidate while you sleep" icon="triangle-exclamation">
+    Venus accepts tokenized stocks as collateral. A sharp move overnight can push a position past its liquidation threshold before the borrower wakes up.
+  </Accordion>
+</AccordionGroup>
+
+## The solution
+
+<Steps>
+  <Step title="A Guard before every order">
+    Portir reads the US session and the exchange reference price from the Binance RWA Data API, compares it with the on-chain price, and answers **GO**, **WARN** or **BLOCK** with one plain sentence. Above a 1% premium the order is blocked. See [The Guard](/learn/the-guard).
+  </Step>
+  <Step title="Plans that wait for a fair price">
+    You set a stock or a basket, an amount and a cadence. An agent on BNB Agent Studio checks every 15 minutes and never buys into a blocked price. With smart timing on, it also waits for the US market to open and the price to be fair, up to 48 hours past the due time. See [Plans](/learn/plans).
+  </Step>
+  <Step title="Your money never sits with Portir">
+    Plans live in the `PlanRegistry` contract. You approve the registry, not the agent, and the agent can pull at most one run's amount per due plan. Shares land in your own wallet.
+  </Step>
+  <Step title="Every decision on-chain">
+    Each run is recorded as `Executed`, `Waited` or `Skipped` with a one-sentence reason, readable by anyone on BscScan.
+  </Step>
+  <Step title="A guard for your loan, too">
+    `LoanGuard` repays part of a Venus loan from your own safety buffer once it crosses your trigger, after re-checking the position on-chain. See [Loan Guard](/learn/loan-guard).
+  </Step>
+</Steps>
+
+<Frame caption="Loan Guard: from 85.7% back to 60% in one repayment">
+  <img src="/images/l-loans.jpg" alt="Loan Guard: from 85.7% back to 60% in one repayment" />
+</Frame>
+
+## Who it is for
+
+| You are | Portir gives you |
+| --- | --- |
+| A retail investor outside the US | US stocks from a BNB Chain wallet, starting small, with the fair-price check done for you |
+| A long-term saver | Weekly, bi-weekly or monthly plans and four curated baskets that run on their own |
+| A borrower | Stock-backed USDT loans on Venus with an automatic, capped rescue |
+| An AI user | The same engine as MCP tools for Claude or any MCP client, and an x402 / A2A agent |
+| A builder or another agent | The Guard, quotes and ready-to-sign transactions over MCP, x402 and A2A, and public contracts on BNB Chain |
+
+## One engine, every surface
+
+The app, the MCP server and the agent all run the same Guard engine. A verdict you see in the app is the verdict Claude sees over MCP and the one the agent acts on.
+
+<CardGroup cols={2}>
+  <Card title="How it works" icon="diagram-project" href="/get-started/how-it-works">
+    The full flow from tap to transaction.
+  </Card>
+  <Card title="Quickstart" icon="play" href="/get-started/quickstart-users">
+    Your first guarded buy on testnet in five minutes.
+  </Card>
+</CardGroup>

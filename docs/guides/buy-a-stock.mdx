@@ -1,0 +1,36 @@
+---
+title: "Buy a stock"
+description: "A guarded one-tap buy, signed by your wallet."
+---
+
+<div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+  <Frame caption="1. Find it">
+    <img src="/images/p-markets.jpg" alt="1. Find it" />
+  </Frame>
+  <Frame caption="2. Read the Guard">
+    <img src="/images/p-stock.jpg" alt="2. Read the Guard" />
+  </Frame>
+</div>
+
+<Steps>
+  <Step title="Find the stock">
+    Markets lists 500+ US stocks and ETFs. Search by name or ticker, or filter.
+  </Step>
+  <Step title="Read the Guard">
+    The stock page shows the session, the on-chain vs exchange price, the issuers compared, and the verdict with its sentence.
+  </Step>
+  <Step title="Enter an amount">
+    Tap **Buy** and enter USDT. You see the expected shares and the guaranteed minimum.
+  </Step>
+  <Step title="Sign">
+    Your wallet signs an approval (once per token) and the swap. If the verdict is **BLOCK**, you are offered **Buy when it's fair** instead.
+  </Step>
+</Steps>
+
+<Frame caption="What the Guard compared before you pay">
+  <img src="/images/d-stock-issuers.jpg" alt="What the Guard compared before you pay" />
+</Frame>
+
+<Tip>
+Buying a basket works the same way: one guarded swap per holding, signed in sequence.
+</Tip>

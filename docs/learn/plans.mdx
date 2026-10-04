@@ -1,0 +1,78 @@
+---
+title: "Plans"
+description: "Recurring buys and one-time 'buy when fair' orders that the agent runs from PlanRegistry."
+---
+
+A plan is an on-chain instruction: *buy this stock or basket, this much, this often*. It lives in the `PlanRegistry` contract, and an executor (the Portir agent, or yourself) runs it.
+
+<Frame caption="Smart timing, buy when fair, baskets">
+  <img src="/images/l-plans.jpg" alt="Smart timing, buy when fair, baskets" />
+</Frame>
+
+## Plan types
+
+<CardGroup cols={2}>
+  <Card title="Recurring" icon="repeat">
+    Weekly, every 2 weeks or monthly. Runs forever until you pause or cancel it.
+  </Card>
+  <Card title="Buy when fair (once)" icon="hourglass-half">
+    One buy, as soon as the price clears. Watched every 15 minutes for up to 7 days, then the order closes.
+  </Card>
+</CardGroup>
+
+## Settings
+
+| Setting | Values | Notes |
+| --- | --- | --- |
+| Target | A ticker or `BASKET:<name>` | Baskets buy each holding at fixed weights |
+| Amount per run | USDT | The most the agent may pull for one run |
+| Cadence | 7, 14 or 30 days | Contract minimum is 1 day |
+| Smart timing | on / off | Wait for the US open and a GO price, up to 48h after the due time |
+
+## How a run is decided
+
+| Situation | Without smart timing | With smart timing |
+| --- | --- | --- |
+| Guard says GO, market open | Buy | Buy |
+| Guard says GO, market closed | Buy | **Wait** for the open |
+| Guard says WARN | Buy | Wait; buy at WARN once 48h have passed |
+| Guard says BLOCK | Wait | Wait |
+| Window over, still not fair | Skip this run | Skip this run |
+
+Before buying, the [news check](/learn/news-check) may hold the buy back while the window is still open.
+
+<Frame caption="Plan #13 as a flow: trigger, basket, session, Guard, news, funds, six buys, delivery, record">
+  <img src="/images/d-plan-13.jpg" alt="Plan #13 as a flow: trigger, basket, session, Guard, news, funds, six buys, delivery, record" />
+</Frame>
+
+## Outcomes
+
+Every run is written to `PlanRegistry` with a spread and a one-sentence reason:
+
+| Outcome | Meaning | Advances the schedule |
+| --- | --- | --- |
+| **Executed** | Bought; shares sent to you; transaction hash attached | Yes |
+| **Waited** | Not yet: price, session, news, or a failed buy that was refunded | No |
+| **Skipped** | The window closed without a fair moment | Yes |
+
+<Frame caption="What happened: every run with its outcome and reason, read from PlanRegistry">
+  <img src="/images/d-plan-13-runs.jpg" alt="What happened: every run with its outcome and reason, read from PlanRegistry" />
+</Frame>
+
+Waited runs are logged sparingly (every 6 hours by default) so they do not cost gas every 15 minutes.
+
+## Funding
+
+You approve `PlanRegistry` (never the agent's address) for USDT. On a due run the executor calls `pullFunds`, which moves **at most the plan amount** for that run. Anything not spent goes back through `returnFunds`. If your allowance or balance is below one run, nothing is pulled and nothing is recorded.
+
+<Warning>
+Each holding needs at least $1 per run. For baskets, the smallest weight sets the plan minimum: a $10 run of a basket whose smallest weight is 10% buys $1 of that holding.
+</Warning>
+
+<Frame caption="Your plans with their next run and last outcome">
+  <img src="/images/d-plans-list.jpg" alt="Your plans with their next run and last outcome" />
+</Frame>
+
+## Managing a plan
+
+From the plan page you can change the amount, cadence or smart timing (`updatePlan`, the next run date is kept), pause (`cancelPlan`) and resume (`resumePlan`). A finished one-time plan cannot be resumed.

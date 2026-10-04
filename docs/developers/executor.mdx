@@ -1,0 +1,34 @@
+---
+title: "The executor"
+description: "How the agent runs plans, sell rules and Loan Guard, step by step."
+---
+
+The executor is the part of the Portir agent that turns plans into trades. It runs on BNB Agent Studio at `agent.portir.xyz`.
+
+## Buy plan run
+
+1. Scan `PlanRegistry` every 15 minutes. Skip plans not due, inactive, or in a 30-minute back-off.
+2. **Held funds check.** If money pulled by an earlier attempt is unaccounted for, log an `ALERT`, record Waited, and stop until the operator settles it.
+3. **Funding check.** Below $1, or allowance/balance below one run: log locally, record nothing.
+4. **Guard per holding.** A basket takes its worst verdict. Decide with the plan's rules (smart timing, 48h / 7-day window).
+5. **News check** (may hold the buy back inside the window).
+6. **Agentic Wallet preflight** on mainnet (session, daily limit) before any money moves.
+7. `pullFunds` at most `plan.amount`; on mainnet forward it to the Agentic Wallet.
+8. One guarded swap per holding (holdings under $1 are reported, not bought). Deliver exactly the shares bought to the owner.
+9. Return anything unspent through `returnFunds`.
+10. `recordRun` Executed with spread, transaction hash and reason; or Waited with the failure and a back-off.
+
+## Where trades settle
+
+| Mode | Settles on |
+| --- | --- |
+| Testnet | `TestExchange`, at a quote signed with the live mainnet price |
+| Mainnet | A Binance Agentic Wallet market order on BNB Chain, armed only after the pre-mainnet checklist |
+
+## Sell rule run
+
+Watch the real price; once crossed, wait for the open; `pullShares` exactly the rule's shares; sell at a fair on-chain price; send USDT to the owner; on failure return the shares and record Waited. Testnet only.
+
+## Loan Guard loop
+
+Every 5 minutes: mirror live prices into the testnet pool, read each guarded borrower, and call `rescue` with the amount that brings `usedBps` back to the target, capped by `maxPerRescue`.

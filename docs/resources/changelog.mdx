@@ -1,0 +1,44 @@
+---
+title: "Changelog"
+description: "Notable changes, newest first."
+---
+
+<Update label="2026-10-03" description="Pre-mainnet hardening">
+  - PlanRegistry v7: resume keeps the run's pulled budget; returns stay open while paused or after recording.
+  - Agent: Agentic Wallet preflight before any pull, no refund after a submitted swap, exact-delta delivery, 1% slippage, held-funds block, 30-minute back-off.
+</Update>
+
+<Update label="2026-09-29" description="Agent in production">
+  - Agent runs in Docker behind Caddy at agent.portir.xyz.
+  - Groq as the production model through Agent Studio's OpenAI-compatible provider.
+  - Mainnet plan path through PlanRegistry and the Agentic Wallet; self-custody guide.
+</Update>
+
+<Update label="2026-09-28" description="Sell rules, news check, flows">
+  - PlanRegistry v6: take-profit and stop-loss sell rules.
+  - News check before every buy; Telegram reports.
+  - Plans as flow diagrams with a node-based builder.
+  - Loans with tokenized stocks as collateral on a Venus-compatible testnet pool.
+</Update>
+
+<Update label="2026-09-27" description="Loan Guard">
+  - LoanGuard contract and a 5-minute guard loop.
+</Update>
+
+<Update label="2026-09-25" description="Funded plans">
+  - PlanRegistry v5: plans pay from the owner's wallet through the registry, capped per run.
+  - Freely mintable tUSDT on testnet.
+</Update>
+
+<Update label="2026-09-24" description="Agent and once plans">
+  - PlanRegistry v2–v4: edit, pause, resume, one-time "buy when fair" plans.
+  - In-app chat with the agent; agent on BNB Agent Studio with MCP and x402 faces.
+</Update>
+
+<Update label="2026-09-23" description="The app">
+  - Full market, stock pages, portfolio, one-tap guarded buy, baskets, testnet mode.
+</Update>
+
+<Update label="2026-09-21" description="Day one">
+  - Guard library, Binance RWA Data client, PlanRegistry on BSC testnet.
+</Update>

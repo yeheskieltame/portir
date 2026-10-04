@@ -1,0 +1,29 @@
+---
+title: "Ask the agent"
+description: "Chat with the Portir agent in the app, or bring your own Claude."
+---
+
+<Frame caption="The agent composer on Plans">
+  <img src="/images/d-plans.jpg" alt="The agent composer on Plans" />
+</Frame>
+
+## In the app
+
+On the Plans page, type a question or an instruction:
+
+- *"Is now a good time to buy TSLA?"*
+- *"Invest $50 in AI & Semis every Monday, only when fair."*
+
+The agent answers with the same tools the MCP server exposes. When it proposes a plan, your wallet signs it; the agent never signs for you.
+
+<Frame caption="On a phone">
+  <img src="/images/p-plans.jpg" alt="On a phone" />
+</Frame>
+
+## With your own Claude
+
+```bash
+claude mcp add portir --transport http https://agent.portir.xyz/mcp
+```
+
+See [MCP server](/developers/mcp-server).

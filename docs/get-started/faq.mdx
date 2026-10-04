@@ -1,0 +1,40 @@
+---
+title: "FAQ"
+description: "Short answers to the questions people ask first."
+---
+
+<AccordionGroup>
+  <Accordion title="Do I own the stock?">
+    You own the issuer's stock token (Ondo, bStocks or xStocks) in your own wallet. Each token tracks a real US share through the issuer, and the issuer's terms decide your rights. Portir never holds it for you.
+  </Accordion>
+  <Accordion title="Does Portir hold my money?">
+    No. Manual buys are signed by your wallet. Plans pull from your wallet through `PlanRegistry`, at most one run's amount per due plan, and the shares are sent back to you in the same run.
+  </Accordion>
+  <Accordion title="Do I need to do KYC?">
+    Not with Portir. Portir is a non-custodial interface and does not collect identity data. Issuers and Binance apply their own eligibility rules. See [KYC and eligibility](/learn/kyc-and-eligibility).
+  </Accordion>
+  <Accordion title="What does it cost?">
+    Portir charges no fee. You pay network gas in BNB and whatever the route charges (swap fees, issuer spread). See [Fees](/resources/fees).
+  </Accordion>
+  <Accordion title="Which stocks can I buy?">
+    The catalog lists 500+ US stocks and ETFs available on BNB Chain from Ondo, bStocks and xStocks, plus four curated baskets. See [Supported assets](/resources/supported-assets).
+  </Accordion>
+  <Accordion title="Why did my plan say Waited?">
+    The Guard found the price unfair, the market was closed with smart timing on, or the news check held the buy back. The reason is written on-chain next to the run.
+  </Accordion>
+  <Accordion title="Why did my plan do nothing at all?">
+    It was not funded: your allowance to `PlanRegistry` or your USDT balance was below one run's amount. Unfunded runs are not recorded, so they cost no gas. Tap **Allow** on the Plans page.
+  </Accordion>
+  <Accordion title="Is it live on mainnet?">
+    Browsing, the Guard and manual buys from your wallet work on BSC mainnet. Managed plans, sell rules and Loan Guard run on BSC testnet today. See [Testnet and mainnet](/learn/testnet-and-mainnet) and the [roadmap](/resources/roadmap).
+  </Accordion>
+  <Accordion title="Can I use it from Claude?">
+    Yes. Add the MCP server `https://agent.portir.xyz/mcp` to Claude or any MCP client. See [MCP server](/developers/mcp-server).
+  </Accordion>
+  <Accordion title="Can the agent take all my USDT?">
+    No. You approve the registry, not the agent. The registry lets the plan's executor pull at most `plan.amount` per due run, and the app asks for a limited allowance, not an unlimited one.
+  </Accordion>
+  <Accordion title="Why can't I open binance.com data in my browser?">
+    `www.binance.com` is DNS-blocked by some Indonesian ISPs. Portir reads Binance data on the server, so the app works anyway.
+  </Accordion>
+</AccordionGroup>

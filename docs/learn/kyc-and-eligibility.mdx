@@ -1,0 +1,25 @@
+---
+title: "KYC and eligibility"
+description: "Portir does not collect identity data. Here is who does apply rules, and where."
+---
+
+## Portir does no KYC
+
+Portir is a non-custodial app and agent. It has no accounts, no sign-up and no identity checks, and it never holds user funds. Your wallet address is the only identifier it sees.
+
+## Who applies rules
+
+| Layer | Rules | Where to check |
+| --- | --- | --- |
+| **Stock token issuers** (Ondo, bStocks, xStocks) | Who may hold or redeem their tokens; restricted jurisdictions (commonly including US persons); halts | Each issuer's terms |
+| **Binance Trading API** | Compliance restrictions on requests (for example `40304` from some regions and cloud IPs) | Binance terms |
+| **Binance Agentic Wallet** | Binance account verification, daily limits, allowed tokens, high-risk confirmation | Binance App |
+| **Venus** | Protocol terms and the markets it lists | Venus docs |
+
+## Your responsibility
+
+You are responsible for knowing whether you may buy, hold or borrow against tokenized securities where you live, and for any taxes. If an issuer's terms exclude you, do not use Portir to buy that issuer's tokens.
+
+<Note>
+If you run your own agent with your own Agentic Wallet, the Binance account behind that wallet is verified by Binance under its own rules. Portir never sees that data.
+</Note>

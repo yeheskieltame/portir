@@ -1,0 +1,75 @@
+---
+title: "Contract addresses"
+description: "Every Portir contract, verified on BscScan, plus the external contracts it talks to."
+---
+
+<Warning>
+Only trust addresses on this page. Portir contracts are deployed on **BSC testnet** today; mainnet deployment is pending (see the [roadmap](/resources/roadmap)).
+</Warning>
+
+<Tabs>
+  <Tab title="BSC testnet (97)">
+    ### Core
+
+    | Contract | Address | Notes |
+    | --- | --- | --- |
+    | PlanRegistry (proxy) | [`0x28daDC35523CE792C7C09faf516763830C38f36b`](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code) | UUPS, use this address |
+    | PlanRegistry (implementation v7) | [`0xf55A8d7050950F5869A649A189ccC7927F92af89`](https://testnet.bscscan.com/address/0xf55A8d7050950F5869A649A189ccC7927F92af89#code) | |
+    | LoanGuard (proxy) | [`0xa33fDbd747d95bD733172D9D7c4d6c50CcE33f61`](https://testnet.bscscan.com/address/0xa33fDbd747d95bD733172D9D7c4d6c50CcE33f61#code) | Points at StockLendingPool |
+    | LoanGuard (implementation) | [`0x75d919f7ad07098c87e6c1710906e7b9E55d6638`](https://testnet.bscscan.com/address/0x75d919f7ad07098c87e6c1710906e7b9E55d6638#code) | |
+    | Portir agent (executor) | [`0xFA0Be0E8a604250C3fdCCE4C35f645bdA03328A5`](https://testnet.bscscan.com/address/0xFA0Be0E8a604250C3fdCCE4C35f645bdA03328A5) | EOA, named as executor in plans |
+
+    ### Fixtures
+
+    | Contract | Address |
+    | --- | --- |
+    | tUSDT (MockUSDT, 18 decimals) | [`0xA2408d502b0Cd09FA5fBAdFC3A6F6CB3F49D2aA2`](https://testnet.bscscan.com/address/0xA2408d502b0Cd09FA5fBAdFC3A6F6CB3F49D2aA2#code) |
+    | TestExchange | [`0xF191283aEa66De969a2D26BB0aF52629D3c6Bad8`](https://testnet.bscscan.com/address/0xF191283aEa66De969a2D26BB0aF52629D3c6Bad8#code) |
+    | TestExchange keeper | [`0xD2Cd2C69Dc59A6164A3268e640769faDceF00887`](https://testnet.bscscan.com/address/0xD2Cd2C69Dc59A6164A3268e640769faDceF00887) |
+    | StockLendingPool | [`0x7E8317704d8a0F7EA9f3E46b706FBa3e162f64c2`](https://testnet.bscscan.com/address/0x7E8317704d8a0F7EA9f3E46b706FBa3e162f64c2#code) |
+    | vUSDT (pool debt market) | [`0xC6eaE6f70Ead8cc5D3E67dc49F04D25E2b2A59cC`](https://testnet.bscscan.com/address/0xC6eaE6f70Ead8cc5D3E67dc49F04D25E2b2A59cC#code) |
+
+    ### Test stock tokens (TestExchange)
+
+    | Ticker | Address |
+    | --- | --- |
+    | AAPL | [`0xe8Ce58611D923C9dea8Bbe31D0Ac39e304628EC5`](https://testnet.bscscan.com/address/0xe8Ce58611D923C9dea8Bbe31D0Ac39e304628EC5#code) |
+    | AMD | [`0x63Ec7db019C3C89032d440911AF133A8A32c51cA`](https://testnet.bscscan.com/address/0x63Ec7db019C3C89032d440911AF133A8A32c51cA#code) |
+    | AMZN | [`0x7942C60e6a96DC02D9073819F741ebf7faF27560`](https://testnet.bscscan.com/address/0x7942C60e6a96DC02D9073819F741ebf7faF27560#code) |
+    | AVGO | [`0xBD98331a092089d554d37Adf48429eBB1b7978FA`](https://testnet.bscscan.com/address/0xBD98331a092089d554d37Adf48429eBB1b7978FA#code) |
+    | GOOGL | [`0x3a5Bd0f4f58d96156011D647c14a5eeF3A3Db3a7`](https://testnet.bscscan.com/address/0x3a5Bd0f4f58d96156011D647c14a5eeF3A3Db3a7#code) |
+    | IWM | [`0x2740375593f836cE6c37EEFCc311356E64A3d940`](https://testnet.bscscan.com/address/0x2740375593f836cE6c37EEFCc311356E64A3d940#code) |
+    | JNJ | [`0xF6ddd75a9757dbA26fC35fd74167D7C610d48Fa0`](https://testnet.bscscan.com/address/0xF6ddd75a9757dbA26fC35fd74167D7C610d48Fa0#code) |
+    | KO | [`0xd68D1e390cB35159F6A76fA2F9108c39aBD47b08`](https://testnet.bscscan.com/address/0xd68D1e390cB35159F6A76fA2F9108c39aBD47b08#code) |
+    | MCD | [`0x1F4dF7F84efe2168F2fb584a2332017d7Df2D9AA`](https://testnet.bscscan.com/address/0x1F4dF7F84efe2168F2fb584a2332017d7Df2D9AA#code) |
+    | META | [`0x112f908AdD84fb47FA47809dc27F6f3291f386a8`](https://testnet.bscscan.com/address/0x112f908AdD84fb47FA47809dc27F6f3291f386a8#code) |
+    | MSFT | [`0x91d4Bb679c8c8958e42266A345dAA2F812b3aFB5`](https://testnet.bscscan.com/address/0x91d4Bb679c8c8958e42266A345dAA2F812b3aFB5#code) |
+    | NVDA | [`0xdE782dBf2A06c663293D671aBD006e5e712ea41b`](https://testnet.bscscan.com/address/0xdE782dBf2A06c663293D671aBD006e5e712ea41b#code) |
+    | PEP | [`0x824263F6504389F3B580Eeb8A1B191aDF7908938`](https://testnet.bscscan.com/address/0x824263F6504389F3B580Eeb8A1B191aDF7908938#code) |
+    | PG | [`0x4039DEaD425E025C0210d33e0A95BB94E47fDd12`](https://testnet.bscscan.com/address/0x4039DEaD425E025C0210d33e0A95BB94E47fDd12#code) |
+    | QQQ | [`0xf1293cBcA580C3Ff6bA39C22c4c21133C71DEC7C`](https://testnet.bscscan.com/address/0xf1293cBcA580C3Ff6bA39C22c4c21133C71DEC7C#code) |
+    | SKHY | [`0xd0e78ad78256F97764C81Bc6677b49cC90E380B1`](https://testnet.bscscan.com/address/0xd0e78ad78256F97764C81Bc6677b49cC90E380B1#code) |
+    | SPCX | [`0x1C6F33108E2Cc6C74c3A11e2f9aaEe922d648c6D`](https://testnet.bscscan.com/address/0x1C6F33108E2Cc6C74c3A11e2f9aaEe922d648c6D#code) |
+    | SPY | [`0x18C9272cD1cfe4465Bd08E11D99824E321717fB0`](https://testnet.bscscan.com/address/0x18C9272cD1cfe4465Bd08E11D99824E321717fB0#code) |
+    | TSLA | [`0x454f07C5261057ea9D66b8C2c8298D91615cD5f0`](https://testnet.bscscan.com/address/0x454f07C5261057ea9D66b8C2c8298D91615cD5f0#code) |
+    | TSM | [`0x7719543B8B1221D54495025514426ace66b93db1`](https://testnet.bscscan.com/address/0x7719543B8B1221D54495025514426ace66b93db1#code) |
+
+    <Note>An earlier LoanGuard deployment against the real Venus testnet core pool (CAKE collateral) is kept for reference. It is not used by the app.</Note>
+  </Tab>
+  <Tab title="BNB Chain mainnet (56)">
+    Portir contracts: **not deployed yet.**
+
+    External contracts Portir uses on mainnet:
+
+    | Contract | Address |
+    | --- | --- |
+    | USDT (18 decimals) | [`0x55d398326f99059fF775485246999027B3197955`](https://bscscan.com/address/0x55d398326f99059fF775485246999027B3197955) |
+    | Venus Comptroller (core pool) | [`0xfD36E2c2a6789Db23113685031d7F16329158384`](https://bscscan.com/address/0xfD36E2c2a6789Db23113685031d7F16329158384) |
+    | Venus vNVDAB | [`0xEb8Ca841cBe1BC4832A10b15c7dAB1081eDaD371`](https://bscscan.com/address/0xEb8Ca841cBe1BC4832A10b15c7dAB1081eDaD371) |
+    | Venus vTSLAB | [`0x97421799419Eb782628e73e7220d8E0A207469a3`](https://bscscan.com/address/0x97421799419Eb782628e73e7220d8E0A207469a3) |
+    | Venus vSPCXB | [`0xC36dFaCc7a125859C106F29b9F2d874CCF29A55A`](https://bscscan.com/address/0xC36dFaCc7a125859C106F29b9F2d874CCF29A55A) |
+    | Venus vSKHYB | [`0x3E281461efb3D53EC20DB207674373Ed8Ef3BbA9`](https://bscscan.com/address/0x3E281461efb3D53EC20DB207674373Ed8Ef3BbA9) |
+
+    Stock token addresses come live from the Binance RWA Data API; use `search_stock` on the [MCP server](/developers/mcp-server) or the stock page in the app.
+  </Tab>
+</Tabs>

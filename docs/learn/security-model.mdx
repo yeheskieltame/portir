@@ -1,0 +1,44 @@
+---
+title: "Security model"
+description: "Who can do what, where your money sits, and what a leaked key can and cannot do."
+---
+
+## Principles
+
+1. **Non-custodial.** No contract holds funds between calls. Shares always land in the owner's wallet.
+2. **Approve contracts, not agents.** You approve `PlanRegistry` and `LoanGuard`, never the agent's address.
+3. **The agent decides, the contracts bound.** Off-chain logic chooses *when*; on-chain rules cap *how much*.
+4. **Everything is recorded.** Runs, reasons and rescues are on-chain and public.
+
+## Roles
+
+| Role | Who | Can |
+| --- | --- | --- |
+| **Plan owner** | You | Create, update, pause, resume and cancel your plans; record a run yourself |
+| **Executor** | The address you name in the plan (the Portir agent by default) | Pull at most `plan.amount` per due run; return unspent funds; record runs |
+| **Borrower** | You | Set or cancel a guard; revoke the buffer allowance at any time |
+| **Loan executor** | The address you name in the guard | Repay your own debt, capped, once per cooldown, only past your trigger |
+| **Contract owner** | Deployer (testnet); a Safe multisig on mainnet | Upgrade (UUPS, two-step ownership transfer); set the funding token |
+
+## Worst cases
+
+| If this is compromised | The attacker can | The attacker cannot |
+| --- | --- | --- |
+| Agent (executor) key | Pull one run's amount per due plan, at most once per interval (at least 1 day) | Drain your allowance; take shares from buy plans; move anything outside due plans |
+| Loan executor key | Repay part of your own debt from your buffer, capped and rate-limited | Borrow, withdraw collateral, send funds to anyone else |
+| Contract owner key | Upgrade the logic and reach allowances given to the registry | Exceed the allowance you granted |
+
+The app asks for a **limited** allowance (12 runs' worth), not an unlimited one, and offers a one-tap **Revoke**, which bounds the damage of a compromised owner per user. The mainnet owner must be a multisig.
+
+## Upgradeability
+
+Both contracts are UUPS proxies (OpenZeppelin 5) with ERC-7201 namespaced storage, `_disableInitializers()` in the constructor and `Ownable2Step` admin. New fields are only appended; nothing is reordered. Every upgrade is verified on BscScan.
+
+## Agent-side protections (mainnet path)
+
+- Agentic Wallet session and daily limit are checked **before** any money is pulled.
+- A submitted swap is never refunded automatically; pending orders are reported, not retried.
+- Exactly the shares a swap produced are delivered.
+- Explicit slippage (default 1%); the executable price must also pass the Guard.
+- A run with money still out blocks new buys for that plan until settled.
+- Failed buys back off 30 minutes. Unfunded plans get no on-chain entries (no gas griefing).

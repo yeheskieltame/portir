@@ -1,0 +1,30 @@
+---
+title: "Run your own agent"
+description: "Keep every key yourself: your Claude schedules, Portir checks, your Agentic Wallet trades."
+---
+
+Managed plans use the Portir agent as executor. If you prefer full self-custody, let your own Claude run the schedule and trade from **your own Binance Agentic Wallet**. Portir gives it the fair-price check, news and quotes; it never touches your money.
+
+<Frame caption="Profile: connect your Claude, or run your own agent">
+  <img src="/images/d-profile-2.jpg" alt="Profile: connect your Claude, or run your own agent" />
+</Frame>
+
+<Steps>
+  <Step title="Connect Portir to Claude">
+    In Cowork or Claude Code:
+    ```bash
+    claude mcp add portir --transport http https://agent.portir.xyz/mcp
+    ```
+  </Step>
+  <Step title="Add the Binance Agentic Wallet skill">
+    ```bash
+    npx skills add binance/binance-skills-hub/skills/binance-web3/binance-agentic-wallet
+    ```
+    Sign in with the QR code in the Binance App. Set the daily limit and allowed tokens there; the wallet enforces them.
+  </Step>
+  <Step title="Create a scheduled task">
+    In Cowork, schedule a prompt such as: *"Every Monday, ask Portir whether NVDA is fair. If GO, buy $30 of NVDAB with USDT from my Agentic Wallet and tell me why."*
+  </Step>
+</Steps>
+
+Managed plans (this app) and your own agent can run side by side. Only managed plans appear under Plans.

@@ -1,0 +1,214 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "maple",
+  "name": "Portir",
+  "description": "US stocks on BNB Chain, bought at a fair price. Plans, Loan Guard and an agent on BNB Agent Studio.",
+  "colors": {
+    "primary": "#3B82D6",
+    "light": "#61A6F6",
+    "dark": "#2563B0"
+  },
+  "logo": {
+    "light": "/logo/mark-black.svg",
+    "dark": "/logo/mark-white.svg",
+    "href": "https://portir.xyz"
+  },
+  "favicon": "/favicon.svg",
+  "appearance": {
+    "default": "dark"
+  },
+  "navbar": {
+    "primary": {
+      "type": "button",
+      "label": "Open app",
+      "href": "https://app.portir.xyz"
+    }
+  },
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "App",
+          "icon": "rocket",
+          "href": "https://app.portir.xyz"
+        },
+        {
+          "anchor": "Website",
+          "icon": "globe",
+          "href": "https://portir.xyz"
+        },
+        {
+          "anchor": "Agent card",
+          "icon": "robot",
+          "href": "https://agent.portir.xyz/.well-known/agent-card.json"
+        }
+      ]
+    },
+    "tabs": [
+      {
+        "tab": "Get Started",
+        "groups": [
+          {
+            "group": "Welcome",
+            "pages": [
+              "index",
+              "get-started/introduction",
+              "get-started/how-it-works",
+              "get-started/faq"
+            ]
+          },
+          {
+            "group": "Quickstart",
+            "pages": [
+              "get-started/quickstart-users",
+              "get-started/quickstart-developers"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "resources/supported-assets",
+              "resources/contract-addresses",
+              "resources/fees",
+              "resources/roadmap",
+              "resources/changelog",
+              "resources/brand-and-links"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Learn",
+        "groups": [
+          {
+            "group": "Core concepts",
+            "pages": [
+              "learn/the-guard",
+              "learn/plans",
+              "learn/baskets",
+              "learn/sell-rules",
+              "learn/loan-guard",
+              "learn/the-agent",
+              "learn/news-check",
+              "learn/testnet-and-mainnet"
+            ]
+          },
+          {
+            "group": "Access",
+            "pages": [
+              "learn/access-points"
+            ]
+          },
+          {
+            "group": "Security and trust",
+            "pages": [
+              "learn/security-model",
+              "learn/risks",
+              "learn/audits"
+            ]
+          },
+          {
+            "group": "Compliance",
+            "pages": [
+              "learn/kyc-and-eligibility",
+              "learn/disclaimer"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "learn/glossary"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Use the App",
+        "groups": [
+          {
+            "group": "Getting set up",
+            "pages": [
+              "guides/connect-wallet",
+              "guides/switch-mode"
+            ]
+          },
+          {
+            "group": "Investing",
+            "pages": [
+              "guides/buy-a-stock",
+              "guides/create-a-plan",
+              "guides/buy-when-fair",
+              "guides/set-a-sell-rule",
+              "guides/portfolio"
+            ]
+          },
+          {
+            "group": "Borrowing",
+            "pages": [
+              "guides/borrow-with-loan-guard"
+            ]
+          },
+          {
+            "group": "Agent",
+            "pages": [
+              "guides/ask-the-agent",
+              "guides/telegram-reports",
+              "guides/run-your-own-agent"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "guides/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developers",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "developers/architecture"
+            ]
+          },
+          {
+            "group": "Integrate",
+            "pages": [
+              "developers/mcp-server",
+              "developers/x402-and-a2a"
+            ]
+          },
+          {
+            "group": "Contracts",
+            "pages": [
+              "developers/plan-registry",
+              "developers/loan-guard-contract",
+              "developers/testnet-fixtures"
+            ]
+          },
+          {
+            "group": "Agent",
+            "pages": [
+              "developers/executor"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "website": "https://portir.xyz"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude"
+    ]
+  }
+}

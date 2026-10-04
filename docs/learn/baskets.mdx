@@ -1,0 +1,25 @@
+---
+title: "Baskets"
+description: "Four curated baskets bought as one guarded swap per holding, at fixed weights."
+---
+
+A basket is a fixed list of holdings and weights. Buying a basket (by hand or in a plan) runs one guarded swap per holding, in sequence. There is no basket token: every share lands in your wallet as its own stock token.
+
+<Frame caption="AI & Semis: six holdings, fixed weights, one Guard per holding">
+  <img src="/images/d-basket.jpg" alt="AI & Semis: six holdings, fixed weights, one Guard per holding" />
+</Frame>
+
+| Basket | Holdings and weights |
+| --- | --- |
+| **AI & Semis** | NVDA 30, AMD 15, AVGO 15, TSM 15, MSFT 15, GOOGL 10 |
+| **Big Tech** | AAPL, MSFT, GOOGL, AMZN, META, 20 each |
+| **Dividend Blue-chips** | JNJ, PG, KO, PEP, MCD, 20 each |
+| **US Broad Market** | SPY 50, QQQ 30, IWM 20 |
+
+## How the Guard judges a basket
+
+A basket is judged by its **worst holding**: if one holding is BLOCK, the whole basket waits. Smart timing requires every holding's market to be open.
+
+## Partial fills
+
+If one holding fails to buy, the others are not retried (that would double-buy them). The run is recorded as Executed with "Bought 5/6 holdings. Failed: …", and the unspent USDT is returned.

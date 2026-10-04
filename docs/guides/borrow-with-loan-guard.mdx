@@ -1,0 +1,25 @@
+---
+title: "Borrow with Loan Guard"
+description: "Buy, supply, borrow and protect in one batch."
+---
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <Frame caption="Your loan on a phone">
+    <img src="/images/p-loans.jpg" alt="Your loan on a phone" />
+  </Frame>
+</div>
+
+<Steps>
+  <Step title="Open Loans">Pick a stock Venus accepts as collateral: NVIDIA, Tesla, SpaceX or SK Hynix.</Step>
+  <Step title="Choose a borrow size">The slider sets the borrow as a share of your borrow limit (10% to 90%).</Step>
+  <Step title="Protect">Keep **Protect** on. Set the cap per rescue (default 200 USDT) and the safety buffer.</Step>
+  <Step title="Sign the batch">One batch: buy the stock through the Guard → supply as collateral → borrow USDT → set the guard → approve the buffer. On testnet it includes 10,000 free tUSDT if you need it.</Step>
+</Steps>
+
+The Loans page then shows your used limit, the guard's trigger and target, and every rescue the agent made. Cancel the guard or revoke the buffer at any time.
+
+<Frame caption="Used limit, trigger and target at a glance">
+  <img src="/images/d-loans.jpg" alt="Used limit, trigger and target at a glance" />
+</Frame>
+
+<Warning>Loan Guard reduces liquidation risk; it does not remove it. See [Risks](/learn/risks).</Warning>

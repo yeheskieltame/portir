@@ -1,0 +1,45 @@
+---
+title: "The agent"
+description: "The Portir agent on BNB Agent Studio: what it automates, its three faces, and its two brains."
+---
+
+The Portir agent is one long-running process built with **BNB Agent Studio** (`bag`). It runs at `https://agent.portir.xyz`.
+
+## What it automates
+
+| Loop | Every | Does |
+| --- | --- | --- |
+| **Executor** | 15 min | Runs due plans and sell rules: Guard, news check, pull funds, buy, deliver, record |
+| **Loan Guard** | 5 min | Reads guarded Venus positions and rescues those past their trigger |
+| **Telegram** | on each outcome | Sends linked users a message for every recorded run and rescue |
+
+## Three faces
+
+| Face | Endpoint | For |
+| --- | --- | --- |
+| **MCP** | `/mcp` | Claude or any MCP client: twelve read-only tools |
+| **x402** | `/x402` | Natural-language questions, answered with the same tools. Free today (`price_usd = 0`) |
+| **A2A** | agent card at `/.well-known/agent-card.json` | Other agents |
+
+<Frame caption="Ask the agent, right on the Plans page">
+  <img src="/images/d-plans.jpg" alt="Ask the agent, right on the Plans page" />
+</Frame>
+
+## Two brains, one rule
+
+The executor itself **never uses an LLM**: buys are decided by the Guard, which is code.
+
+A language model is used only for two things, and neither can move money:
+
+- **Chat** ("Ask the agent" in the app, and `/x402`).
+- **The [news check](/learn/news-check)**, which can only *hold a buy back* with a reason.
+
+In production both run on Groq (`openai/gpt-oss-120b`) through Agent Studio's OpenAI-compatible model provider. The operator pays for it, not you. If no model answers, plans keep running.
+
+## Its hands: Binance Agentic Wallet
+
+On mainnet the agent trades through a **Binance Agentic Wallet**: an MPC wallet with no private key on the server, whose daily cap, allowed tokens and high-risk confirmations are set by its owner in the Binance App and enforced by Binance. On testnet it settles on `TestExchange` with a keeper-signed quote. See [Testnet and mainnet](/learn/testnet-and-mainnet).
+
+## Hosting
+
+The agent runs in Docker on a VPS behind Caddy (HTTPS), with a fixed IP for the B402 allowlist.

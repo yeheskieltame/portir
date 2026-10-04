@@ -1,0 +1,44 @@
+---
+title: "Quickstart for developers"
+description: "Plug Portir into Claude or your own agent in one command, through MCP."
+---
+
+Portir is a hosted product. You integrate with it through its **MCP server**, its **x402 / A2A** endpoints, or its **public contracts** on BNB Chain. There is nothing to install or run.
+
+<Steps>
+  <Step title="Add the MCP server">
+    <Tabs>
+      <Tab title="Claude Code">
+        ```bash
+        claude mcp add portir --transport http https://agent.portir.xyz/mcp
+        ```
+      </Tab>
+      <Tab title="Claude Desktop / Cowork">
+        Settings → Connectors → Add custom connector → URL `https://agent.portir.xyz/mcp`.
+      </Tab>
+      <Tab title="Any MCP client">
+        ```json
+        {
+          "mcpServers": {
+            "portir": { "type": "http", "url": "https://agent.portir.xyz/mcp" }
+          }
+        }
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Ask">
+    *"Is now a good time to buy TSLA on-chain?"* calls `get_fair_price` and answers with the Guard's verdict and reason.
+  </Step>
+  <Step title="Act">
+    *"Set up $30 weekly NVDA, only when fair."* calls `prepare_dca_plan` and returns **unsigned calldata**. The user's wallet signs; Portir never signs for anyone.
+  </Step>
+</Steps>
+
+## Other ways in
+
+<CardGroup cols={3}>
+  <Card title="MCP tools" icon="plug" href="/developers/mcp-server">All twelve tools and what they return.</Card>
+  <Card title="x402 and A2A" icon="robot" href="/developers/x402-and-a2a">Plain HTTP questions, or agent-to-agent jobs.</Card>
+  <Card title="Contracts" icon="file-contract" href="/developers/plan-registry">Read plans and runs straight from BNB Chain.</Card>
+</CardGroup>

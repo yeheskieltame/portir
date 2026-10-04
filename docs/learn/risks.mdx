@@ -1,0 +1,50 @@
+---
+title: "Risks"
+description: "What can go wrong, and what Portir does about each risk."
+---
+
+<Warning>
+Tokenized stocks, DeFi lending and automated agents all carry risk of loss. Portir reduces some risks; it removes none. Read this page before using mainnet.
+</Warning>
+
+## Smart contract risk
+
+Bugs in `PlanRegistry`, `LoanGuard`, or the protocols they call (PancakeSwap, Venus, issuer token contracts) could lose funds.
+
+**Mitigations:** OpenZeppelin base contracts; per-run caps; no funds held between calls; fuzz tests (5,000 runs) and internal adversarial reviews; source verified on BscScan. Portir has **not** had an external audit. See [Audits](/learn/audits).
+
+## Issuer and asset risk
+
+A stock token is a claim through its issuer (Ondo, bStocks, xStocks), under that issuer's terms. Issuers can halt a token (dividends, splits, earnings), change multipliers, or restrict holders.
+
+**Mitigations:** halted tokens are always BLOCK; per-share prices account for multipliers; Portir shows which issuer it picked and why.
+
+## Price and liquidity risk
+
+On-chain prices drift when the US market is closed, and pools can be thin.
+
+**Mitigations:** the [Guard](/learn/the-guard) blocks premiums above 1%; swaps revert below a 0.5% minimum output (1% slippage on the agent's mainnet path); smart timing waits for the open.
+
+## Oracle and data risk
+
+The Guard depends on the Binance RWA Data API for sessions and reference prices. Missing or wrong data could lead to wrong verdicts.
+
+**Mitigations:** a missing exchange price is BLOCK, never guessed; stale-looking issuers (deep discounts) are ranked last.
+
+## Liquidation risk (loans)
+
+Collateral can fall faster than the agent can react, the buffer can run out, or the cap can be too small.
+
+**Mitigations:** rescue every 5 minutes past your trigger; the target and cap are yours to set. Loan Guard cannot add collateral and does not guarantee you will not be liquidated.
+
+## Agent and operator risk
+
+The hosted agent can go offline, its model provider can fail, or its keys can leak.
+
+**Mitigations:** plans keep their schedule on-chain and resume when the agent returns; the executor's power is capped by the contracts; you can name yourself or your own agent as executor; the news check fails open.
+
+## Counterparty and access risk
+
+Binance APIs can refuse requests (for example `40304` from cloud IPs) or be unreachable in some regions.
+
+**Mitigations:** server-side reads; testnet mode for trying everything; non-custodial design, so your assets stay in your wallet whatever happens to Portir.

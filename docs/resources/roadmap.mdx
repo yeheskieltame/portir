@@ -1,0 +1,34 @@
+---
+title: "Roadmap"
+description: "What is live, what is next, and what comes after."
+---
+
+## Live
+
+- Guard (session, fair price, best issuer, minimum output) in the app, MCP and agent
+- Market catalog of 500+ US stocks and ETFs, stock pages, charts, fundamentals, dividends
+- Manual guarded buys on BNB Chain mainnet, signed by the user's wallet
+- Plans on testnet: recurring, "buy when fair", baskets, smart timing, funded through PlanRegistry
+- Sell rules (take-profit / stop-loss) on testnet
+- Loan Guard on testnet with real rescues
+- News check, Telegram reports, plan flow diagrams
+- Agent on BNB Agent Studio with MCP, x402 and A2A faces, hosted at agent.portir.xyz
+
+## Next: mainnet plans
+
+<Steps>
+  <Step title="PlanRegistry on mainnet">Deploy with a Safe multisig as owner, verify on BscScan, one dry-run scan with execution off.</Step>
+  <Step title="Agentic Wallet execution">Arm the `agentic-wallet` backend after a small end-to-end run: pull through the registry, swap on the Agentic Wallet, deliver shares, record.</Step>
+  <Step title="Mainnet sell rules">Sell path through the Agentic Wallet.</Step>
+  <Step title="Loan Guard on Venus mainnet">Same contract, pointed at the Venus core pool and its four stock markets.</Step>
+</Steps>
+
+## Later
+
+- Read the catalog from the keyed `web3.binance.com` API (not ISP-blocked, issuer list as source of truth)
+- Pre-trade simulation (Guard step 4 on the Trading API)
+- Indexer, so cost basis follows the wallet instead of the device
+- Rebalancing baskets when weights drift
+- Smaller recurring amounts, once the Agentic Wallet's minimum order is confirmed
+- Paid x402 calls over B402, so callers pay per question instead of the operator
+- External security audit before larger deposits

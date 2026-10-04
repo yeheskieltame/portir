@@ -1,0 +1,22 @@
+---
+title: "Testnet fixtures"
+description: "Test doubles that make BSC testnet behave like mainnet: tUSDT, TestExchange, MockStocks, StockLendingPool."
+---
+
+Stock tokens and Venus stock markets do not exist on BSC testnet, so Portir deploys small, non-upgradeable stand-ins. They are never deployed to mainnet.
+
+| Contract | Role |
+| --- | --- |
+| `MockUSDT` (tUSDT) | Freely mintable test USDT: `faucet()` gives 10,000, `mint(to, amount)` up to 1M, no cooldown |
+| `TestExchange` | Sells and buys back shares at an EIP-712 quote signed by the keeper; `buyBatch` buys a whole basket in one transaction |
+| `MockStock` | One ERC-20 per featured and basket ticker (20) |
+| `StockLendingPool` | Venus-compatible lending pool over the four loan stocks; real liquidations; close factor 50%, bonus 10% |
+
+## Quotes
+
+```solidity
+// EIP-712 domain: name "Portir TestExchange", version "1", chainId 97
+struct Quote { address stock; uint128 price; uint40 deadline; }
+```
+
+The app (`/api/buy`) and the agent sign the **live mainnet per-share price** into every quote, valid for 10 minutes. A quote binds stock, price and deadline only; a real venue must also bind buyer, side and amount (documented as an accepted testnet limitation).

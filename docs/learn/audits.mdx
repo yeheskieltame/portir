@@ -1,0 +1,24 @@
+---
+title: "Audits"
+description: "Security reviews of the Portir contracts and agent, newest first."
+---
+
+<Info>
+Portir has not been audited by an external firm yet. The reviews below are internal.
+</Info>
+
+| Date | Scope | Method | Result |
+| --- | --- | --- | --- |
+| 2026-10-03 | PlanRegistry v7, agent mainnet path | Pre-mainnet review, 5,000 fuzz runs, static lint | 2 medium fixed (resume reset run budget; returns blocked while paused), owner-must-be-Safe open until mainnet, 8 agent hardening fixes |
+| 2026-09-28 | PlanRegistry v6 (sell rules), StockLendingPool | Review + tests | `WrongPlanKind` both directions; per-run share budget |
+| 2026-09-27 | LoanGuard | Review, 6 unit tests, fork test on BSC testnet Venus | No funds held; on-chain risk check; Venus error codes handled |
+| 2026-09-25 | PlanRegistry, testnet fixtures | Adversarial pass, 3,000 fuzz runs | 1 medium fixed (completed once plan could be resumed) |
+| 2026-09-23 | PlanRegistry | OZ upgrade-safety checklist, 13 tests incl. fuzz | Info findings only |
+
+## Pre-mainnet checklist
+
+- [ ] Contract `OWNER` is a Safe multisig; the deployer keeps no admin.
+- [ ] Full test suite with 5,000 fuzz runs green.
+- [ ] Deploy to mainnet and verify implementation and proxy on BscScan.
+- [ ] One executor scan against the mainnet registry with execution off.
+- [ ] One small end-to-end run before announcing.

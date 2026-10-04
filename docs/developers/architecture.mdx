@@ -1,0 +1,56 @@
+---
+title: "Architecture"
+description: "How the app, the agent, the Guard and the contracts fit together."
+---
+
+```mermaid
+flowchart TB
+  subgraph Clients
+    APP[Web app<br/>Next.js]
+    CL[Claude / MCP clients]
+    OA[Other agents<br/>x402 / A2A]
+  end
+  subgraph Agent[Portir agent - BNB Agent Studio]
+    MCP[/mcp/]
+    X[/x402/]
+    A2A[A2A]
+    EX[Executor - 15 min]
+    LG[Loan Guard loop - 5 min]
+  end
+  CORE[[Guard engine<br/>+ Binance data]]
+  subgraph BSC[BNB Smart Chain]
+    PR[(PlanRegistry)]
+    LGC[(LoanGuard)]
+    V[(Venus)]
+    PS[(PancakeSwap)]
+  end
+  BIN[Binance RWA Data + Trading API]
+  AW[Binance Agentic Wallet]
+
+  APP --> CORE
+  CL --> MCP
+  OA --> X
+  OA --> A2A
+  MCP --> CORE
+  EX --> CORE
+  CORE --> BIN
+  APP -- user signs --> PR
+  APP -- user signs --> PS
+  EX -- pullFunds / recordRun --> PR
+  EX -- mainnet swaps --> AW
+  AW --> PS
+  LG -- rescue --> LGC
+  LGC -- repayBorrowBehalf --> V
+```
+
+## No custodial backend
+
+Plans and run history live in `PlanRegistry`. With the executor on Agent Studio and signing through wallets, a backend would only have been a database, and the chain already is one, with a public audit trail.
+
+Two Next.js route handlers exist only because `binance.com` is unreachable from browsers in some regions and the Trading API needs a server-side key:
+
+| Route | Does |
+| --- | --- |
+| `GET /api/quote` | Prices and history for the portfolio |
+| `POST /api/buy` | Guard verdict plus approval and swap calldata (mainnet), or a keeper-signed quote (testnet). Nothing is sent from the server |
+| `POST /api/agent` | Proxies the in-app chat to the agent's `/x402` face |

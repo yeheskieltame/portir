@@ -1,0 +1,29 @@
+---
+title: "Glossary"
+description: "Terms used across Portir."
+---
+
+| Term | Meaning |
+| --- | --- |
+| **bps** | Basis point, 0.01%. 100 bps = 1% |
+| **Guard** | The fair-price check that answers GO, WARN or BLOCK before every order |
+| **Spread** | Gap between the on-chain per-share price and the exchange reference price, in bps |
+| **Session** | US market state: open, pre-market, after-hours, closed |
+| **Halt** | An issuer pausing a token (dividend, split, earnings) |
+| **Issuer** | The company behind a stock token: Ondo, bStocks or xStocks |
+| **Multiplier** | Shares per token. Per-share price = token price / multiplier |
+| **Plan** | An on-chain instruction to buy a stock or basket on a schedule, or once when fair |
+| **Smart timing** | Plan option to wait for the US open and a GO price, up to 48h |
+| **Run** | One attempt of a plan, recorded as Executed, Waited or Skipped with a reason |
+| **Executor** | The address allowed to run a plan; the Portir agent by default |
+| **Sell rule** | A one-time take-profit or stop-loss plan |
+| **Basket** | A fixed set of holdings and weights, bought one guarded swap per holding |
+| **Loan Guard** | Contract and loop that repays part of a Venus loan from your buffer past your trigger |
+| **usedBps** | Debt divided by the liquidation limit; 10000 = liquidatable |
+| **Buffer** | USDT you approve Loan Guard to use for rescues; it stays in your wallet |
+| **Agentic Wallet** | Binance's MPC wallet for agents, with limits set in the Binance App |
+| **Agent Studio** | BNB Chain's framework (`bag`) for building and running agents |
+| **MCP** | Model Context Protocol: how Claude and other clients call Portir's tools |
+| **x402** | HTTP 402-based payment protocol; Portir's `/x402` face is free today |
+| **A2A** | Agent-to-agent protocol; Portir publishes an agent card |
+| **tUSDT** | Freely mintable test USDT on BSC testnet |

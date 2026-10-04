@@ -1,0 +1,41 @@
+---
+title: "Create a plan"
+description: "Set a recurring investment that the agent runs only when the price is fair."
+---
+
+<Frame caption="Build a plan step by step, right on the diagram">
+  <img src="/images/d-plan-new.jpg" alt="Build a plan step by step, right on the diagram" />
+</Frame>
+
+<Steps>
+  <Step title="Open Plans → New">
+    You see the plan as a flow diagram: every step the agent will take. Set it up right on the diagram.
+  </Step>
+  <Step title="Choose the target">
+    A single stock or one of the four baskets.
+  </Step>
+  <Step title="Amount and cadence">
+    Amount per run in USDT; weekly, every 2 weeks or monthly. Each holding needs at least $1 per run.
+  </Step>
+  <Step title="Smart timing">
+    On: wait up to 48h after the due time for the US open and a GO price. Off: buy at the due time unless the Guard says BLOCK.
+  </Step>
+  <Step title="Sign the plan">
+    Your wallet signs `createPlan` on `PlanRegistry`, with the Portir agent as executor.
+  </Step>
+  <Step title="Allow funding">
+    Tap **Allow** to let the registry spend up to 12 runs' worth of USDT. When fewer than 3 runs remain, the button becomes **Top up**. **Revoke** stops spending; your plans will wait.
+  </Step>
+</Steps>
+
+## After that
+
+Each plan has a page with its runs (Executed / Waited / Skipped and the reason) and **View flow**, which lights up where the last run stopped. You can edit amount, cadence or smart timing, pause and resume.
+
+<Frame caption="Plans and sell rules, each with its next run and last outcome">
+  <img src="/images/d-plans-list2.jpg" alt="Plans and sell rules, each with its next run and last outcome" />
+</Frame>
+
+<Tip>
+Prefer typing? On the Plans page, ask the agent: *"Invest $50 in AI & Semis every Monday, only when fair."* It proposes the plan; your wallet signs.
+</Tip>

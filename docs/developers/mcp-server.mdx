@@ -1,0 +1,32 @@
+---
+title: "MCP server"
+description: "Twelve read-only tools for Claude or any MCP client at agent.portir.xyz/mcp."
+---
+
+```bash
+claude mcp add portir --transport http https://agent.portir.xyz/mcp
+```
+
+All tools are annotated `readOnlyHint: true`. Tools that lead to a transaction return **unsigned calldata** for the user's wallet.
+
+| Tool | Returns |
+| --- | --- |
+| `search_stock` | Tickers, names, kind and issuers (ondo, bstocks, xstocks) with contracts |
+| `get_fair_price` | The Guard verdict: on-chain vs exchange, spread in bps, session, GO/WARN/BLOCK and reason |
+| `market_window` | Session, halts, and every issuer's on-chain price |
+| `price_history` | Per-share on-chain history, `15m`/`1h`/`4h`/`1d`, up to 300 points |
+| `get_news` | Latest headlines (Yahoo Finance; CoinDesk when configured) |
+| `quote_best_issuer` | Executable Trading API quote: cheapest issuer, price per share, expected shares, impact, verdict |
+| `prepare_buy` | Guard verdict and, unless BLOCK, USDT approval and swap calldata (chainId 56) |
+| `get_portfolio` | Stock-token holdings of an address as shares, with today's price |
+| `list_plans` | PlanRegistry plans of an address with status and run history |
+| `prepare_dca_plan` | Unsigned `createPlan` calldata with this agent as executor |
+| `get_loan_health` | Debt, liquidation limit, usedBps and guard settings of a wallet |
+| `executor_status` | Execution backend, Agentic Wallet session state and limits, scan interval |
+
+## Example prompts
+
+- "Is now a good time to buy TSLA on-chain?"
+- "Compare NVDA across issuers and tell me which is cheapest and fair."
+- "Set up $30 weekly NVDA, only when fair." (returns a plan to sign)
+- "How close is 0x… to liquidation?"

@@ -1,0 +1,34 @@
+---
+title: "News check"
+description: "An LLM reads recent headlines before every buy, and may only hold the buy back."
+---
+
+After the price and market-hours checks pass, the agent asks a language model one question: *should this buy go ahead now, or wait up to a day?*
+
+## What it reads
+
+The latest headlines for each holding (Yahoo Finance, plus CoinDesk crypto/RWA context when configured).
+
+## When it says wait
+
+Only for a **concrete near-term risk** in the headlines:
+
+- earnings or guidance within about 24 hours
+- a trading halt
+- fraud or accounting issues
+- a regulator or court action
+- a sharp news-driven move happening right now
+
+Ordinary news, analyst opinions and general market chatter mean *buy*.
+
+## Guarantees
+
+| Property | Behavior |
+| --- | --- |
+| Power | It can only hold a buy back. It can never trigger, enlarge or redirect one |
+| Transparency | The one-sentence reason (naming the headline) is written on-chain with the run |
+| Fail-open | If no model answers, the buy follows the Guard alone |
+| Window | Once the plan's window is over, the schedule wins over the news |
+| Cost | One opinion per ticker per hour, cached across 15-minute scans |
+
+Example recorded reason: *"Price is fair, but holding back for the news: NVIDIA reports earnings after the close today."*

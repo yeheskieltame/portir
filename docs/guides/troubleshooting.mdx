@@ -1,0 +1,17 @@
+---
+title: "Troubleshooting"
+description: "Common problems and their fixes."
+---
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| "No wallet found in this browser" | No injected wallet | Open the app inside Binance Wallet or MetaMask's browser, or install an extension |
+| "You need a little BNB for gas" | BNB balance too low | Top up BNB (testnet: faucet) |
+| Plan shows nothing for days | Not funded: allowance or balance below one run | Plans → **Allow** / **Top up**; testnet: Profile → Get 10,000 tUSDT |
+| Plan says Waited every time | Price unfair, market closed with smart timing, or news hold | Read the reason; turn off smart timing if you accept any non-BLOCK price |
+| "Slice below $1" in a basket run | A holding's share of the amount is under $1 | Raise the plan amount |
+| "Could not read your plans" | Wallet on the wrong network | Switch to the network of the current mode |
+| Chat says "agent could not answer" | Model busy or offline | Wait a minute; plans keep running without it |
+| Mainnet quote fails with `40304` | Binance Trading API refuses cloud IPs | Buy from a home network |
+| Exchange price unavailable | No reference from the data API | The Guard blocks until it returns |
+| This stock is not on the testnet exchange | Testnet lists the 20 featured stocks and basket holdings | Pick one of those, or use mainnet |

@@ -1,0 +1,30 @@
+---
+title: "Sell rules"
+description: "Take-profit and stop-loss orders the agent executes when the real price crosses your trigger."
+---
+
+A sell rule is a one-time plan that sells shares you already hold.
+
+| Field | Meaning |
+| --- | --- |
+| Stock token | The token to sell |
+| Shares | Exactly how many shares to sell |
+| Trigger price | Per-share price in USD |
+| Direction | **Take-profit** (sell at or above) or **stop-loss** (sell at or below) |
+
+## How it runs
+
+<Steps>
+  <Step title="Watch">The agent reads the stock's real exchange price every 15 minutes. No time limit.</Step>
+  <Step title="Wait for the open">Once the trigger is crossed, it waits until the US market is open.</Step>
+  <Step title="Pull exactly the rule's shares">`pullShares` moves the shares from your wallet through `PlanRegistry`. You approve the registry for that token.</Step>
+  <Step title="Sell and deliver">It sells at a fair on-chain price and sends the USDT to your wallet. If the sale fails, the shares are returned and the run is logged as Waited.</Step>
+</Steps>
+
+<Frame caption="A sell rule as a flow">
+  <img src="/images/d-plan-14.jpg" alt="A sell rule as a flow" />
+</Frame>
+
+<Info>
+Sell rules run on **BSC testnet** today. The mainnet sell path is on the [roadmap](/resources/roadmap).
+</Info>

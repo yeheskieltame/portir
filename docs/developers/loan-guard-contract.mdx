@@ -1,0 +1,46 @@
+---
+title: "LoanGuard"
+description: "Capped, on-chain-checked repayments of Venus loans from the borrower's own wallet."
+---
+
+Verified on [BscScan](https://testnet.bscscan.com/address/0xa33fDbd747d95bD733172D9D7c4d6c50CcE33f61#code). It speaks the Venus comptroller / vToken interface, so the same contract points at the Venus core pool on mainnet or the Venus-compatible `StockLendingPool` on testnet.
+
+## Data
+
+```solidity
+struct Guard {
+    address executor;
+    address vToken;        // the debt market repaid on rescue (e.g. vUSDT)
+    uint16 triggerBps;     // rescue allowed once debt / liquidation limit reaches this
+    uint16 targetBps;      // the executor aims back to this
+    uint128 maxPerRescue;  // debt-token units
+    uint32 cooldown;
+    uint40 lastRescueAt;
+    bool active;
+}
+
+struct Rescue { uint40 at; uint128 amount; uint16 usedBpsBefore; uint16 usedBpsAfter; }
+```
+
+## Functions
+
+| Function | Caller | Effect |
+| --- | --- | --- |
+| `setGuard(executor, vToken, triggerBps, targetBps, maxPerRescue, cooldown)` | borrower | Requires `0 < target < trigger < 10000` |
+| `cancelGuard()` | borrower | Deactivates |
+| `rescue(borrower, amount)` | the borrower's executor | Pulls `amount` from the borrower and calls `repayBorrowBehalf` |
+| `usedBps(borrower)` | view | Debt / Σ (collateral × liquidation threshold) |
+| `position(borrower)` | view | `(debtUsd, limitUsd)` |
+| `guardOf`, `rescuesOf`, `borrowers`, `comptroller` | view | Reads |
+
+## Checks inside `rescue`
+
+1. Guard active, caller is the borrower's executor, `amount > 0`.
+2. `amount ≤ maxPerRescue` (`OverCap`), cooldown passed (`Cooldown`).
+3. `usedBps ≥ triggerBps`, computed from the pool's oracle, `getAccountSnapshot` and the liquidation threshold (`NotAtRisk`).
+4. Transfer from the borrower, repay, and revert with `VenusError(code)` on any non-zero Venus code.
+5. Record the rescue with used limit before and after.
+
+## Events and errors
+
+Events: `GuardSet`, `GuardCancelled`, `Rescued`. Errors: `BadThresholds`, `ZeroAmount`, `NotExecutor`, `GuardInactive`, `OverCap(cap)`, `Cooldown(until)`, `NotAtRisk(usedBps, triggerBps)`, `VenusError(code)`.

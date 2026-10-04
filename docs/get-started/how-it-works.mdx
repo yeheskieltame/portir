@@ -1,0 +1,84 @@
+---
+title: "How it works"
+description: "The path from a tap on Buy (or a due plan) to a recorded transaction."
+---
+
+<Frame caption="Every plan and every loan has its own flow in the app">
+  <img src="/images/l-flows.jpg" alt="Every plan and every loan has its own flow in the app" />
+</Frame>
+
+## The building blocks
+
+| Piece | Role |
+| --- | --- |
+| **Binance RWA Data API** | US session, halts, exchange reference price, issuer multipliers, catalog of 500+ stocks and ETFs |
+| **Binance Trading API** | Executable quotes and swap calldata over PancakeSwap liquidity (user buys on mainnet) |
+| **The Guard** | Pure verdict logic: GO / WARN / BLOCK with a reason |
+| **PlanRegistry** | Plans, sell rules, funding pulls and run history. Holds no funds between calls |
+| **LoanGuard** | Capped, on-chain-checked repayments of Venus loans from the borrower's buffer |
+| **Portir agent** (BNB Agent Studio) | Executor every 15 min, Loan Guard loop every 5 min, MCP / x402 / A2A faces |
+| **Binance Agentic Wallet** | The agent's hands on mainnet: MPC wallet with limits set in the Binance App |
+
+## A manual buy
+
+```mermaid
+sequenceDiagram
+  participant U as You
+  participant A as Portir app
+  participant G as Guard
+  participant B as Binance APIs
+  participant W as Your wallet
+  U->>A: Buy $50 of NVDA
+  A->>B: session, reference price, on-chain price per issuer
+  A->>G: snapshot
+  G-->>A: GO / WARN / BLOCK + reason
+  A->>B: quote from the cheapest fair issuer
+  B-->>A: approval + swap calldata (0.5% minimum output)
+  A->>W: sign
+  W-->>U: shares in your wallet
+```
+
+Nothing is sent from a server. The app only prepares calldata; your wallet signs.
+
+## A plan run
+
+```mermaid
+flowchart LR
+  S[Scan every 15 min] --> D{Plan due?}
+  D -- no --> S
+  D -- yes --> F{Funded? allowance and balance}
+  F -- no --> X[Not recorded, nothing spent]
+  F -- yes --> G{Fair enough? not BLOCK, or with smart timing: GO and market open}
+  G -- no, inside the window --> W[Waited, logged sparingly]
+  G -- yes --> N{News check}
+  N -- hold --> W
+  N -- buy --> P[Pull at most the plan amount via PlanRegistry]
+  P --> B[Buy each holding]
+  B --> T[Send shares to the owner]
+  T --> R[recordRun Executed + reason]
+  G -- window over: 48h, or 7 days for once --> K[Skipped + reason]
+```
+
+<Frame caption="The same flow in the app: plan #13, AI & Semis, every node lit where the last run passed">
+  <img src="/images/d-plan-13.jpg" alt="The same flow in the app: plan #13, AI & Semis, every node lit where the last run passed" />
+</Frame>
+
+## A loan rescue
+
+```mermaid
+flowchart LR
+  L[Every 5 min] --> R[Read each guarded position]
+  R --> C{usedBps past trigger?}
+  C -- no --> L
+  C -- yes --> K[LoanGuard re-checks on-chain]
+  K --> P[repayBorrowBehalf from the borrower's buffer, capped]
+  P --> T[Back to the target, rescue recorded]
+```
+
+<Frame caption="The Loan Guard flow and the last rescue, as the borrower sees it">
+  <img src="/images/d-loans-2.jpg" alt="The Loan Guard flow and the last rescue, as the borrower sees it" />
+</Frame>
+
+<Note>
+The agent decides; the contracts enforce. A leaked agent key can take at most one run's amount per due plan, and can only repay a borrower's own debt, capped. See the [security model](/learn/security-model).
+</Note>

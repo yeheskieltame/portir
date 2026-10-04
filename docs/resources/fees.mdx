@@ -1,0 +1,34 @@
+---
+title: "Fees"
+description: "Portir charges nothing. Here is everything you do pay, and to whom."
+---
+
+| Fee | Who charges it | Who pays | When |
+| --- | --- | --- | --- |
+| **Portir fee** | | | None. Portir takes no fee on buys, plans, sell rules or loans |
+| **Gas** | BNB Chain validators | You, in BNB, for transactions your wallet signs | Every transaction |
+| **Agent gas** | BNB Chain validators | The operator, for `pullFunds`, `recordRun` and other executor transactions | Each recorded run |
+| **Swap fee** | The route (Binance Web3 Wallet / PancakeSwap pools) | You, deducted from the fill | Each buy or sell |
+| **Issuer spread** | Market | You, as the gap between on-chain and exchange price | Each buy; the Guard shows it |
+| **Loan interest** | Venus | You, on borrowed USDT | While a loan is open |
+| **AI model** | Groq | The operator | Chat and news check |
+
+## Worked example
+
+You buy $50 of NVDA at 3 AM Jakarta time:
+
+- The Guard sees the on-chain price 0.30% above the exchange: **GO**, you pay about $0.15 over the exchange price.
+- Gas for approval and swap on BSC: a few cents of BNB (about $0.05 of BNB covers a purchase).
+- Portir fee: **$0**.
+
+<Note>
+Gas on BSC is very low (about 0.05 gwei at the time of writing), so gas is a fixed cost of cents per transaction. It matters for very small orders: on a $1 order it is a few percent; on a $50 order it is negligible.
+</Note>
+
+## Minimums
+
+| Item | Minimum |
+| --- | --- |
+| Manual buy, per holding | $1 (Binance Trading API minimum) |
+| Plan run, per holding | $1 |
+| Plan interval | 1 day (app offers weekly, every 2 weeks, monthly) |

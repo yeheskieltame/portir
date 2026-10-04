@@ -1,0 +1,31 @@
+---
+title: "Testnet and mainnet"
+description: "What runs where today, and what testnet mode actually simulates."
+---
+
+Portir has two modes, switched in **Profile → Mode**. Prices, sessions, the Guard and news are **live from mainnet in both**. The mode only changes where a trade settles.
+
+<Frame caption="Profile → Mode">
+  <img src="/images/d-profile.jpg" alt="Profile → Mode" />
+</Frame>
+
+| Feature | Testnet (BSC 97) | Mainnet (BSC 56) |
+| --- | --- | --- |
+| Catalog, charts, Guard, news | Live | Live |
+| Manual buy | `TestExchange`, tUSDT, 20 featured stocks | Binance Trading API over PancakeSwap, real USDT |
+| Plans (recurring, once, baskets) | Live, run by the agent | Contract path built, not yet deployed |
+| Sell rules | Live | Not built yet |
+| Loan Guard | `StockLendingPool` (Venus-compatible) | Not enabled |
+| Telegram reports | Live | Same bot, once mainnet plans run |
+
+## How testnet stays honest
+
+`TestExchange` fills each trade at an EIP-712 quote signed by a keeper with the **live mainnet price**, valid for 10 minutes. So the Guard sees on testnet exactly what it would see on mainnet, and nothing can go stale.
+
+<Warning>
+Mainnet buys sign real transactions with real USDT. Start on testnet. Mainnet plan execution through the Agentic Wallet stays switched off until its checklist is complete; see the [roadmap](/resources/roadmap).
+</Warning>
+
+<Note>
+The Binance Trading API refuses requests from cloud IPs (`40304 compliance restriction`). Mainnet buy quotes therefore work from a home network or a local run, not from the hosted app in every region.
+</Note>

@@ -1,0 +1,35 @@
+---
+title: "Access points"
+description: "Every way to reach Portir: the app, MCP, x402, A2A and Telegram."
+---
+
+Portir has no account system and no custodial gateway. Every entry point talks to the same Guard and the same contracts.
+
+<Frame caption="Built on the BNB stack">
+  <img src="/images/l-stack.jpg" alt="Built on the BNB stack" />
+</Frame>
+
+| Access point | Address | Who uses it | Signs transactions? |
+| --- | --- | --- | --- |
+| **Web app** | [app.portir.xyz](https://app.portir.xyz) | Investors, borrowers | Your wallet signs |
+| **MCP server** | `https://agent.portir.xyz/mcp` | Claude, any MCP client | No: returns unsigned calldata |
+| **x402** | `https://agent.portir.xyz/x402` | Apps, other agents | No |
+| **A2A** | `https://agent.portir.xyz/.well-known/agent-card.json` | Agent-to-agent | No |
+| **Telegram** | linked from Profile | Run and rescue reports | No: read-only |
+| **Contracts** | [Addresses](/resources/contract-addresses) | Anyone, directly | Your wallet signs |
+
+## Data and trading gateways Portir relies on
+
+| Provider | Used for |
+| --- | --- |
+| Binance RWA Data API | Catalog, sessions, halts, exchange reference, multipliers, history |
+| Binance Trading API | Executable quotes and swap calldata (mainnet buys) |
+| Binance Agentic Wallet | The agent's mainnet trades |
+| PancakeSwap | Swap liquidity |
+| Venus | Stock-backed loans |
+| Yahoo Finance, CoinDesk | Headlines for the news check |
+| Groq (via Agent Studio) | Chat and news-check model |
+
+<Note>
+`www.binance.com` is DNS-blocked by some Indonesian ISPs, so the app reads Binance data on the server. Nothing in the browser needs to reach it.
+</Note>

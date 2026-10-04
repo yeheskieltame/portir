@@ -1,0 +1,70 @@
+---
+title: "PlanRegistry"
+description: "Plans, sell rules, capped funding pulls and run history. UUPS upgradeable."
+---
+
+Verified on [BscScan](https://testnet.bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code). Current version: **v7**.
+
+## Data
+
+```solidity
+enum Outcome { Executed, Waited, Skipped }
+
+struct Plan {
+    address owner;
+    address executor;
+    bytes32 target;      // ticker or "BASKET:<name>", as bytes32
+    uint128 amount;      // USDT per run (18 decimals); shares for a sell rule
+    uint32 interval;     // seconds, >= 1 day
+    uint40 nextRunAt;
+    bool smartTiming;
+    bool active;
+    bool once;
+}
+
+struct SellRule { address token; uint128 triggerPrice; bool below; }
+```
+
+Each run stores the outcome, the spread in bps, the transaction hash and a reason of at most 200 bytes.
+
+## Functions
+
+| Function | Caller | Effect |
+| --- | --- | --- |
+| `createPlan(target, amount, interval, firstRunAt, smartTiming, once, executor)` | anyone | New plan owned by `msg.sender` |
+| `createSellRule(target, token, shares, triggerPrice, below, executor)` | anyone | One-time sell plan |
+| `updatePlan(id, amount, interval, smartTiming)` | owner | Next run date kept |
+| `cancelPlan(id)` / `resumePlan(id)` | owner | Pause / resume; a finished once plan reverts `PlanDone` |
+| `recordRun(id, outcome, spreadBps, txHash, reason)` | executor or owner | Logs a run; Executed and Skipped advance `nextRunAt` |
+| `pullFunds(id, amount)` | executor | Owner → executor, at most `plan.amount` per due run |
+| `returnFunds(id, amount)` | executor | Back to the owner, at most what was pulled |
+| `pullShares` / `returnShares` | executor | Same, for sell rules |
+| `setFundingToken(token)` | contract owner | Which token plans pull |
+| `getPlan`, `planIdsOf`, `runsOf`, `sellRuleOf`, `pulledFor`, `planCount` | view | Reads |
+
+## Events
+
+`PlanCreated`, `PlanUpdated`, `PlanCancelled`, `PlanResumed`, `PlanCompleted`, `PlanRun`, `FundsPulled`, `FundsReturned`, `SharesPulled`, `SharesReturned`, `SellRuleCreated`, `FundingTokenSet`.
+
+## Errors
+
+`ZeroAmount`, `EmptyTarget`, `IntervalTooShort`, `NotPlanOwner`, `NotAuthorized`, `PlanInactive`, `PlanActive`, `PlanDone`, `NotDue(nextRunAt)`, `ReasonTooLong`, `NoFundingToken`, `OverBudget(available)`, `WrongPlanKind`.
+
+## Example: read a plan's history
+
+```bash
+cast call 0x28daDC35523CE792C7C09faf516763830C38f36b \
+  "runsOf(uint256)((uint40,uint8,int32,bytes32,string)[])" 16 \
+  --rpc-url https://bsc-testnet-rpc.publicnode.com
+```
+
+## Version history
+
+| Version | Change |
+| --- | --- |
+| v7 | Resume keeps the run's pulled budget; returns open while paused or after recording |
+| v6 | Sell rules, `pullShares` / `returnShares` |
+| v5 | Funded runs: owners approve the registry, executor pulls at most `amount` per run |
+| v4 | A completed once plan cannot be resumed |
+| v3 | One-time "buy when fair" plans |
+| v2 | `updatePlan`, `resumePlan` |

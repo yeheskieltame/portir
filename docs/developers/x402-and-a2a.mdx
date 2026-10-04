@@ -1,0 +1,34 @@
+---
+title: "x402 and A2A"
+description: "Talk to the Portir agent over HTTP or as another agent."
+---
+
+## x402
+
+`POST https://agent.portir.xyz/x402` with a natural-language prompt. The agent answers with the same tools as the MCP server.
+
+```bash
+curl -X POST https://agent.portir.xyz/x402 \
+  -H 'content-type: application/json' \
+  -d '{"prompt":"Is NVDA fairly priced right now?"}'
+# {"result":"NVDA is fairly priced (GO) right now."}
+```
+
+| Property | Value |
+| --- | --- |
+| Price | Free today (`price_usd = 0`); the operator pays for the model |
+| Rate limit | 20 requests per 60 seconds for the whole process |
+| Payment rail when priced | B402 (Binance Pay facilitator on BNB Chain) |
+
+## A2A
+
+The agent publishes an A2A agent card at `https://agent.portir.xyz/.well-known/agent-card.json`. Its skills follow Agent Studio's ERC-8183 seller flow:
+
+| Skill | Does |
+| --- | --- |
+| `negotiate` | Send a task and terms; receive a wallet-signed price quote to anchor on-chain with `createJob` + fund |
+| `notify_funded` | Tell the agent a job is funded; it verifies the signed quote and delivers in the background |
+
+## Health
+
+`GET https://agent.portir.xyz/ping` returns `{"status":"HEALTHY"}`.

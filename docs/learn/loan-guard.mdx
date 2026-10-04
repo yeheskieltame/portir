@@ -1,0 +1,67 @@
+---
+title: "Loan Guard"
+description: "Borrow USDT against your stocks on Venus, with an automatic, capped rescue before liquidation."
+---
+
+Loan Guard lets you put your stocks to work as collateral without watching the screen all night. If the price drops, the agent repays part of your loan **from your own safety buffer** before you get near liquidation.
+
+<Frame caption="Your stock loan: debt, borrow limit, liquidation limit and how much is used">
+  <img src="/images/d-loans.jpg" alt="Your stock loan: debt, borrow limit, liquidation limit and how much is used" />
+</Frame>
+
+## How it works
+
+<Steps>
+  <Step title="Borrow on Venus">
+    Supply a stock token Venus accepts as collateral and borrow USDT. The app does buy → supply → borrow → guard in one batch.
+  </Step>
+  <Step title="Set a guard">
+    On the `LoanGuard` contract you choose a **trigger** and a **target** (as a share of your liquidation limit), a **cap per rescue** and a **cooldown**. Defaults in the app: trigger 80%, target 60%.
+  </Step>
+  <Step title="Approve a buffer">
+    You approve `LoanGuard` for a safety buffer in USDT. The buffer stays in your wallet.
+  </Step>
+  <Step title="The agent watches">
+    Every 5 minutes the agent reads each guarded position.
+  </Step>
+  <Step title="Rescue">
+    Past the trigger, it asks `LoanGuard` to repay just enough to reach the target, capped. The contract re-checks the position on-chain first, then calls `repayBorrowBehalf` with USDT taken straight from your wallet.
+  </Step>
+</Steps>
+
+<Frame caption="How your guard works, and every rescue the agent made">
+  <img src="/images/d-loans-2.jpg" alt="How your guard works, and every rescue the agent made" />
+</Frame>
+
+## The number that matters: used limit
+
+```
+usedBps = debt / Σ (collateral × liquidation threshold)
+```
+
+`10000` bps (100%) means liquidatable. The contract computes it from the pool's own oracle and liquidation thresholds, not from anything the agent sends.
+
+## Safety properties
+
+<CardGroup cols={3}>
+  <Card title="Only past your trigger" icon="gauge-high">`rescue` reverts with `NotAtRisk` below the trigger.</Card>
+  <Card title="From your own buffer" icon="wallet">Money moves from your wallet to Venus. Nothing passes through the agent.</Card>
+  <Card title="Capped" icon="lock">At most `maxPerRescue` per rescue, at most once per cooldown.</Card>
+</CardGroup>
+
+A leaked agent key can only repay the borrower's own debt, capped. It cannot borrow, withdraw collateral or move funds anywhere else.
+
+## Supported collateral
+
+Venus accepts four tokenized stocks on BNB Chain, all from bStocks (checked on-chain 2026-09-28):
+
+| Stock | Collateral factor | Liquidation threshold |
+| --- | --- | --- |
+| NVIDIA (vNVDAB) | 60% | 70% |
+| Tesla (vTSLAB) | 60% | 70% |
+| SpaceX (vSPCXB) | 50% | 65% |
+| SK Hynix (vSKHYB) | 50% | 65% |
+
+<Info>
+Venus has no stock markets on testnet. There, `StockLendingPool` stands in with the same interface and the same limits over the four test stocks, and real liquidations. A live testnet rescue repaid 89.71 tUSDT and moved a position from 85.7% of its limit back to exactly 60%. Loan Guard is **testnet-only** for now.
+</Info>

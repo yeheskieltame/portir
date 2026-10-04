@@ -1,0 +1,61 @@
+---
+title: "The Guard"
+description: "Four checks before every order, and how GO, WARN and BLOCK are decided."
+---
+
+The Guard is one engine shared by every surface. The app, the MCP server and the agent all call it, so a verdict means the same thing everywhere.
+
+<Frame caption="NVIDIA with the Guard: market closed, fair price, -0.08% vs exchange">
+  <img src="/images/d-stock.jpg" alt="NVIDIA with the Guard: market closed, fair price, -0.08% vs exchange" />
+</Frame>
+
+## The four checks
+
+<Steps>
+  <Step title="Market window">
+    Reads the US session (`open`, `pre`, `after`, `closed`) and any issuer halt (dividend, split, earnings) from the Binance RWA Data API. A halted stock is always **BLOCK**.
+  </Step>
+  <Step title="Fair price">
+    Compares the on-chain price per share with the exchange reference price and expresses the gap in basis points (1 bps = 0.01%).
+  </Step>
+  <Step title="Best issuer">
+    Ondo, bStocks and xStocks list the same stock with different multipliers, halts and staleness. Portir puts halted issuers last, then stale-looking ones (a discount deeper than 1%), and picks the cheapest on-chain price among the rest. The app shows what it compared.
+  </Step>
+  <Step title="Minimum output">
+    The swap is built with a 0.5% minimum output. If the pool moves further before your transaction lands, it reverts instead of filling badly.
+  </Step>
+</Steps>
+
+<Frame caption="Every issuer compared: bStocks used, Ondo and xStocks shown">
+  <img src="/images/d-stock-issuers.jpg" alt="Every issuer compared: bStocks used, Ondo and xStocks shown" />
+</Frame>
+
+## Verdicts
+
+| Spread (on-chain vs exchange) | Verdict | What happens |
+| --- | --- | --- |
+| Halted by the issuer | **BLOCK** | No buy. "Trading is paused for this stock." |
+| More than 1% above | **BLOCK** | No buy. Better to wait for the exchange to open or the premium to close. |
+| Between 0.5% and 1% above | **WARN** | You may buy; the sentence tells you how much more you pay. |
+| Up to 0.5% above, or a discount | **GO** | Fair price. |
+| More than 1% below | **WARN** | A deep discount usually means the on-chain price is stale, so the fill may be higher. |
+
+Thresholds live in `THRESHOLDS = { warnBps: 50, blockBps: 100 }`.
+
+<Note>
+Per-share price is `token price / multiplier`. Ondo tokens do not rebase; their multiplier (shares per token) grows with reinvested dividends. Portir always shows and compares **per-share** prices.
+</Note>
+
+## Every verdict has a sentence
+
+The Guard never answers with a bare color. Examples it produces:
+
+- "The market is closed and the on-chain price is 1.40% above the exchange price, so it is better to wait."
+- "The market is open and you would pay 0.72% more than the exchange price."
+- "The market is closed and the price is at or below the exchange price."
+
+The agent writes these same sentences into `PlanRegistry` with each run.
+
+## When the exchange price is missing
+
+The Binance RWA Data API sometimes returns no exchange price for a stock. Portir does not invent one: the app shows "exchange price unavailable", and the agent treats the stock as **BLOCK** with the reason "The exchange price is not available right now, so the price cannot be checked."
