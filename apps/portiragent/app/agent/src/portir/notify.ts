@@ -57,6 +57,8 @@ export function startTelegramLoop(): void {
     log("TELEGRAM_BOT_TOKEN not set; reports off");
     return;
   }
+  // A second agent on the same bot (the mainnet executor) only sends; one getUpdates poller per bot token.
+  if (process.env.PORTIR_TELEGRAM_POLL === "off") return;
   let offset = 0;
   const loop = async () => {
     for (;;) {

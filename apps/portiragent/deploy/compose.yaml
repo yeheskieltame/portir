@@ -24,6 +24,27 @@ services:
       timeout: 5s
       retries: 3
 
+  # Mainnet executor: same image, same agent wallet (nonces are per chain), the mainnet PlanRegistry.
+  # Not public: Caddy only routes agent.portir.xyz to the testnet agent above.
+  # Arm only after one dry scan: PORTIR_EXECUTION=off first, then agentic-wallet + PORTIR_MAINNET_ARMED=yes in .env.mainnet.
+  agent-mainnet:
+    build:
+      context: ../../..
+      dockerfile: apps/portiragent/deploy/Dockerfile
+    restart: unless-stopped
+    env_file: [../.studio/.env.local, ../.studio/.env.mainnet]
+    environment:
+      PORTIR_BRAIN: studio
+      AGENTCORE_RUNTIME_URL: https://agent.portir.xyz
+      PORTIR_REGISTRY_CHAIN: mainnet
+      PORTIR_REGISTRY: "0x28daDC35523CE792C7C09faf516763830C38f36b"
+      PORTIR_REGISTRY_RPC: https://bsc-dataseed.bnbchain.org
+      PORTIR_TELEGRAM_POLL: "off"
+      PORTIR_LOANGUARD: "off"
+    volumes:
+      - ../.studio:/app/apps/portiragent/.studio
+    expose: ["9000"]
+
   caddy:
     image: caddy:2
     restart: unless-stopped

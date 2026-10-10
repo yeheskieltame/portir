@@ -3,7 +3,7 @@
 import { useReadContracts } from "wagmi";
 import { STOCK_NAMES } from "@/lib/catalog";
 import { OUTCOMES, planRegistryAbi } from "@/lib/planRegistry";
-import { chain } from "@/lib/wagmi";
+import { useRegistryChain } from "@/app/mode";
 
 const ZERO_HASH = `0x${"0".repeat(64)}`;
 const CLS = ["text-go border-go/40 bg-go/10", "text-warn border-warn/40 bg-warn/10", "text-muted border-line"];
@@ -11,6 +11,7 @@ const when = (s: number) => new Date(s * 1000).toLocaleString("en-US", { month: 
 
 /** What the agent did across all of the user's plans, newest first: every run it recorded on-chain, with its reason. */
 export function Activity({ registry, ids, targets, sells, limit = 8 }: { registry: `0x${string}`; ids: readonly bigint[]; targets: Record<string, string>; sells?: Set<string>; limit?: number }) {
+  const chain = useRegistryChain();
   const runs = useReadContracts({
     contracts: ids.map((id) => ({ address: registry, abi: planRegistryAbi, functionName: "runsOf" as const, args: [id] as const, chainId: chain.id })),
     allowFailure: true,

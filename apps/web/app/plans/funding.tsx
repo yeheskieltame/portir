@@ -5,13 +5,14 @@ import { erc20Abi, formatUnits, zeroAddress } from "viem";
 import { useReadContract, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { usd } from "@/app/verdict";
 import { BUDGET_RUNS, USDT_DECIMALS, planRegistryAbi } from "@/lib/planRegistry";
-import { chain } from "@/lib/wagmi";
+import { useRegistryChain } from "@/app/mode";
 
 /**
  * The agent is paid through PlanRegistry, which moves at most a plan's amount per due run from the owner.
  * Shows how much the owner has allowed and asks for more when the active plans need it.
  */
 export function Funding({ owner, registry, perRun }: { owner: `0x${string}`; registry: `0x${string}`; perRun: bigint }) {
+  const chain = useRegistryChain();
   const token = useReadContract({ address: registry, abi: planRegistryAbi, functionName: "fundingToken", chainId: chain.id });
   const t = token.data && token.data !== zeroAddress ? token.data : undefined;
   const q = { enabled: !!t, refetchInterval: 30_000 };

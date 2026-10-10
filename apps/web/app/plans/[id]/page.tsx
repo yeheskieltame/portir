@@ -10,7 +10,7 @@ import { type FlowRun, planFlow, runState } from "@/app/flow/model";
 import { usd } from "@/app/verdict";
 import { targetLegs } from "@/lib/catalog";
 import { OUTCOMES, USDT_DECIMALS, decodeTarget, planRegistryAbi, planRegistryAddress } from "@/lib/planRegistry";
-import { chain } from "@/lib/wagmi";
+import { useRegistryChain } from "@/app/mode";
 
 const POLL = 30_000;
 const ZERO_HASH = `0x${"0".repeat(64)}`;
@@ -26,6 +26,7 @@ export default function PlanFlowPage({ params }: { params: Promise<{ id: string 
 }
 
 function PlanFlow({ id, registry }: { id: bigint; registry: `0x${string}` }) {
+  const chain = useRegistryChain();
   const contract = { address: registry, abi: planRegistryAbi, chainId: chain.id } as const;
   const { address } = useConnection();
   const [editing, setEditing] = useState(false);

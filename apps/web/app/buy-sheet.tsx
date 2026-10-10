@@ -6,14 +6,14 @@ import { encodeFunctionData, erc20Abi, formatUnits, parseUnits } from "viem";
 import { useConnect, useConnection, useConnectors, useReadContract } from "wagmi";
 import { getBalance, readContract, sendTransaction, switchChain, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { NoWallet } from "@/app/connect-button";
-import { useMode } from "@/app/mode";
+import { useMode, useRegistryChain } from "@/app/mode";
 import { NET } from "@/lib/mode";
 import { TESTNET, testExchangeAbi } from "@/lib/testnet";
 import type { BuyResponse } from "@/app/api/buy/route";
 import { TONE, pct, usd } from "@/app/verdict";
 import { recordBuy } from "@/lib/buys";
 import { BUDGET_RUNS, CADENCES, USDT_DECIMALS, encodeTarget, executorAddress, planRegistryAbi, planRegistryAddress } from "@/lib/planRegistry";
-import { chain as registryChain, config } from "@/lib/wagmi";
+import { config } from "@/lib/wagmi";
 
 const QUICK = [10, 25, 50, 100];
 const MIN_GAS_BNB = parseUnits("0.0005", 18); // a swap on BSC costs well under this
@@ -44,6 +44,7 @@ type Step =
 
 /** Buy now or on a schedule, in one sheet: the amount typed for one carries into the other. */
 export function BuySheet({ name, legs, initial }: { name: string; legs: Leg[]; initial?: "plan" }) {
+  const registryChain = useRegistryChain();
   const [open, setOpen] = useState(initial === "plan");
   const [repeat, setRepeat] = useState(initial === "plan");
   const [cadence, setCadence] = useState<Cadence>("Weekly");

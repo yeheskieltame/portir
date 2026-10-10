@@ -11,9 +11,10 @@ import { usd } from "@/app/verdict";
 import { BASKETS, STOCK_NAMES, targetLegs } from "@/lib/catalog";
 import { BUDGET_RUNS, USDT_DECIMALS, encodeTarget, executorAddress, planRegistryAbi, planRegistryAddress } from "@/lib/planRegistry";
 import { type BatchCall, sendBatch, useBatchSupport } from "@/lib/wallet-batch";
-import { chain, config } from "@/lib/wagmi";
+import { config } from "@/lib/wagmi";
 import { FlowCanvas, useFlowLayout } from "./canvas";
 import { type FlowPlan, type StepKind, planFlow } from "./model";
+import { useRegistryChain } from "@/app/mode";
 
 export interface Settings {
   target: string;
@@ -51,6 +52,7 @@ export function legsFor(target: string, icons?: Record<string, string | null>) {
  * an existing plan can change amount, cadence and smart timing (asset and one-time are fixed on-chain).
  */
 export function FlowEditor({ initial, planId, onDone }: { initial: Settings; planId?: bigint; onDone?: () => void }) {
+  const chain = useRegistryChain();
   const router = useRouter();
   const { address } = useConnection();
   const [connector] = useConnectors();

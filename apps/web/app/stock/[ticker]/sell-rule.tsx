@@ -4,15 +4,15 @@ import Link from "next/link";
 import { useState } from "react";
 import { encodeFunctionData, erc20Abi, formatUnits, parseUnits } from "viem";
 import { useConnection, useReadContracts } from "wagmi";
-import { useMode } from "@/app/mode";
+import { useMode, useRegistryChain } from "@/app/mode";
 import { usd } from "@/app/verdict";
 import { encodeTarget, executorAddress, planRegistryAbi, planRegistryAddress } from "@/lib/planRegistry";
 import { TESTNET } from "@/lib/testnet";
-import { chain } from "@/lib/wagmi";
 import { sendBatch } from "@/lib/wallet-batch";
 
 /** Take-profit / stop-loss: the agent sells the shares once the real price crosses the trigger in market hours. */
 export function SellRule({ ticker, price }: { ticker: string; price: number }) {
+  const chain = useRegistryChain();
   const mode = useMode();
   const { address } = useConnection();
   const token = TESTNET.stocks[ticker];

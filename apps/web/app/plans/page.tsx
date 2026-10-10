@@ -20,6 +20,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { BASKETS, STOCK_NAMES } from "@/lib/catalog";
+import { useRegistryChain } from "@/app/mode";
 import {
   CADENCES,
   OUTCOMES,
@@ -30,7 +31,6 @@ import {
   planRegistryAbi,
   planRegistryAddress,
 } from "@/lib/planRegistry";
-import { chain } from "@/lib/wagmi";
 
 const DAY = 86_400;
 const POLL = 30_000;
@@ -63,6 +63,7 @@ function Notice({ children }: { children: React.ReactNode }) {
 }
 
 function PlansFor({ owner, registry }: { owner: `0x${string}`; registry: `0x${string}` }) {
+  const chain = useRegistryChain();
   // chainId makes the wallet switch network before a write instead of sending it to the wrong chain.
   const contract = { address: registry, abi: planRegistryAbi, chainId: chain.id } as const;
   const now = useNow();
@@ -323,6 +324,7 @@ function SellRuleItem({ id, ticker, plan, rule, icon, registry, busy, onCancel }
 }
 
 function Runs({ registry, planId, sell }: { registry: `0x${string}`; planId: bigint; sell?: boolean }) {
+  const chain = useRegistryChain();
   const runs = useReadContract({
     address: registry,
     abi: planRegistryAbi,

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { createContext, useContext } from "react";
-import { MODE_COOKIE, type Mode } from "@/lib/mode";
+import { MODE_COOKIE, type Mode, NET } from "@/lib/mode";
 
 const Ctx = createContext<Mode>("testnet");
 
@@ -12,6 +12,9 @@ export function ModeProvider({ mode, children }: { mode: Mode; children: React.R
 }
 
 export const useMode = () => useContext(Ctx);
+
+/** PlanRegistry has the same address on BSC testnet and mainnet, so the mode alone picks the chain. */
+export const useRegistryChain = () => NET[useMode()].chain;
 
 export function useSetMode() {
   const router = useRouter();

@@ -1,17 +1,13 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useConnect, useConnection, useConnectors, useDisconnect, useSwitchChain } from "wagmi";
 import { useMode, useSetMode } from "@/app/mode";
 import { type Mode, NET } from "@/lib/mode";
-import { chain as registryChain } from "@/lib/wagmi";
 
-/** The chain a page needs: plans live on the registry chain, everything else follows the mode. */
+/** The chain a page needs: everything, plans included, follows the mode. */
 export function useTargetChain() {
-  const mode = useMode();
-  const path = usePathname();
-  return path.startsWith("/plans") ? registryChain : NET[mode].chain;
+  return NET[useMode()].chain;
 }
 
 export function ConnectButton() {

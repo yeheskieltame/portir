@@ -2,16 +2,16 @@
 
 import { erc20Abi, formatUnits } from "viem";
 import { useConnect, useConnection, useConnectors, useDisconnect, useReadContract, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { useMode, useSetMode } from "@/app/mode";
+import { useMode, useSetMode, useRegistryChain } from "@/app/mode";
 import { usd } from "@/app/verdict";
 import { type Mode, NET } from "@/lib/mode";
 import { planRegistryAddress } from "@/lib/planRegistry";
 import { TESTNET, mockUsdtAbi } from "@/lib/testnet";
 import { AgentFuel, ConnectClaude, OwnAgent } from "./agent";
 import { TelegramAlerts } from "./telegram";
-import { chain } from "@/lib/wagmi";
 
 export default function Profile() {
+  const chain = useRegistryChain();
   const { address } = useConnection();
   const [connector] = useConnectors();
   const connect = useConnect();
