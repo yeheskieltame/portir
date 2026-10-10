@@ -250,7 +250,7 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
   instead; `/api/buy` and the executor sign the live mainnet price into every order (10-minute deadline). Testnet is now
   purely a settlement venue: same data, same Guard, same reasons as mainnet. Redeployed all 20 fixtures (~0.0015 tBNB).
 
-## Issuer comparison (fill in during day 1-3)
+## Issuer comparison
 
 | | bStocks | Ondo | xStocks |
 | --- | --- | --- | --- |
@@ -262,10 +262,10 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
 | Price vs exchange, regular session | ±0.1% | ±0.1% | up to −1.8% (stale) |
 | Executable via Trading API ($10 NVDA) | yes, +4.55 bps | yes, +0.8 bps | **no route** |
 | In keyed RWA API | yes (`bstock`, 46) | yes (`ondo`, 442) | no |
-| On BSC / liquidity | | | |
-| Share accounting | multiplier | multiplier | multiplier (list value wrong, use dynamic) |
-| Halt codes | | | |
-| Session hours | | | |
+| On BSC / liquidity | thin but executable; the Agentic Wallet routed our mainnet NVDA buy here (Sat, $5, filled in 1 s) | deepest; quotes on a Saturday through the Agentic Wallet | none we could reach |
+| Share accounting | multiplier (~1.0008 on NVDAB: BscScan shows raw tokens, the wallet shows shares) | multiplier | multiplier (list value wrong, use dynamic) |
+| Halt codes | none observed in 3 weeks; not documented | none observed; not documented | n/a |
+| Session hours | no session field; tokens trade on weekends | `marketStatus` pre / regular / after / closed (+ overnight); tokens trade on weekends | no session field |
 
 ## API friction (one row per incident)
 
@@ -284,6 +284,11 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
 | 09-23 | Trading `aggregator/quote` | Call from Vercel (6 regions) | `40304 compliance restriction` for every cloud IP; fine from a home IP | Document it; allow per-key server IP allowlists |
 | 09-23 | Trading `aggregator/quote` | Buy NVDAon with USDC | `40368` "can only pair with allowed stablecoin(s)"; list unpublished | Publish the allowed stables per issuer; include them in the error |
 | 09-23 | Agentic Wallet `auth signin` | Scan QR from the app | Code expired twice in well under 5 min | Longer TTL or resumable verify |
+| 09-29 | Pieverse LLM (Agent Studio) | Free model in production | `429` on every call once the free credit was used, even `bag llm test` | Show the credit state and limits in `bag doctor`; say "out of credit" instead of 429 |
+| 10-11 | Agentic Wallet `market-order swap` | Poll the returned `orderId` with `list --orderId` | Never found: swap returned `…458`, the order is listed as `…459`; we gave up after 90 s on an order that filled in 1 s | Return the same id `list` uses |
+| 10-11 | Agentic Wallet `wallet send` | Deliver bought shares to the plan owner | `351703` "recipient address is not in your address book"; the book is only editable in the phone app | Document it next to `send`; allow adding recipients from the CLI (with in-app confirmation) |
+| 10-11 | Agentic Wallet `market-order quote` | $1 test order | "From token value greater than 5 USD" | Publish the minimum order size |
+| 10-11 | Agentic Wallet session | Run the CLI headless on a VPS | Session id lives in the macOS keychain, the file only has `clientId`; the file fallback is encrypted with the machine's MAC | Document headless use (`BINANCE_INSTANCE_ID`) or offer an exportable agent session |
 
 ### 2026-09-24 (day 6): the agent inside the app, and `updatePlan` by upgrade
 
@@ -325,4 +330,72 @@ without a VPN, so the catalog, charts and portfolio are live for anyone. The Tra
   even after `forge clean` and `--skip test`: two copies of OpenZeppelin under lib/. Deployed implementation + proxy
   directly; upgrade safety covered by tests.
 - Two agent loops (plans every 15 min, guard every 5 min) sign from one wallet: transactions now go through one queue.
+
+### 2026-09-28: sell rules, a news check, Telegram
+
+- **PlanRegistry v6** (UUPS upgrade, no redeploy): `createSellRule` / `pullShares` / `returnShares`. Same trust model as
+  buys: the registry holds the owner's share allowance and releases one rule's shares to the executor when it fires.
+  The executor sells only in market hours, after the live price crosses the trigger.
+- **News check before a buy.** The LLM reads recent headlines for the ticker and may hold a buy back, with its reason
+  written on-chain like every other outcome. Fail-open: no model, no headlines or an unparseable answer leaves the
+  decision to the rule-based Guard. Reasoning models put the verdict after a think block; parse the last line, not the first.
+- **Telegram** reports every recorded outcome and Loan Guard rescue to the owner's chat, linked from Profile. Long-polling
+  a bot from two processes makes them steal each other's updates: one poller per token; the mainnet executor only sends.
+
+### 2026-09-29: off the laptop, and off the free model
+
+- **Hosting.** The executor has to outlive the 48h Agent Studio trial and needs a fixed egress IP for the B402 allowlist,
+  so it runs as the same `bag` app in Docker on a small VPS, with Caddy for HTTPS (`agent.portir.xyz`). The keystore and
+  `.env.local` are mounted, never baked into the image. One agent per wallet: a laptop `bag dev` left running would race
+  the VPS on nonces and act twice.
+- **The free model ran dry.** The zero-deposit Pieverse key returned `429` on every call once its credit hit $0, including
+  `bag llm test`; the app's chat could only say "agent is busy". Studio's OpenAI-compatible provider took Groq
+  (`openai/gpt-oss-120b`) with two lines in `studio.toml` (`provider = "openai"`, `base_url`) and a key in `.env.local`.
+  Swapping the brain touched no Portir code. **Ask (Studio): show remaining LLM credit in `bag doctor`.**
+- **Mainnet delivery path designed.** Pulled USDT goes from the agent's EOA to the Agentic Wallet, which swaps and sends
+  the shares to the owner; anything unspent returns through the registry. The Agentic Wallet never holds an allowance.
+
+### 2026-10-03: pre-mainnet audit
+
+- **PlanRegistry v7.** Two findings in our own contract: pause + resume reset the run budget, so an executor could pull
+  twice in one period; and `returnFunds` / `returnShares` required an active, due run, so money pulled before a pause or
+  a `recordRun` could not go back through the registry. Fixed, tested, upgraded on testnet; `contracts/AUDIT.md` has the
+  trust model and the full access table.
+- **Executor hardening before arming.** Agentic Wallet preflight (session, daily limit) before any money is pulled; a
+  submitted swap is never refunded, only reported; deliver exactly the shares the swap produced, not the token's whole
+  balance; explicit 1% slippage; no exchange price means no buy; a run with money still out blocks new buys until settled;
+  failed buys back off 30 minutes; unfunded plans get no on-chain entry.
+
+### 2026-10-11: mainnet, first real run
+
+- **Deploy cost.** `PlanRegistry` on BSC mainnet (proxy `0x28daDC35523CE792C7C09faf516763830C38f36b`, verified) plus
+  `setFundingToken(USDT)` and verification cost **~0.00015 BNB** at 0.05 gwei. The proxy got the same address as on
+  testnet because the deployer's nonce matched, so the app needs one registry address and the mode picks the chain.
+- **First run, end to end.** A user plan (NVDA, $5 weekly, smart timing off) on a Saturday: the agent pulled 5 USDT through
+  the registry, the Agentic Wallet swapped it to **0.021686 NVDAB** in one second
+  ([tx](https://bscscan.com/tx/0xf4fa9429f705232799589fb02c9efa578384bcf8faf889ec060089132b934e9a)), the run was recorded
+  on-chain with its reason ([tx](https://bscscan.com/tx/0x269bb7b97eef7d22888bed8155850190bf5125eb08163117aef39de234fb0f90)),
+  and the shares reached the owner ([tx](https://bscscan.com/tx/0x5138be3fc0abd72e69b2ddfbd03bb05f93afb794891a201273194e62b8a70116)).
+  The swap ran from the VPS: the Agentic Wallet path is not hit by the Trading API's cloud-IP block (`40304`).
+- **Stock tokens trade on weekends.** The US market was closed; Ondo and bStocks pools still quoted and filled. The Guard
+  compares against the last exchange price, so "closed" only matters to plans with smart timing on.
+- **`swap` and `list` disagree on the order id.** `market-order swap` returned `…776458`; `market-order list` only knows
+  `…776459` (not a float rounding: that would give `…774000`). Our poll never found the order, waited 90 s on a swap that
+  had filled in one second, and parked the run as "placed, not confirmed". The executor now matches the new order by
+  token pair since submission. **Ask: return the id `list` uses.**
+- **The address book gate.** Delivering the shares failed with `351703` "recipient address is not in your address
+  book". The book can only be edited in the phone app (Binance App → Wallet → Settings → Address Book), so every new
+  plan owner, and the agent's own EOA for refunds, must be added by hand before the first run. A good guardrail for a
+  personal wallet; for an agent serving many users it is the main blocker. **Ask: let the CLI propose a recipient that
+  the owner confirms in-app, or scope the book to a contract (here: deliver only to the plan's owner).**
+- **Minimum order $5.** A $1 quote returns "From token value greater than 5 USD". Not in the skill docs; we found it
+  by testing. Plans below $5 cannot run through the Agentic Wallet.
+- **Headless session, corrected.** Day 5 said the session is one file. In 1.10 the session id goes to the OS keychain
+  (`keytar`, service `baw`) whenever one exists, and `session.json` keeps only `clientId`. Without a keychain the file
+  holds both, encrypted with a key derived from `BINANCE_INSTANCE_ID` or the first network interface's MAC. So copying
+  the file to a server fails silently (status `UNCONNECTED`). What works: export the id from the keychain, encrypt it
+  with the laptop's instance id, and set `BINANCE_INSTANCE_ID` on the server. **Ask: document this, or a `baw auth
+  export` for agent hosts.**
+- **Shares vs tokens.** The wallet reports 0.021686 NVDAB, BscScan 0.021670: the wallet shows shares (tokens ×
+  multiplier ~1.0008), the explorer raw tokens. A user comparing the two sees a "missing" 0.08%; the app shows shares.
 

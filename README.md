@@ -8,9 +8,9 @@ the on-chain vs exchange price before every order.
 | Path | What | Status |
 | --- | --- | --- |
 | `packages/core` | `@portir/core`: the Guard (pure verdict logic), the Binance RWA Data client (catalog, quotes, fundamentals, K-lines, logos) and the Trading client (official SDK). | quote + build verified live on mainnet; `simulate` blocked by an SDK bug (see DevEx report) |
-| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. `LoanGuard`: keeps Venus borrowers out of liquidation, UUPS upgradeable. | 15 tests, verified on BSC testnet, upgraded in place four times (v2: `updatePlan`, `resumePlan`; v3: one-time "buy when fair" plans; v4: a completed once plan cannot be resumed; v5: plans pay from the owner through the registry, capped per run) |
+| `contracts` | Foundry + OpenZeppelin 5.7. `PlanRegistry`: DCA plans and run history, UUPS upgradeable. `LoanGuard`: keeps Venus borrowers out of liquidation, UUPS upgradeable. | tests green (5,000 fuzz runs), verified on BSC testnet and mainnet, testnet proxy upgraded in place (v2: `updatePlan`, `resumePlan`; v3: one-time "buy when fair" plans; v4: a completed once plan cannot be resumed; v5: plans pay from the owner through the registry, capped per run) |
 | `apps/landing` | Static landing page (one HTML file, no build). Its own Vercel project on the root domain; the app lives on `app.<domain>`. | `pnpm dev:landing` → :3001 |
-| `apps/portiragent` | The Portir agent on **BNB Agent Studio** (`bag` workspace, not part of the pnpm root workspace). One AgentCore runtime with three faces: **MCP** (`/mcp`, ten Portir tools for Claude or any client), **x402** (`/x402`, free passthrough answering with the same tools), **A2A**. Runs the **DCA executor**: scans `PlanRegistry` every 15 min, applies the Guard to single stocks and baskets (worst holding decides), buys on testnet with the owner's tUSDT pulled through PlanRegistry (capped at the plan amount per run) and sends the shares to the owner, records `Waited / Skipped / Executed` with a one-sentence reason; one-time "buy when fair" orders complete after their first buy. | runs locally (`cd apps/portiragent && bag dev`); trial deploy next; execution backend off until the Agentic Wallet test |
+| `apps/portiragent` | The Portir agent on **BNB Agent Studio** (`bag` workspace, not part of the pnpm root workspace). One AgentCore runtime with three faces: **MCP** (`/mcp`, ten Portir tools for Claude or any client), **x402** (`/x402`, free passthrough answering with the same tools), **A2A**. Runs the **DCA executor**: scans `PlanRegistry` every 15 min, applies the Guard to single stocks and baskets (worst holding decides), buys on testnet with the owner's tUSDT pulled through PlanRegistry (capped at the plan amount per run) and sends the shares to the owner, records `Waited / Skipped / Executed` with a one-sentence reason; one-time "buy when fair" orders complete after their first buy. | live at `agent.portir.xyz` (Docker on a VPS); testnet executor and an armed mainnet executor through the Agentic Wallet |
 | `apps/web` | Next.js app, mobile-first. Markets (510 US stocks/ETFs on BSC, search, filter, pages), stock detail (chart, Guard, providers, fundamentals), baskets, one-tap buy with the Guard, portfolio (live balances, history, dividends), plans, profile. | live; buying signs real BSC mainnet transactions |
 
 **No backend.** The PRD's Postgres plan store is replaced by `PlanRegistry`: the app writes plans to it,
@@ -19,8 +19,15 @@ The contract holds no funds. Two Next.js route handlers exist because `binance.c
 browsers here and the Trading API needs a server-side key: `/api/quote` (prices + history for the portfolio)
 and `/api/buy` (Guard verdict + approval and swap calldata; the wallet signs, nothing is sent from the server).
 
-Not here yet, on purpose: mainnet execution through the Agentic Wallet session (the backend exists but stays armed off
-until the checklist in `contracts/AUDIT.md`), the basket router contract (a basket buy is one guarded swap per holding,
+**Live on BSC mainnet** (2026-10-11): `PlanRegistry` [`0x28da…f36b`](https://bscscan.com/address/0x28daDC35523CE792C7C09faf516763830C38f36b#code)
+(verified; same address as on testnet). First user plan, end to end: 5 USDT pulled through the registry, swapped by the
+Agentic Wallet to NVDAB ([swap](https://bscscan.com/tx/0xf4fa9429f705232799589fb02c9efa578384bcf8faf889ec060089132b934e9a)),
+run recorded with its reason ([recordRun](https://bscscan.com/tx/0x269bb7b97eef7d22888bed8155850190bf5125eb08163117aef39de234fb0f90)),
+shares delivered to the owner ([send](https://bscscan.com/tx/0x5138be3fc0abd72e69b2ddfbd03bb05f93afb794891a201273194e62b8a70116)).
+Known limits: the registry owner is still the deployer, not a Safe; the Agentic Wallet only sends to addresses in its
+in-app address book, so each plan owner is added by hand; orders under $5 are refused (see DEVEX_REPORT).
+
+Not here yet, on purpose: the basket router contract (a basket buy is one guarded swap per holding,
 signed in sequence), notifications. The MCP server is the agent's `/mcp` face rather than a separate npm package.
 
 ### The agent (`apps/portiragent`)
@@ -45,8 +52,9 @@ mainnet in both: testnet only changes where the trade settles, at a quote signed
 it as `NEXT_PUBLIC_EXECUTOR`, and only it (or the owner) can `recordRun`. Connect Claude: `claude mcp add portir --transport
 http https://agent.portir.xyz/mcp` (locally `http://localhost:9000/mcp`).
 
-Trading runs on **BSC mainnet only** (stock tokens have no testnet). `PlanRegistry` stays on testnet until the app is done,
-so the wallet is asked to switch network between Plans and Buy. Put `BINANCE_W3_API_KEY` / `BINANCE_W3_API_SECRET` in
+Trading runs on **BSC mainnet only** (stock tokens have no testnet). `PlanRegistry` has the same address on BSC testnet and
+mainnet, so Plans follow the app's mode; the VPS runs one executor per chain (`agent` and `agent-mainnet` in
+`apps/portiragent/deploy/compose.yaml`). Put `BINANCE_W3_API_KEY` / `BINANCE_W3_API_SECRET` in
 `apps/web/.env.local`; `pnpm --filter @portir/core smoke:trade` checks the Trading API read-only.
 
 `www.binance.com` is DNS-blocked on Indonesian ISPs. Locally the catalog falls back to labelled sample prices unless you
@@ -92,12 +100,12 @@ testnet (CAKE collateral) is kept in `deployments/venus-testnet.json`. Idea cred
 
 ## Backlog (decided, not started)
 
-- Mainnet execution: plans already pull through `PlanRegistry` and deliver from the Agentic Wallet (`agentic-wallet` backend), untested until `PlanRegistry` is on mainnet; sell rules are testnet-only.
+- Mainnet sell rules (buys run on mainnet; sell rules are testnet-only).
 - Move catalog reads from the public `www.binance.com` RWA API to the keyed one on `web3.binance.com`: not ISP-blocked,
   fewer calls, and its issuer list is the source of truth for what can be traded. Take the exchange price from
   `getRwaUnderlyingMarketData`, never from `getRwaTokenPrice.referencePrice` (see DEVEX_REPORT).
 - `simulate` (PRD Guard step 4): call the REST endpoint with our own request signing; until then the swap's `minTokensOut` (0.5%) is the guard.
-- `PlanRegistry` on mainnet with a multisig `OWNER`.
+- Transfer mainnet `PlanRegistry` ownership to a Safe (`Ownable2Step`).
 - Cost basis lives in `localStorage` (purchases made in the app on that device) until there is an indexer.
 
 ## Deployments
