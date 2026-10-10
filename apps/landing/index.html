@@ -130,9 +130,7 @@ body{overflow-x:hidden}
 .tile i{font:500 34px/1 Geist,sans-serif;font-style:normal;color:var(--c);width:56px;height:56px;display:grid;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--c) 14%,transparent);letter-spacing:-.04em}
 .tile span{font-size:15px;font-weight:500;letter-spacing:-.01em;text-align:center;padding:0 12px}
 .demo{position:relative;aspect-ratio:16/9;border-radius:32px;border:1px solid var(--line);overflow:hidden;display:grid;place-content:center;justify-items:center;gap:18px;background:radial-gradient(60% 70% at 50% 40%,rgba(97,166,246,.22),transparent 70%),radial-gradient(50% 40% at 70% 90%,rgba(255,150,60,.16),transparent 70%),#070d18}
-.demo::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 1px,transparent 1px 64px),repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 64px);mask:radial-gradient(70% 70% at 50% 50%,#000,transparent)}
-.play{width:88px;height:88px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center;font-size:26px;padding-left:6px;box-shadow:0 0 0 12px rgba(255,255,255,.08),0 0 60px rgba(97,166,246,.4)}
-.demo-label{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.demo iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .footer{max-width:1240px;margin:0 auto;padding:60px 28px 32px;border-top:1px solid rgba(255,255,255,.1)}
 .footer-top{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:56px}
 .wordmark{font-size:40px;letter-spacing:-.03em;line-height:1}
@@ -166,7 +164,7 @@ html,body,a,button{cursor:none!important}
 .guard-heading,.gcards{grid-template-columns:minmax(0,1fr)}.gfig{aspect-ratio:4/3}.ring-scene{height:300px}.tile{--w:150px;border-radius:22px;gap:12px}.tile img,.tile i{width:40px;height:40px}.tile img.wide{width:auto;max-width:100px;height:auto;max-height:40px}.tile i{font-size:24px}.tile span{font-size:13px}
 .footer{padding:48px 18px 24px}.footer-top{flex-direction:column;align-items:flex-start}.footer-cols{grid-template-columns:1fr 1fr}.giant{margin:0 -18px -6px}
 }
-@media(max-width:560px){.footer-cols{grid-template-columns:1fr}.gcopy{padding:18px 18px 0}.gcard p{max-width:none}.play{width:64px;height:64px;font-size:20px}}
+@media(max-width:560px){.footer-cols{grid-template-columns:1fr}.gcopy{padding:18px 18px 0}.gcard p{max-width:none}}
 @media(max-width:560px){.content-state h1{font-size:clamp(40px,12vw,56px)}.copy,.glass-card p{font-size:16px}.glass-card h2{font-size:24px}}
 @media(prefers-reduced-motion:reduce){.header,.word,.copy{animation-duration:.01ms!important;animation-delay:0s!important}}
 </style>
@@ -368,11 +366,10 @@ html,body,a,button{cursor:none!important}
 
   <section class="section" id="demo">
     <p class="eyebrow">Demo</p>
-    <h2>Ninety seconds, <em>one real buy.</em></h2>
-    <p class="lead">A first purchase on mainnet, a plan that waits for the market to open, and Claude asking the MCP whether it is a good time to buy TSLA.</p>
-    <div class="demo" role="img" aria-label="Demo video placeholder">
-      <span class="play" aria-hidden="true">&#9654;</span>
-      <span class="demo-label">Demo video · coming soon</span>
+    <h2>The whole product, <em>live on mainnet.</em></h2>
+    <p class="lead">The Guard before a buy, a plan the agent ran on BSC with its reason on-chain, and Claude asking the MCP whether it is a good time to buy TSLA.</p>
+    <div class="demo">
+      <iframe src="https://www.youtube-nocookie.com/embed/0MNPwhiXHlE?rel=0" title="Portir demo" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
     </div>
   </section>
 

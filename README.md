@@ -3,7 +3,7 @@
 Buy US stocks on BNB Chain as simply as a mutual fund, with a Guard that checks the market session and
 the on-chain vs exchange price before every order.
 
-App: https://app.portir.xyz · Docs: https://docs.portir.xyz · Agent: https://agent.portir.xyz/mcp
+App: https://app.portir.xyz · Docs: https://docs.portir.xyz · Agent: https://agent.portir.xyz/mcp · Demo: https://youtu.be/0MNPwhiXHlE
 
 ## Layout
 
