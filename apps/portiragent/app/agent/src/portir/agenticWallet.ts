@@ -96,15 +96,23 @@ export class SwapPending extends Error {}
 const SLIPPAGE_PCT = process.env.PORTIR_SLIPPAGE_PCT ?? "1";
 
 /** Submit the swap and wait for a terminal state. Throws `SwapPending` when the outcome is unknown. */
+type Order = { orderId: string; status: string; txHash: string | null };
+// The executor swaps one leg at a time, so a new order for this pair after `since` is ours.
+const ordersFor = (token: string, since: number) =>
+  baw<{ list: Order[] }>("market-order", "list", "--binanceChainId", BSC, "--fromToken", USDT, "--toToken", token, "--startTime", String(since)).then((d) => d.list ?? []);
+
 export async function swap(token: string, usdt: number, timeoutMs = 90_000): Promise<{ orderId: string; txHash: string }> {
+  const since = Date.now() - 60_000;
+  const before = new Set((await ordersFor(token, since)).map((o) => o.orderId));
   const { orderId } = await baw<{ orderId: string }>("market-order", "swap", "--fromTokenQty", String(usdt), "--fromToken", USDT, "--toToken", token, "--slippage", SLIPPAGE_PCT, "--binanceChainId", BSC);
   const until = Date.now() + timeoutMs;
   while (Date.now() < until) {
     await new Promise((r) => setTimeout(r, 4000));
-    const d = await baw<{ list: { orderId: string; status: string; txHash: string | null }[] }>("market-order", "list", "--orderId", orderId).catch(() => null);
-    const o = d?.list?.find((x) => x.orderId === orderId);
-    if (o?.status === "FINISHED") return { orderId, txHash: o.txHash ?? "" };
-    if (o?.status === "FAILED") throw new Error(`Agentic Wallet order ${orderId} failed`);
+    // baw 1.10 `swap` returns an id that `list` does not know (…458 submitted, …459 listed), so fall back to the new order.
+    const list = await ordersFor(token, since).catch(() => []);
+    const o = list.find((x) => x.orderId === orderId) ?? list.find((x) => !before.has(x.orderId));
+    if (o?.status === "FINISHED") return { orderId: o.orderId, txHash: o.txHash ?? "" };
+    if (o?.status === "FAILED") throw new Error(`Agentic Wallet order ${o.orderId} failed`);
   }
   throw new SwapPending(`Agentic Wallet order ${orderId} not final after ${timeoutMs / 1000}s`);
 }
