@@ -18,7 +18,7 @@ description: "Who can do what, where your money sits, and what a leaked key can 
 | **Executor** | The address you name in the plan (the Portir agent by default) | Pull at most `plan.amount` per due run; return unspent funds; record runs |
 | **Borrower** | You | Set or cancel a guard; revoke the buffer allowance at any time |
 | **Loan executor** | The address you name in the guard | Repay your own debt, capped, once per cooldown, only past your trigger |
-| **Contract owner** | Deployer (testnet); a Safe multisig on mainnet | Upgrade (UUPS, two-step ownership transfer); set the funding token |
+| **Contract owner** | Deployer EOA on both chains today; moving to a Safe multisig on mainnet | Upgrade (UUPS, two-step ownership transfer); set the funding token |
 
 ## Worst cases
 

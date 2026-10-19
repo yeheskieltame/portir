@@ -13,17 +13,17 @@ Portir has two modes, switched in **Profile → Mode**. Prices, sessions, the Gu
 | --- | --- | --- |
 | Catalog, charts, Guard, news | Live | Live |
 | Manual buy | `TestExchange`, tUSDT, 20 featured stocks | Binance Trading API over PancakeSwap, real USDT |
-| Plans (recurring, once, baskets) | Live, run by the agent | Contract path built, not yet deployed |
+| Plans (recurring, once, baskets) | Live, run by the agent | Live since 2026-10-11, through the Agentic Wallet; $5 minimum per run |
 | Sell rules | Live | Not built yet |
 | Loan Guard | `StockLendingPool` (Venus-compatible) | Not enabled |
-| Telegram reports | Live | Same bot, once mainnet plans run |
+| Telegram reports | Live | Live, same bot |
 
 ## How testnet stays honest
 
 `TestExchange` fills each trade at an EIP-712 quote signed by a keeper with the **live mainnet price**, valid for 10 minutes. So the Guard sees on testnet exactly what it would see on mainnet, and nothing can go stale.
 
 <Warning>
-Mainnet buys sign real transactions with real USDT. Start on testnet. Mainnet plan execution through the Agentic Wallet stays switched off until its checklist is complete; see the [roadmap](/resources/roadmap).
+Mainnet buys and plans spend real USDT. Start on testnet. Mainnet plans run through a Binance Agentic Wallet that only delivers to addresses in its address book, so each new plan owner is enabled by hand for now; see the [roadmap](/resources/roadmap).
 </Warning>
 
 <Note>
